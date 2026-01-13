@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.avanderlee.com)",
+      "Bash(swift build:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(swift test:*)",
+      "Bash(pkill:*)",
+      "Bash(swift run:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(sips:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+disabled_rules:
+  - trailing_comma
+  - line_length
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - closure_spacing
+
+excluded:
+  - .build
+  - Package.swift
+
+identifier_name:
+  min_length: 2
+  excluded:
+    - id
+    - db
+    - i
+
+type_name:
+  min_length: 2
