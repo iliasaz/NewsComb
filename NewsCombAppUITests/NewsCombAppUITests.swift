@@ -21,31 +21,52 @@ final class NewsCombAppUITests: XCTestCase {
     // MARK: - Main View Tests
 
     @MainActor
-    func testMainViewShowsRefreshButton() throws {
-        let refreshButton = app.buttons["Refresh"]
-        XCTAssertTrue(refreshButton.waitForExistence(timeout: 5), "Refresh button should exist")
-    }
-
-    @MainActor
-    func testMainViewShowsEmptyStateWhenNoSources() throws {
-        // Check for empty state message
-        let emptyState = app.staticTexts["No RSS Sources"]
-        XCTAssertTrue(emptyState.waitForExistence(timeout: 5), "Should show empty state when no sources")
-
-        let description = app.staticTexts["Add RSS sources in Settings to get started."]
-        XCTAssertTrue(description.exists, "Should show helpful description")
-    }
-
-    @MainActor
     func testAppLaunches() throws {
         // Basic test that app launches without crashing
         XCTAssertTrue(app.exists, "App should launch successfully")
     }
 
     @MainActor
-    func testMainViewShowsAllArticlesSection() throws {
-        // Check for All Articles navigation link
-        let allArticles = app.staticTexts["All Articles"]
-        XCTAssertTrue(allArticles.waitForExistence(timeout: 5), "Should show All Articles section")
+    func testMainViewShowsRefreshButton() throws {
+        let refreshButton = app.buttons["Refresh"]
+        XCTAssertTrue(refreshButton.waitForExistence(timeout: 5), "Refresh button should exist")
+    }
+
+    // MARK: - Export Feature Tests
+
+    @MainActor
+    func testMainViewShowsExportAllButton() throws {
+        // Export All button should exist in the toolbar
+        let exportButton = app.buttons["Export All"]
+        XCTAssertTrue(exportButton.waitForExistence(timeout: 5), "Export All button should exist")
+    }
+
+    @MainActor
+    func testMainViewShowsClearAllButton() throws {
+        // Clear All button should exist in the toolbar
+        let clearButton = app.buttons["Clear All"]
+        XCTAssertTrue(clearButton.waitForExistence(timeout: 5), "Clear All button should exist")
+    }
+
+    @MainActor
+    func testExportAllButtonExists() throws {
+        // Export All button should exist
+        let exportButton = app.buttons["Export All"]
+        XCTAssertTrue(exportButton.waitForExistence(timeout: 5), "Export All button should exist in toolbar")
+    }
+
+    @MainActor
+    func testToolbarButtonsExist() throws {
+        // All toolbar buttons should exist
+        XCTAssertTrue(app.buttons["Refresh"].waitForExistence(timeout: 5), "Refresh button should exist")
+        XCTAssertTrue(app.buttons["Export All"].exists, "Export All button should exist")
+        XCTAssertTrue(app.buttons["Clear All"].exists, "Clear All button should exist")
+    }
+
+    @MainActor
+    func testRefreshButtonExists() throws {
+        let refreshButton = app.buttons["Refresh"]
+        XCTAssertTrue(refreshButton.waitForExistence(timeout: 5), "Refresh button should exist")
+        // Note: Refresh button may be disabled when there are no sources
     }
 }

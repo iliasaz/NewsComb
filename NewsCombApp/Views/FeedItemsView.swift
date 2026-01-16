@@ -1,7 +1,13 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct FeedItemsView: View {
     @State private var viewModel = FeedItemsViewModel()
+    @State private var isExporting = false
+    @State private var exportError: String?
+    @State private var exportSuccess: String?
     let sourceId: Int64?
     let sourceName: String?
 
@@ -16,6 +22,21 @@ struct FeedItemsView: View {
                 NavigationLink(value: item) {
                     FeedItemRow(item: item)
                 }
+                .contextMenu {
+                    Button("Copy Link", systemImage: "doc.on.doc") {
+                        #if os(macOS)
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(item.link, forType: .string)
+                        #endif
+                    }
+
+                    if let url = URL(string: item.link) {
+                        Divider()
+                        Link(destination: url) {
+                            Label("Open in Browser", systemImage: "safari")
+                        }
+                    }
+                }
             }
         }
         .navigationTitle(sourceName ?? "All Articles")
@@ -23,6 +44,23 @@ struct FeedItemsView: View {
             FeedItemDetailView(item: item)
         }
         .searchable(text: $viewModel.searchText, prompt: "Search articles")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    Task {
+                        await exportFeed()
+                    }
+                } label: {
+                    if isExporting {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Export Feed", systemImage: "square.and.arrow.down")
+                    }
+                }
+                .disabled(isExporting || viewModel.filteredItems.isEmpty)
+            }
+        }
         .refreshable {
             await viewModel.refresh()
         }
@@ -54,7 +92,80 @@ struct FeedItemsView: View {
                 Text(error)
             }
         }
+        .alert("Export Error", isPresented: .init(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK") { exportError = nil }
+        } message: {
+            if let error = exportError {
+                Text(error)
+            }
+        }
+        .alert("Export Complete", isPresented: .init(
+            get: { exportSuccess != nil },
+            set: { if !$0 { exportSuccess = nil } }
+        )) {
+            Button("OK") { exportSuccess = nil }
+        } message: {
+            if let message = exportSuccess {
+                Text(message)
+            }
+        }
     }
+
+    #if os(macOS)
+    private func exportFeed() async {
+        isExporting = true
+        defer { isExporting = false }
+
+        let itemsToExport = viewModel.filteredItems
+        guard !itemsToExport.isEmpty else {
+            exportError = "No articles to export."
+            return
+        }
+
+        guard let folderURL = await MarkdownExportService.showFolderPicker() else {
+            return
+        }
+
+        // Create folder with feed name and date
+        let feedName = MarkdownExportService.sanitizeFilename(sourceName ?? "All Articles")
+        let dateString = MarkdownExportService.currentDateString()
+        let exportFolderName = "\(feedName)-\(dateString)"
+        let exportFolderURL = folderURL.appending(path: exportFolderName)
+
+        do {
+            try MarkdownExportService.createDirectory(at: exportFolderURL)
+
+            var exportedCount = 0
+            for item in itemsToExport {
+                let markdown = MarkdownExportService.articleToMarkdown(
+                    title: item.title,
+                    link: item.link,
+                    author: item.author,
+                    pubDate: item.pubDate,
+                    sourceName: item.sourceName,
+                    content: item.fullContent ?? item.rssDescription
+                )
+
+                let filename = MarkdownExportService.sanitizeFilename(item.title) + ".md"
+                let fileURL = exportFolderURL.appending(path: filename)
+
+                try MarkdownExportService.writeToFile(content: markdown, at: fileURL)
+                exportedCount += 1
+            }
+
+            exportSuccess = "Exported \(exportedCount) article\(exportedCount == 1 ? "" : "s") to \(exportFolderName)"
+        } catch {
+            exportError = "Export failed: \(error.localizedDescription)"
+        }
+    }
+    #else
+    private func exportFeed() async {
+        // iOS implementation would go here
+    }
+    #endif
 }
 
 struct FeedItemRow: View {

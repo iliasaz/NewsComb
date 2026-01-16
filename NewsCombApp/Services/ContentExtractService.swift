@@ -1,26 +1,76 @@
 import Foundation
 import PostlightSwift
 
+/// Result of content extraction including the final URL after redirects
+struct ExtractionResult {
+    let content: String?
+    let finalURL: String?
+}
+
 /// Service for extracting full article content from URLs using the Postlight parser
 struct ContentExtractService {
     private let parser = Parser()
+
+    /// Shared URL session configured like NetNewsWire - ephemeral with no cookies
+    private static let urlSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.httpShouldSetCookies = false
+        config.httpCookieAcceptPolicy = .never
+        config.httpCookieStorage = nil
+        config.httpMaximumConnectionsPerHost = 2
+        config.timeoutIntervalForRequest = 10  // Reduced from 30 to fail faster
+        config.timeoutIntervalForResource = 15  // Reduced from 60 to fail faster
+        return URLSession(configuration: config)
+    }()
+
+    /// User-Agent string - identifies as RSS reader (like NetNewsWire does)
+    private static let userAgent = "NewsComb/1.0 (RSS Reader; macOS)"
 
     /// Extract full content from an article URL as Markdown
     /// - Parameter articleURL: The URL of the article to extract
     /// - Returns: The extracted content as Markdown, or nil if extraction failed
     @concurrent
     func extractContent(from articleURL: String) async -> String? {
+        let result = await extractContentWithFinalURL(from: articleURL)
+        return result.content
+    }
+
+    /// Extract full content from an article URL, following redirects
+    /// - Parameter articleURL: The URL of the article to extract
+    /// - Returns: ExtractionResult containing the content and final URL after redirects
+    @concurrent
+    func extractContentWithFinalURL(from articleURL: String) async -> ExtractionResult {
         guard let url = URL(string: articleURL) else {
-            return nil
+            return ExtractionResult(content: nil, finalURL: nil)
         }
 
+        // Fetch HTML with proper User-Agent to avoid bot detection
+        var request = URLRequest(url: url)
+        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", forHTTPHeaderField: "Accept")
+        request.setValue("en-US,en;q=0.9", forHTTPHeaderField: "Accept-Language")
+        request.timeoutInterval = 10  // Fail fast on unresponsive sites
+
         do {
+            let (data, response) = try await Self.urlSession.data(for: request)
+
+            // Get the final URL after redirects
+            let finalURL = (response as? HTTPURLResponse)?.url ?? url
+
+            // Check if we got valid HTML
+            guard let html = String(data: data, encoding: .utf8) else {
+                print("Content extraction failed for \(articleURL): Could not decode response as UTF-8")
+                return ExtractionResult(content: nil, finalURL: finalURL.absoluteString)
+            }
+
+            // Parse the HTML content
             let options = ParserOptions(contentType: .markdown)
-            let article = try await parser.parse(url: url, options: options)
-            return article.content
+            let article = try await parser.parse(html: html, url: finalURL, options: options)
+            return ExtractionResult(content: article.content, finalURL: finalURL.absoluteString)
         } catch {
             print("Content extraction failed for \(articleURL): \(error.localizedDescription)")
-            return nil
+            return ExtractionResult(content: nil, finalURL: nil)
         }
     }
 

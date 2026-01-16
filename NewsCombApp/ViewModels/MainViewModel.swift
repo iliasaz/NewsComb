@@ -12,6 +12,7 @@ enum FetchStatus: Equatable, Hashable {
 struct SourceMetric: Identifiable, Equatable, Hashable {
     let id: Int64
     let sourceName: String
+    let sourceURL: String
     var status: FetchStatus
 
     var itemCount: Int {
@@ -49,6 +50,7 @@ class MainViewModel {
                 return SourceMetric(
                     id: id,
                     sourceName: source.title ?? source.url,
+                    sourceURL: source.url,
                     status: .pending
                 )
             }
@@ -61,6 +63,7 @@ class MainViewModel {
         guard !isRefreshing else { return }
 
         isRefreshing = true
+        defer { isRefreshing = false }
         totalItemsFetched = 0
 
         var sources: [RSSSource] = []
@@ -79,30 +82,48 @@ class MainViewModel {
             return SourceMetric(
                 id: id,
                 sourceName: source.title ?? source.url,
+                sourceURL: source.url,
                 status: .fetching
             )
         }
 
-        let results = await rssService.fetchAllFeeds(sources: sources, extractService: extractService)
-
-        for result in results {
-            if let index = metrics.firstIndex(where: { $0.id == result.sourceId }) {
+        // Use streaming updates - update UI as each feed completes
+        await rssService.fetchAllFeedsStreaming(sources: sources, extractService: extractService) { result in
+            if let index = self.metrics.firstIndex(where: { $0.id == result.sourceId }) {
                 if let error = result.error {
-                    metrics[index].status = .error(error.localizedDescription)
+                    self.metrics[index].status = .error(error.localizedDescription)
                 } else {
-                    metrics[index].status = .done(itemCount: result.itemCount)
-                    totalItemsFetched += result.itemCount
+                    self.metrics[index].status = .done(itemCount: result.itemCount)
+                    self.totalItemsFetched += result.itemCount
                 }
             }
         }
+        // isRefreshing is reset by defer
+    }
 
-        isRefreshing = false
+    /// Clear all articles from all feed sources
+    func clearAllArticles() {
+        do {
+            _ = try database.write { db in
+                try FeedItem.deleteAll(db)
+            }
+
+            // Reset all metrics to pending
+            for index in metrics.indices {
+                metrics[index].status = .pending
+            }
+
+            totalItemsFetched = 0
+            errorMessage = nil
+        } catch {
+            errorMessage = "Failed to clear all articles: \(error.localizedDescription)"
+        }
     }
 
     /// Clear all articles for a specific feed source
     func clearFeedContent(sourceId: Int64) {
         do {
-            let deletedCount = try database.write { db in
+            _ = try database.write { db in
                 try FeedItem.filter(FeedItem.Columns.sourceId == sourceId).deleteAll(db)
             }
 
@@ -141,6 +162,37 @@ class MainViewModel {
                     metrics[index].status = .done(itemCount: result.itemCount)
                 }
             }
+        }
+    }
+
+    /// Get all articles grouped by source for export
+    func getAllArticlesGroupedBySource() -> [(sourceName: String, articles: [FeedItem])] {
+        do {
+            let sources = try database.read { db in
+                try RSSSource.fetchAll(db)
+            }
+
+            var result: [(sourceName: String, articles: [FeedItem])] = []
+
+            for source in sources {
+                guard let sourceId = source.id else { continue }
+
+                let articles = try database.read { db in
+                    try FeedItem.filter(FeedItem.Columns.sourceId == sourceId)
+                        .order(FeedItem.Columns.pubDate.desc)
+                        .fetchAll(db)
+                }
+
+                if !articles.isEmpty {
+                    let sourceName = source.title ?? source.url
+                    result.append((sourceName: sourceName, articles: articles))
+                }
+            }
+
+            return result
+        } catch {
+            errorMessage = "Failed to load articles: \(error.localizedDescription)"
+            return []
         }
     }
 }

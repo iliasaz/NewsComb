@@ -2,10 +2,22 @@ import SwiftUI
 #if canImport(WebKit)
 import WebKit
 #endif
+#if os(macOS)
+import AppKit
+#endif
 
 struct FeedItemDetailView: View {
     let item: FeedItemDisplay
     @State private var showingShareSheet = false
+    @State private var isExporting = false
+    @State private var exportError: String?
+    @State private var exportSuccess: String?
+
+    /// Sanitized URL for the article link
+    private var sanitizedURL: URL? {
+        let sanitized = URLSanitizer.sanitize(item.link)
+        return URL(string: sanitized ?? item.link)
+    }
 
     var body: some View {
         ScrollView {
@@ -24,7 +36,22 @@ struct FeedItemDetailView: View {
         #endif
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                if let url = URL(string: item.link) {
+                // Export button
+                Button {
+                    Task {
+                        await exportArticle()
+                    }
+                } label: {
+                    if isExporting {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Export", systemImage: "square.and.arrow.down")
+                    }
+                }
+                .disabled(isExporting)
+
+                if let url = sanitizedURL {
                     Link(destination: url) {
                         Label("Open in Browser", systemImage: "safari")
                     }
@@ -35,13 +62,65 @@ struct FeedItemDetailView: View {
                 }
             }
         }
+        .alert("Export Error", isPresented: .init(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK") { exportError = nil }
+        } message: {
+            if let error = exportError {
+                Text(error)
+            }
+        }
+        .alert("Export Complete", isPresented: .init(
+            get: { exportSuccess != nil },
+            set: { if !$0 { exportSuccess = nil } }
+        )) {
+            Button("OK") { exportSuccess = nil }
+        } message: {
+            if let message = exportSuccess {
+                Text(message)
+            }
+        }
     }
+
+    #if os(macOS)
+    private func exportArticle() async {
+        isExporting = true
+        defer { isExporting = false }
+
+        guard let saveURL = await MarkdownExportService.showSavePanel(defaultName: item.title) else {
+            return
+        }
+
+        let markdown = MarkdownExportService.articleToMarkdown(
+            title: item.title,
+            link: item.link,
+            author: item.author,
+            pubDate: item.pubDate,
+            sourceName: item.sourceName,
+            content: item.fullContent ?? item.rssDescription
+        )
+
+        do {
+            try MarkdownExportService.writeToFile(content: markdown, at: saveURL)
+            exportSuccess = "Article exported successfully."
+        } catch {
+            exportError = "Export failed: \(error.localizedDescription)"
+        }
+    }
+    #else
+    private func exportArticle() async {
+        // iOS implementation would go here
+    }
+    #endif
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(item.title)
                 .font(.title)
                 .bold()
+                .textSelection(.enabled)
 
             HStack {
                 Label(item.sourceName, systemImage: "newspaper")
@@ -63,6 +142,14 @@ struct FeedItemDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            // Selectable article link
+            if !item.link.isEmpty {
+                Text(sanitizedURL?.absoluteString ?? item.link)
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+                    .textSelection(.enabled)
+            }
+
             if !item.hasFullContent {
                 HStack {
                     Image(systemName: "info.circle")
@@ -80,10 +167,14 @@ struct FeedItemDetailView: View {
     private var contentSection: some View {
         Group {
             if let fullContent = item.fullContent, !fullContent.isEmpty {
-                // Full content is now Markdown from ContentExtractService
-                MarkdownContentView(markdown: fullContent)
+                // Full content may be HTML (from content:encoded) or Markdown (from extraction)
+                if looksLikeHTML(fullContent) {
+                    HTMLContentView(html: fullContent)
+                } else {
+                    MarkdownContentView(markdown: fullContent)
+                }
             } else if let description = item.rssDescription, !description.isEmpty {
-                // RSS description is still HTML
+                // RSS description is HTML
                 HTMLContentView(html: description)
             } else {
                 Text("No content available.")
@@ -91,6 +182,17 @@ struct FeedItemDetailView: View {
                     .italic()
             }
         }
+    }
+
+    /// Check if content looks like HTML (contains HTML tags)
+    private func looksLikeHTML(_ content: String) -> Bool {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Check for common HTML patterns
+        return trimmed.hasPrefix("<") ||
+               trimmed.contains("</p>") ||
+               trimmed.contains("</div>") ||
+               trimmed.contains("</a>") ||
+               trimmed.contains("<br")
     }
 }
 
