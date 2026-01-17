@@ -1,0 +1,16 @@
+/Users/ilia/Developer/NewsComb/NewsCombApp/Models/AppSettings.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Models/FeedItem.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Models/RSSSource.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Services/ContentExtractService.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Services/DatabaseService.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Services/RSSService.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/ViewModels/FeedItemsViewModel.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/ViewModels/MainViewModel.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/ViewModels/SettingsViewModel.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Views/ContentView.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Views/FeedItemDetailView.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Views/FeedItemsView.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Views/MainView.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/Views/SettingsView.swift
+/Users/ilia/Developer/NewsComb/NewsCombApp/NewsCombApp.swift
+/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombApp.build/DerivedSources/GeneratedAssetSymbols.swift

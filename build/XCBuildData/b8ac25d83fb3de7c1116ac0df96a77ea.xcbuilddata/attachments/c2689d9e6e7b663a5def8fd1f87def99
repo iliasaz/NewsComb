@@ -1,0 +1,4 @@
+module FeedKit {
+header "FeedKit-Swift.h"
+export *
+}

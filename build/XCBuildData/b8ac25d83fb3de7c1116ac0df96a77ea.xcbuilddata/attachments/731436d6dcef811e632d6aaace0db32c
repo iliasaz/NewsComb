@@ -1,0 +1,94 @@
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Dates/DateSpec.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Dates/ISO8601DateFormatter.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Dates/RFC3339DateFormatter.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Dates/RFC822DateFormatter.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/Array\ +\ Equatable.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/Date\ +\ codingStrategy.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/String\ +\ toBool.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/String\ +\ toDate.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/String\ +\ toDuration.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/URL\ +\ replacingScheme.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeed\ +\ mapAttributes.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeed\ +\ mapCharacters.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeed.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedAuthor.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedCategory.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedContributor.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntry.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryAuthor.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryCategory.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryContent.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryContributor.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryLink.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntrySource.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntrySummary.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedGenerator.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedLink.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedSubtitle.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomPath.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeed.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeedAttachment.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeedAuthor.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeedHub.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeedItem.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Content/ContentNamespace.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Dublin\ Core/DublinCoreNamespace.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaCategory.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaCommunity.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaContent.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaCopyright.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaCredit.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaDescription.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaEmbed.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaGroup.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaHash.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaLicence.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaLocation.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaNamespace.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaParam.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaPeerLink.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaPlayer.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaPrice.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaRating.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaRestriction.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaRights.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaScene.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaStarRating.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaStatistics.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaStatus.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaSubTitle.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaTag.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaText.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaThumbnail.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaTitle.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Syndication/SyndicationNamespace.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Syndication/SyndicationUpdatePeriod.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesCategory.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesImage.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesNamespace.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesOwner.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesSubCategory.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RDFPath.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeed\ +\ mapAttributes.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeed\ +\ mapCharacters.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeed.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedCategory.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedCloud.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedImage.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItem.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItemCategory.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItemEnclosure.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItemGUID.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItemSource.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedSkipDay.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedSkipHour.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedTextInput.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSPath.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/Feed.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/FeedDataType.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/FeedParser.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/FeedParserProtocol.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/JSONFeedParser.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/ParserError.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/XMLFeedParser.swift
+/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/XMLFeedType.swift

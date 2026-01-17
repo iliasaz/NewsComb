@@ -1,0 +1,846 @@
+{
+  "" : {
+    "const-values" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/GRDB-primary.swiftconstvalues",
+    "dependencies" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/GRDB-primary.d",
+    "diagnostics" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/GRDB-primary.dia",
+    "emit-module-dependencies" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/GRDB-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/GRDB-primary-emit-module.dia",
+    "pch" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/GRDB-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/GRDB-primary.swiftdeps"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Configuration.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Configuration.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Configuration.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Configuration.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Cursor.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Cursor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Cursor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Cursor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Database+Schema.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+Schema.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+Schema.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+Schema.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Database+Statements.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+Statements.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+Statements.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+Statements.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Database.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseBackupProgress.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseBackupProgress.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseBackupProgress.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseBackupProgress.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseCollation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseCollation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseCollation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseCollation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseError.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseError.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseError.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseError.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseFunction.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseFunction.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseFunction.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseFunction.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabasePool.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabasePool.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabasePool.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabasePool.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabasePublishers.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabasePublishers.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabasePublishers.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabasePublishers.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseQueue.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseQueue.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseQueue.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseQueue.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseReader.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseReader.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseReader.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseReader.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseRegion.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseRegion.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseRegion.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseRegion.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseRegionObservation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseRegionObservation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseRegionObservation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseRegionObservation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseSchemaCache.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSchemaCache.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSchemaCache.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSchemaCache.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseSchemaSource.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSchemaSource.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSchemaSource.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSchemaSource.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseSnapshot.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSnapshot.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSnapshot.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSnapshot.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseSnapshotPool.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSnapshotPool.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSnapshotPool.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseSnapshotPool.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseValue.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValue.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValue.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValue.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseValueConvertible.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DatabaseWriter.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseWriter.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseWriter.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseWriter.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/DispatchQueueActor.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DispatchQueueActor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DispatchQueueActor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DispatchQueueActor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/FetchRequest.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchRequest.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchRequest.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchRequest.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Row.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Row.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Row.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Row.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/RowAdapter.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RowAdapter.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RowAdapter.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RowAdapter.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/RowDecodingError.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RowDecodingError.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RowDecodingError.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RowDecodingError.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/SQL.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQL.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQL.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQL.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/SQLInterpolation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLInterpolation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLInterpolation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLInterpolation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/SQLRequest.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLRequest.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLRequest.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLRequest.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/SchedulingWatchdog.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SchedulingWatchdog.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SchedulingWatchdog.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SchedulingWatchdog.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/SerializedDatabase.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SerializedDatabase.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SerializedDatabase.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SerializedDatabase.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Statement.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Statement.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Statement.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Statement.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/StatementAuthorizer.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/StatementAuthorizer.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/StatementAuthorizer.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/StatementAuthorizer.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/StatementColumnConvertible.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/StatementColumnConvertible.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/StatementColumnConvertible.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/StatementColumnConvertible.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/CoreGraphics/CGFloat.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/CGFloat.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/CGFloat.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/CGFloat.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/Data.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Data.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Data.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Data.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/DatabaseDateComponents.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseDateComponents.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseDateComponents.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseDateComponents.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/DatabaseValueConvertible+ReferenceConvertible.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+ReferenceConvertible.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+ReferenceConvertible.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+ReferenceConvertible.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/Date.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Date.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Date.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Date.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/Decimal.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Decimal.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Decimal.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Decimal.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/NSData.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSData.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSData.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSData.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/NSNull.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSNull.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSNull.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSNull.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/NSNumber.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSNumber.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSNumber.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSNumber.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/NSString.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSString.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSString.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/NSString.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/SQLiteDateParser.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLiteDateParser.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLiteDateParser.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLiteDateParser.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/URL.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/URL.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/URL.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/URL.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/Foundation/UUID.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/UUID.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/UUID.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/UUID.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/StandardLibrary/DatabaseValueConvertible+Decodable.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+Decodable.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+Decodable.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+Decodable.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/StandardLibrary/DatabaseValueConvertible+Encodable.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+Encodable.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+Encodable.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+Encodable.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/StandardLibrary/DatabaseValueConvertible+RawRepresentable.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+RawRepresentable.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+RawRepresentable.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseValueConvertible+RawRepresentable.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/StandardLibrary/JSONRequiredEncoder.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JSONRequiredEncoder.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JSONRequiredEncoder.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JSONRequiredEncoder.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/StandardLibrary/Optional.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Optional.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Optional.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Optional.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/Support/StandardLibrary/StandardLibrary.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/StandardLibrary.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/StandardLibrary.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/StandardLibrary.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/TransactionClock.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TransactionClock.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TransactionClock.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TransactionClock.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/TransactionObserver.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TransactionObserver.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TransactionObserver.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TransactionObserver.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/WALSnapshot.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/WALSnapshot.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/WALSnapshot.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/WALSnapshot.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Core/WALSnapshotTransaction.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/WALSnapshotTransaction.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/WALSnapshotTransaction.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/WALSnapshotTransaction.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Dump/Database+Dump.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+Dump.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+Dump.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+Dump.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Dump/DatabaseReader+dump.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseReader+dump.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseReader+dump.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseReader+dump.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Dump/DumpFormat.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DumpFormat.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DumpFormat.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DumpFormat.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Dump/DumpFormats/DebugDumpFormat.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DebugDumpFormat.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DebugDumpFormat.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DebugDumpFormat.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Dump/DumpFormats/JSONDumpFormat.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JSONDumpFormat.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JSONDumpFormat.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JSONDumpFormat.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Dump/DumpFormats/LineDumpFormat.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/LineDumpFormat.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/LineDumpFormat.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/LineDumpFormat.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Dump/DumpFormats/ListDumpFormat.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ListDumpFormat.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ListDumpFormat.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ListDumpFormat.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Dump/DumpFormats/QuoteDumpFormat.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/QuoteDumpFormat.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/QuoteDumpFormat.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/QuoteDumpFormat.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS3.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS3Pattern.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3Pattern.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3Pattern.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3Pattern.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS3TokenizerDescriptor.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3TokenizerDescriptor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3TokenizerDescriptor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3TokenizerDescriptor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS4.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS4.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS4.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS4.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS5.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS5CustomTokenizer.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5CustomTokenizer.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5CustomTokenizer.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5CustomTokenizer.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS5Pattern.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5Pattern.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5Pattern.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5Pattern.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS5Tokenizer.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5Tokenizer.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5Tokenizer.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5Tokenizer.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS5TokenizerDescriptor.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5TokenizerDescriptor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5TokenizerDescriptor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5TokenizerDescriptor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/FTS/FTS5WrapperTokenizer.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5WrapperTokenizer.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5WrapperTokenizer.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5WrapperTokenizer.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Fixits.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Fixits.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Fixits.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Fixits.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/JSON/JSONColumn.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JSONColumn.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JSONColumn.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JSONColumn.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/JSON/SQLJSONExpressible.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLJSONExpressible.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLJSONExpressible.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLJSONExpressible.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/JSON/SQLJSONFunctions.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLJSONFunctions.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLJSONFunctions.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLJSONFunctions.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Migration/DatabaseMigrator.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseMigrator.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseMigrator.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseMigrator.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Migration/Migration.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Migration.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Migration.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Migration.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/FTS3+QueryInterface.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3+QueryInterface.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3+QueryInterface.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS3+QueryInterface.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/FTS5+QueryInterface.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5+QueryInterface.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5+QueryInterface.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FTS5+QueryInterface.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/ForeignKey.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ForeignKey.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ForeignKey.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ForeignKey.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/Association/Association.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Association.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Association.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Association.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/Association/AssociationAggregate.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/AssociationAggregate.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/AssociationAggregate.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/AssociationAggregate.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/Association/BelongsToAssociation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/BelongsToAssociation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/BelongsToAssociation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/BelongsToAssociation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/Association/HasManyAssociation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasManyAssociation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasManyAssociation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasManyAssociation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/Association/HasManyThroughAssociation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasManyThroughAssociation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasManyThroughAssociation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasManyThroughAssociation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/Association/HasOneAssociation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasOneAssociation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasOneAssociation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasOneAssociation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/Association/HasOneThroughAssociation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasOneThroughAssociation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasOneThroughAssociation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/HasOneThroughAssociation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/Association/JoinAssociation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JoinAssociation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JoinAssociation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/JoinAssociation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/CommonTableExpression.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/CommonTableExpression.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/CommonTableExpression.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/CommonTableExpression.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/QueryInterfaceRequest.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/QueryInterfaceRequest.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/QueryInterfaceRequest.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/QueryInterfaceRequest.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Request/RequestProtocols.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RequestProtocols.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RequestProtocols.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RequestProtocols.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/Column.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Column.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Column.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Column.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/DatabasePromise.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabasePromise.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabasePromise.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabasePromise.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLAssociation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLAssociation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLAssociation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLAssociation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLCollection.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLCollection.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLCollection.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLCollection.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLExpression.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLExpression.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLExpression.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLExpression.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLForeignKeyRequest.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLForeignKeyRequest.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLForeignKeyRequest.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLForeignKeyRequest.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLFunctions.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLFunctions.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLFunctions.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLFunctions.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLOperators.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLOperators.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLOperators.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLOperators.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLOrdering.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLOrdering.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLOrdering.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLOrdering.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLRelation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLRelation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLRelation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLRelation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLSelection.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLSelection.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLSelection.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLSelection.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/SQLSubquery.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLSubquery.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLSubquery.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLSubquery.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQL/Table.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Table.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Table.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Table.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQLGeneration/SQLColumnGenerator.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLColumnGenerator.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLColumnGenerator.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLColumnGenerator.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQLGeneration/SQLGenerationContext.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLGenerationContext.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLGenerationContext.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLGenerationContext.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQLGeneration/SQLIndexGenerator.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLIndexGenerator.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLIndexGenerator.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLIndexGenerator.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQLGeneration/SQLQueryGenerator.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLQueryGenerator.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLQueryGenerator.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLQueryGenerator.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQLGeneration/SQLTableAlterationGenerator.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLTableAlterationGenerator.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLTableAlterationGenerator.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLTableAlterationGenerator.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQLGeneration/SQLTableGenerator.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLTableGenerator.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLTableGenerator.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLTableGenerator.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQLGeneration/TableAlias.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableAlias.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableAlias.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableAlias.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/SQLInterpolation+QueryInterface.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLInterpolation+QueryInterface.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLInterpolation+QueryInterface.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SQLInterpolation+QueryInterface.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Schema/ColumnDefinition.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ColumnDefinition.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ColumnDefinition.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ColumnDefinition.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Schema/Database+SchemaDefinition.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+SchemaDefinition.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+SchemaDefinition.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Database+SchemaDefinition.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Schema/ForeignKeyDefinition.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ForeignKeyDefinition.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ForeignKeyDefinition.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ForeignKeyDefinition.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Schema/IndexDefinition.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/IndexDefinition.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/IndexDefinition.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/IndexDefinition.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Schema/TableAlteration.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableAlteration.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableAlteration.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableAlteration.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Schema/TableDefinition.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableDefinition.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableDefinition.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableDefinition.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/Schema/VirtualTableModule.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/VirtualTableModule.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/VirtualTableModule.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/VirtualTableModule.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/TableRecord+Association.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableRecord+Association.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableRecord+Association.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableRecord+Association.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/QueryInterface/TableRecord+QueryInterfaceRequest.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableRecord+QueryInterfaceRequest.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableRecord+QueryInterfaceRequest.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableRecord+QueryInterfaceRequest.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/EncodableRecord+Encodable.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/EncodableRecord+Encodable.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/EncodableRecord+Encodable.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/EncodableRecord+Encodable.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/EncodableRecord.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/EncodableRecord.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/EncodableRecord.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/EncodableRecord.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/FetchableRecord+Decodable.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchableRecord+Decodable.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchableRecord+Decodable.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchableRecord+Decodable.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/FetchableRecord+TableRecord.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchableRecord+TableRecord.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchableRecord+TableRecord.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchableRecord+TableRecord.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/FetchableRecord.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchableRecord.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchableRecord.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/FetchableRecord.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/MutablePersistableRecord+DAO.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+DAO.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+DAO.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+DAO.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/MutablePersistableRecord+Delete.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Delete.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Delete.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Delete.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/MutablePersistableRecord+Insert.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Insert.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Insert.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Insert.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/MutablePersistableRecord+Save.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Save.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Save.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Save.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/MutablePersistableRecord+Update.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Update.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Update.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Update.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/MutablePersistableRecord+Upsert.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Upsert.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Upsert.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord+Upsert.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/MutablePersistableRecord.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/MutablePersistableRecord.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/PersistableRecord+Insert.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord+Insert.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord+Insert.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord+Insert.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/PersistableRecord+Save.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord+Save.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord+Save.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord+Save.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/PersistableRecord+Upsert.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord+Upsert.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord+Upsert.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord+Upsert.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/PersistableRecord.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/PersistableRecord.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/Record.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Record.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Record.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Record.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Record/TableRecord.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableRecord.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableRecord.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/TableRecord.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/CaseInsensitiveIdentifier.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/CaseInsensitiveIdentifier.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/CaseInsensitiveIdentifier.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/CaseInsensitiveIdentifier.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/Inflections+English.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Inflections+English.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Inflections+English.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Inflections+English.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/Inflections.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Inflections.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Inflections.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Inflections.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/Mutex.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Mutex.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Mutex.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Mutex.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/OnDemandFuture.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/OnDemandFuture.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/OnDemandFuture.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/OnDemandFuture.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/OrderedDictionary.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/OrderedDictionary.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/OrderedDictionary.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/OrderedDictionary.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/Pool.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Pool.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Pool.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Pool.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/ReadWriteLock.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ReadWriteLock.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ReadWriteLock.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ReadWriteLock.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/ReceiveValuesOn.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ReceiveValuesOn.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ReceiveValuesOn.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ReceiveValuesOn.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/Refinable.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Refinable.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Refinable.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Refinable.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/Utils/Utils.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Utils.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Utils.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Utils.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/DatabaseCancellable.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseCancellable.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseCancellable.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/DatabaseCancellable.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/Observers/ValueConcurrentObserver.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueConcurrentObserver.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueConcurrentObserver.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueConcurrentObserver.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/Observers/ValueWriteOnlyObserver.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueWriteOnlyObserver.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueWriteOnlyObserver.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueWriteOnlyObserver.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/Reducers/Fetch.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Fetch.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Fetch.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Fetch.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/Reducers/Map.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Map.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Map.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Map.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/Reducers/RemoveDuplicates.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RemoveDuplicates.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RemoveDuplicates.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/RemoveDuplicates.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/Reducers/Trace.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Trace.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Trace.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/Trace.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/Reducers/ValueReducer.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueReducer.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueReducer.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueReducer.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/SharedValueObservation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SharedValueObservation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SharedValueObservation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/SharedValueObservation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/ValueObservation.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueObservation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueObservation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueObservation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/GRDB/ValueObservation/ValueObservationScheduler.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueObservationScheduler.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueObservationScheduler.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/ValueObservationScheduler.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/DerivedSources/resource_bundle_accessor.swift" : {
+    "index-unit-output-path" : "/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/resource_bundle_accessor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/resource_bundle_accessor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/GRDB.swift/build/GRDB.build/Release/GRDB.build/Objects-normal/x86_64/resource_bundle_accessor.o"
+  }
+}

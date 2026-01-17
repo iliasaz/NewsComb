@@ -1,0 +1,16 @@
+{
+  "" : {
+    "const-values" : "/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/NewsCombAppTests-primary.swiftconstvalues",
+    "dependencies" : "/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/NewsCombAppTests-primary.d",
+    "diagnostics" : "/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/NewsCombAppTests-primary.dia",
+    "emit-module-dependencies" : "/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/NewsCombAppTests-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/NewsCombAppTests-primary-emit-module.dia",
+    "pch" : "/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/NewsCombAppTests-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/NewsCombAppTests-primary.swiftdeps"
+  },
+  "/Users/ilia/Developer/NewsComb/NewsCombAppTests/ContentExtractServiceTests.swift" : {
+    "index-unit-output-path" : "/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/ContentExtractServiceTests.o",
+    "llvm-bc" : "/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/ContentExtractServiceTests.bc",
+    "object" : "/Users/ilia/Developer/NewsComb/build/NewsCombApp.build/Release/NewsCombAppTests.build/Objects-normal/arm64/ContentExtractServiceTests.o"
+  }
+}

@@ -1,0 +1,481 @@
+{
+  "" : {
+    "const-values" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedKit-primary.swiftconstvalues",
+    "dependencies" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedKit-primary.d",
+    "diagnostics" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedKit-primary.dia",
+    "emit-module-dependencies" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedKit-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedKit-primary-emit-module.dia",
+    "pch" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedKit-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedKit-primary.swiftdeps"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Dates/DateSpec.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/DateSpec.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/DateSpec.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/DateSpec.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Dates/ISO8601DateFormatter.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/ISO8601DateFormatter.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/ISO8601DateFormatter.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/ISO8601DateFormatter.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Dates/RFC3339DateFormatter.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RFC3339DateFormatter.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RFC3339DateFormatter.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RFC3339DateFormatter.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Dates/RFC822DateFormatter.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RFC822DateFormatter.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RFC822DateFormatter.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RFC822DateFormatter.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/Array + Equatable.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/Array + Equatable.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/Array + Equatable.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/Array + Equatable.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/Date + codingStrategy.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/Date + codingStrategy.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/Date + codingStrategy.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/Date + codingStrategy.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/String + toBool.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/String + toBool.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/String + toBool.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/String + toBool.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/String + toDate.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/String + toDate.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/String + toDate.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/String + toDate.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/String + toDuration.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/String + toDuration.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/String + toDuration.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/String + toDuration.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Extensions/URL + replacingScheme.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/URL + replacingScheme.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/URL + replacingScheme.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/URL + replacingScheme.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeed + mapAttributes.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeed + mapAttributes.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeed + mapAttributes.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeed + mapAttributes.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeed + mapCharacters.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeed + mapCharacters.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeed + mapCharacters.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeed + mapCharacters.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeed.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeed.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeed.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeed.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedAuthor.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedAuthor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedAuthor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedAuthor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedCategory.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedCategory.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedCategory.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedCategory.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedContributor.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedContributor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedContributor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedContributor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntry.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntry.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntry.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntry.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryAuthor.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryAuthor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryAuthor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryAuthor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryCategory.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryCategory.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryCategory.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryCategory.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryContent.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryContent.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryContent.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryContent.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryContributor.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryContributor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryContributor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryContributor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntryLink.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryLink.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryLink.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntryLink.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntrySource.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntrySource.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntrySource.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntrySource.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedEntrySummary.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntrySummary.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntrySummary.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedEntrySummary.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedGenerator.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedGenerator.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedGenerator.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedGenerator.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedLink.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedLink.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedLink.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedLink.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomFeedSubtitle.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedSubtitle.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedSubtitle.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomFeedSubtitle.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Atom/AtomPath.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomPath.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomPath.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/AtomPath.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeed.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeed.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeed.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeed.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeedAttachment.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedAttachment.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedAttachment.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedAttachment.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeedAuthor.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedAuthor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedAuthor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedAuthor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeedHub.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedHub.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedHub.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedHub.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/JSON/JSONFeedItem.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedItem.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedItem.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedItem.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Content/ContentNamespace.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/ContentNamespace.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/ContentNamespace.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/ContentNamespace.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Dublin Core/DublinCoreNamespace.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/DublinCoreNamespace.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/DublinCoreNamespace.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/DublinCoreNamespace.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaCategory.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCategory.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCategory.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCategory.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaCommunity.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCommunity.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCommunity.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCommunity.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaContent.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaContent.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaContent.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaContent.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaCopyright.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCopyright.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCopyright.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCopyright.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaCredit.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCredit.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCredit.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaCredit.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaDescription.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaDescription.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaDescription.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaDescription.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaEmbed.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaEmbed.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaEmbed.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaEmbed.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaGroup.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaGroup.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaGroup.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaGroup.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaHash.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaHash.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaHash.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaHash.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaLicence.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaLicence.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaLicence.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaLicence.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaLocation.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaLocation.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaLocation.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaLocation.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaNamespace.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaNamespace.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaNamespace.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaNamespace.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaParam.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaParam.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaParam.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaParam.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaPeerLink.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaPeerLink.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaPeerLink.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaPeerLink.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaPlayer.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaPlayer.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaPlayer.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaPlayer.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaPrice.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaPrice.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaPrice.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaPrice.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaRating.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaRating.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaRating.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaRating.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaRestriction.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaRestriction.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaRestriction.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaRestriction.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaRights.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaRights.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaRights.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaRights.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaScene.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaScene.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaScene.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaScene.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaStarRating.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaStarRating.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaStarRating.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaStarRating.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaStatistics.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaStatistics.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaStatistics.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaStatistics.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaStatus.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaStatus.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaStatus.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaStatus.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaSubTitle.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaSubTitle.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaSubTitle.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaSubTitle.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaTag.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaTag.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaTag.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaTag.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaText.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaText.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaText.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaText.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaThumbnail.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaThumbnail.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaThumbnail.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaThumbnail.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Media/MediaTitle.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaTitle.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaTitle.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/MediaTitle.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Syndication/SyndicationNamespace.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/SyndicationNamespace.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/SyndicationNamespace.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/SyndicationNamespace.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/Syndication/SyndicationUpdatePeriod.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/SyndicationUpdatePeriod.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/SyndicationUpdatePeriod.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/SyndicationUpdatePeriod.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesCategory.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesCategory.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesCategory.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesCategory.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesImage.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesImage.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesImage.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesImage.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesNamespace.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesNamespace.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesNamespace.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesNamespace.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesOwner.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesOwner.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesOwner.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesOwner.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/Namespaces/iTunes/iTunesSubCategory.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesSubCategory.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesSubCategory.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/iTunesSubCategory.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RDFPath.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RDFPath.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RDFPath.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RDFPath.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeed + mapAttributes.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeed + mapAttributes.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeed + mapAttributes.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeed + mapAttributes.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeed + mapCharacters.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeed + mapCharacters.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeed + mapCharacters.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeed + mapCharacters.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeed.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeed.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeed.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeed.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedCategory.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedCategory.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedCategory.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedCategory.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedCloud.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedCloud.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedCloud.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedCloud.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedImage.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedImage.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedImage.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedImage.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItem.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItem.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItem.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItem.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItemCategory.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemCategory.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemCategory.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemCategory.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItemEnclosure.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemEnclosure.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemEnclosure.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemEnclosure.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItemGUID.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemGUID.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemGUID.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemGUID.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedItemSource.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemSource.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemSource.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedItemSource.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedSkipDay.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedSkipDay.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedSkipDay.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedSkipDay.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedSkipHour.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedSkipHour.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedSkipHour.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedSkipHour.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSFeedTextInput.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedTextInput.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedTextInput.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSFeedTextInput.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Models/RSS/RSSPath.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSPath.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSPath.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/RSSPath.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/Feed.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/Feed.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/Feed.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/Feed.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/FeedDataType.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedDataType.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedDataType.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedDataType.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/FeedParser.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedParser.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedParser.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedParser.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/FeedParserProtocol.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedParserProtocol.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedParserProtocol.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/FeedParserProtocol.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/JSONFeedParser.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedParser.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedParser.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/JSONFeedParser.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/ParserError.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/ParserError.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/ParserError.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/ParserError.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/XMLFeedParser.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/XMLFeedParser.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/XMLFeedParser.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/XMLFeedParser.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/Sources/FeedKit/Parser/XMLFeedType.swift" : {
+    "index-unit-output-path" : "/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/XMLFeedType.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/XMLFeedType.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/FeedKit/build/FeedKit.build/Release/FeedKit.build/Objects-normal/x86_64/XMLFeedType.o"
+  }
+}

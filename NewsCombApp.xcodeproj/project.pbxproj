@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		491E2BE22F16EC2300D1840C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000020 /* GRDB */; };
 		491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000021 /* FeedKit */; };
 		491E2BE42F16EC2300D1840C /* PostlightSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000050 /* PostlightSwift */; };
 /* End PBXBuildFile section */
@@ -73,7 +72,6 @@
 			files = (
 				491E2BE42F16EC2300D1840C /* PostlightSwift in Frameworks */,
 				491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */,
-				491E2BE22F16EC2300D1840C /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -94,12 +92,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		499E4CCF2F1AF0F8001E3B28 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		8A0000000000000000000004 = {
 			isa = PBXGroup;
 			children = (
 				8A0000000000000000000011 /* NewsCombApp */,
 				8A0000000000000000000042 /* NewsCombAppTests */,
 				8A0000000000000000000032 /* NewsCombAppUITests */,
+				499E4CCF2F1AF0F8001E3B28 /* Frameworks */,
 				8A0000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -134,7 +140,6 @@
 			);
 			name = NewsCombApp;
 			packageProductDependencies = (
-				8A0000000000000000000020 /* GRDB */,
 				8A0000000000000000000021 /* FeedKit */,
 				8A0000000000000000000050 /* PostlightSwift */,
 			);
@@ -217,7 +222,6 @@
 			mainGroup = 8A0000000000000000000004;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				8A0000000000000000000022 /* XCRemoteSwiftPackageReference "GRDB" */,
 				8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */,
 				8A0000000000000000000051 /* XCRemoteSwiftPackageReference "postlight-swift" */,
 			);
@@ -607,14 +611,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		8A0000000000000000000022 /* XCRemoteSwiftPackageReference "GRDB" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/groue/GRDB.swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 7.0.0;
-			};
-		};
 		8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/nmdias/FeedKit";
@@ -634,11 +630,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		8A0000000000000000000020 /* GRDB */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8A0000000000000000000022 /* XCRemoteSwiftPackageReference "GRDB" */;
-			productName = GRDB;
-		};
 		8A0000000000000000000021 /* FeedKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */;

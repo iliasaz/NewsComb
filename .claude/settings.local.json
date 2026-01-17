@@ -11,7 +11,11 @@
       "Bash(swift run:*)",
       "Bash(xcodebuild:*)",
       "Bash(sips:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(curl:*)",
+      "Bash(find:*)",
+      "Bash(open:*)"
     ]
   }
 }

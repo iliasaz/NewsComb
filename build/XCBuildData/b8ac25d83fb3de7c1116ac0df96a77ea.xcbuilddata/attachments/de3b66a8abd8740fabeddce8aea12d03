@@ -1,0 +1,336 @@
+{
+  "" : {
+    "const-values" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift-primary.swiftconstvalues",
+    "dependencies" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift-primary.d",
+    "diagnostics" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift-primary.dia",
+    "emit-module-dependencies" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift-primary-emit-module.dia",
+    "pch" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift-primary.swiftdeps"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/DOM/Document.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/Document.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/Document.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/Document.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/DOM/Element.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/Element.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/Element.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/Element.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/ABCNewsExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ABCNewsExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ABCNewsExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ABCNewsExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/ArsTechnicaExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ArsTechnicaExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ArsTechnicaExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ArsTechnicaExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/BBCExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BBCExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BBCExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BBCExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/BleacherReportExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BleacherReportExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BleacherReportExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BleacherReportExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/BloombergExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BloombergExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BloombergExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BloombergExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/BusinessInsiderExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BusinessInsiderExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BusinessInsiderExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BusinessInsiderExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/BuzzfeedExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BuzzfeedExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BuzzfeedExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/BuzzfeedExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/CNBCExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/CNBCExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/CNBCExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/CNBCExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/CNETExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/CNETExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/CNETExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/CNETExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/CNNExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/CNNExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/CNNExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/CNNExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/ESPNExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ESPNExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ESPNExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ESPNExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/EngadgetExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/EngadgetExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/EngadgetExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/EngadgetExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/FastCompanyExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/FastCompanyExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/FastCompanyExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/FastCompanyExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/ForbesExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ForbesExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ForbesExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ForbesExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/FortuneExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/FortuneExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/FortuneExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/FortuneExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/GitHubExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GitHubExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GitHubExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GitHubExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/GizmodoExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GizmodoExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GizmodoExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GizmodoExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/GuardianExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GuardianExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GuardianExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GuardianExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/HackerNewsExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HackerNewsExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HackerNewsExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HackerNewsExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/HuffPostExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HuffPostExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HuffPostExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HuffPostExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/LifehackerExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/LifehackerExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/LifehackerExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/LifehackerExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/MacRumorsExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/MacRumorsExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/MacRumorsExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/MacRumorsExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/MashableExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/MashableExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/MashableExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/MashableExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/MediumExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/MediumExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/MediumExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/MediumExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/NBCNewsExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NBCNewsExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NBCNewsExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NBCNewsExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/NPRExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NPRExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NPRExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NPRExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/NYTimesExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NYTimesExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NYTimesExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NYTimesExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/NewYorkerExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NewYorkerExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NewYorkerExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NewYorkerExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/PeopleExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PeopleExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PeopleExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PeopleExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/PitchforkExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PitchforkExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PitchforkExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PitchforkExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/PoliticoExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PoliticoExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PoliticoExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PoliticoExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/QuartzExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/QuartzExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/QuartzExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/QuartzExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/RedditExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/RedditExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/RedditExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/RedditExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/ReutersExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ReutersExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ReutersExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ReutersExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/RollingStoneExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/RollingStoneExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/RollingStoneExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/RollingStoneExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/SlateExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/SlateExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/SlateExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/SlateExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/SportsIllustratedExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/SportsIllustratedExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/SportsIllustratedExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/SportsIllustratedExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/SubstackExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/SubstackExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/SubstackExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/SubstackExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/TMZExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TMZExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TMZExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TMZExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/TechCrunchExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TechCrunchExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TechCrunchExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TechCrunchExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/TheAtlanticExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TheAtlanticExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TheAtlanticExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TheAtlanticExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/TheVergeExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TheVergeExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TheVergeExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/TheVergeExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/VoxExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/VoxExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/VoxExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/VoxExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/WashingtonPostExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/WashingtonPostExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/WashingtonPostExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/WashingtonPostExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/WikipediaExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/WikipediaExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/WikipediaExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/WikipediaExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/WiredExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/WiredExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/WiredExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/WiredExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/YouTubeExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/YouTubeExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/YouTubeExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/YouTubeExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Custom/ZDNetExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ZDNetExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ZDNetExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ZDNetExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/ExtractorProtocol.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ExtractorProtocol.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ExtractorProtocol.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ExtractorProtocol.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Generic/ContentExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ContentExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ContentExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ContentExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Generic/GenericExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GenericExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GenericExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/GenericExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Generic/NextPageExtractor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NextPageExtractor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NextPageExtractor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/NextPageExtractor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Extractors/Scoring/ScoringConstants.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ScoringConstants.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ScoringConstants.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ScoringConstants.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Models/ParsedArticle.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ParsedArticle.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ParsedArticle.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ParsedArticle.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Models/ParserError.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ParserError.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ParserError.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ParserError.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Models/ParserOptions.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ParserOptions.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ParserOptions.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/ParserOptions.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Parser.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/Parser.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/Parser.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/Parser.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/PostlightSwift.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/PostlightSwift.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Resource/EncodingDetector.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/EncodingDetector.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/EncodingDetector.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/EncodingDetector.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Resource/HTMLPreprocessor.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HTMLPreprocessor.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HTMLPreprocessor.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HTMLPreprocessor.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Utils/DateParser.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/DateParser.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/DateParser.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/DateParser.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Utils/HTMLToMarkdown.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HTMLToMarkdown.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HTMLToMarkdown.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HTMLToMarkdown.o"
+  },
+  "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/Sources/PostlightSwift/Utils/HTMLToText.swift" : {
+    "index-unit-output-path" : "/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HTMLToText.o",
+    "llvm-bc" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HTMLToText.bc",
+    "object" : "/Users/ilia/Developer/Xcode/DerivedData/NewsCombApp-beobkeydiptudkcbtttapsmbiahk/SourcePackages/checkouts/postlight-swift/build/PostlightSwift.build/Release/PostlightSwift.build/Objects-normal/x86_64/HTMLToText.o"
+  }
+}
