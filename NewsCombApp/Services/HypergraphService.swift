@@ -157,7 +157,11 @@ final class HypergraphService: Sendable {
         }
     }
 
+    /// Maximum number of articles to process concurrently.
+    private static let maxConcurrentProcessing = 4
+
     /// Processes all unprocessed articles with progress callback.
+    /// Articles are processed in parallel with a configurable concurrency limit.
     @MainActor
     func processUnprocessedArticles(progressCallback: ProgressCallback?) async throws -> Int {
         let articles = try getUnprocessedArticles()
@@ -168,26 +172,57 @@ final class HypergraphService: Sendable {
             return 0
         }
 
+        let totalCount = articles.count
         var processedCount = 0
         var failedCount = 0
 
-        for (index, article) in articles.enumerated() {
-            guard let articleId = article.id else { continue }
+        logger.info("Starting parallel processing with max \(Self.maxConcurrentProcessing) concurrent tasks")
 
-            logger.info("Processing article \(index + 1)/\(articles.count): \(article.title, privacy: .public)")
-            progressCallback?(index + 1, articles.count, article.title)
+        // Process articles in batches with limited concurrency
+        let batches = articles.chunked(into: Self.maxConcurrentProcessing)
+        var completedSoFar = 0
 
-            do {
-                try await processArticle(feedItemId: articleId)
-                processedCount += 1
-                logger.info("Successfully processed article \(articleId)")
-            } catch {
-                failedCount += 1
-                logger.error("Failed to process article \(articleId): \(error.localizedDescription, privacy: .public)")
+        for batch in batches {
+            // Process each batch in parallel
+            let results = await withTaskGroup(of: (Int64, String, Bool).self, returning: [(Int64, String, Bool)].self) { group in
+                for article in batch {
+                    guard let articleId = article.id else { continue }
+                    let title = article.title
+
+                    group.addTask {
+                        do {
+                            try await self.processArticle(feedItemId: articleId)
+                            return (articleId, title, true)
+                        } catch {
+                            return (articleId, title, false)
+                        }
+                    }
+                }
+
+                var batchResults: [(Int64, String, Bool)] = []
+                for await result in group {
+                    batchResults.append(result)
+                }
+                return batchResults
+            }
+
+            // Process batch results
+            for (articleId, title, success) in results {
+                completedSoFar += 1
+
+                if success {
+                    processedCount += 1
+                    logger.info("Completed \(completedSoFar)/\(totalCount): \(title, privacy: .public) - SUCCESS")
+                } else {
+                    failedCount += 1
+                    logger.warning("Completed \(completedSoFar)/\(totalCount): \(title, privacy: .public) - FAILED")
+                }
+
+                progressCallback?(completedSoFar, totalCount, title)
             }
         }
 
-        logger.info("Batch processing complete: \(processedCount) succeeded, \(failedCount) failed")
+        logger.info("Batch processing complete: \(processedCount) succeeded, \(failedCount) failed out of \(totalCount) total")
         return processedCount
     }
 
@@ -648,6 +683,17 @@ enum HypergraphServiceError: Error, LocalizedError {
             return "No LLM provider configured. Configure Ollama or OpenRouter in Settings."
         case .databaseError(let message):
             return "Database error: \(message)"
+        }
+    }
+}
+
+// MARK: - Array Chunking Extension
+
+private extension Array {
+    /// Splits the array into chunks of the specified size.
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
 }
