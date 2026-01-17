@@ -2,6 +2,38 @@ import Foundation
 import Observation
 import GRDB
 
+/// LLM provider options for knowledge extraction.
+enum LLMProviderOption: String, CaseIterable, Identifiable {
+    case none = ""
+    case ollama = "ollama"
+    case openrouter = "openrouter"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .none: return "None"
+        case .ollama: return "Ollama (Local)"
+        case .openrouter: return "OpenRouter (Cloud)"
+        }
+    }
+}
+
+/// Embedding provider options.
+enum EmbeddingProviderOption: String, CaseIterable, Identifiable {
+    case ollama = "ollama"
+    case openrouter = "openrouter"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .ollama: return "Ollama (Local)"
+        case .openrouter: return "OpenRouter (Cloud)"
+        }
+    }
+}
+
 @MainActor
 @Observable
 class SettingsViewModel {
@@ -9,6 +41,18 @@ class SettingsViewModel {
     var newSourceURL: String = ""
     var openRouterKey: String = ""
     var errorMessage: String?
+
+    // LLM Configuration
+    var llmProvider: LLMProviderOption = .none
+    var ollamaEndpoint: String = "http://localhost:11434"
+    var ollamaModel: String = "llama3.2:3b"
+    var openRouterModel: String = "meta-llama/llama-4-maverick"
+
+    // Embedding Configuration
+    var embeddingProvider: EmbeddingProviderOption = .ollama
+    var embeddingOllamaEndpoint: String = "http://localhost:11434"
+    var embeddingOllamaModel: String = "nomic-embed-text:v1.5"
+    var embeddingOpenRouterModel: String = "openai/text-embedding-3-small"
 
     private let database = Database.shared
 
@@ -33,9 +77,43 @@ class SettingsViewModel {
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.openRouterKey).fetchOne(db) {
                     openRouterKey = setting.value
                 }
+
+                // Load LLM provider settings
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.llmProvider).fetchOne(db) {
+                    llmProvider = LLMProviderOption(rawValue: setting.value) ?? .none
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.ollamaEndpoint).fetchOne(db) {
+                    ollamaEndpoint = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.ollamaModel).fetchOne(db) {
+                    ollamaModel = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.openRouterModel).fetchOne(db) {
+                    openRouterModel = setting.value
+                }
+
+                // Load embedding settings
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingProvider).fetchOne(db) {
+                    embeddingProvider = EmbeddingProviderOption(rawValue: setting.value) ?? .ollama
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingOllamaEndpoint).fetchOne(db) {
+                    embeddingOllamaEndpoint = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel).fetchOne(db) {
+                    embeddingOllamaModel = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel).fetchOne(db) {
+                    embeddingOpenRouterModel = setting.value
+                }
             }
         } catch {
-            errorMessage = "Failed to load API keys: \(error.localizedDescription)"
+            errorMessage = "Failed to load settings: \(error.localizedDescription)"
         }
     }
 
@@ -126,6 +204,38 @@ class SettingsViewModel {
 
     func saveOpenRouterKey() {
         saveAPIKey(key: AppSettings.openRouterKey, value: openRouterKey)
+    }
+
+    func saveLLMProvider() {
+        saveAPIKey(key: AppSettings.llmProvider, value: llmProvider.rawValue)
+    }
+
+    func saveOllamaEndpoint() {
+        saveAPIKey(key: AppSettings.ollamaEndpoint, value: ollamaEndpoint)
+    }
+
+    func saveOllamaModel() {
+        saveAPIKey(key: AppSettings.ollamaModel, value: ollamaModel)
+    }
+
+    func saveOpenRouterModel() {
+        saveAPIKey(key: AppSettings.openRouterModel, value: openRouterModel)
+    }
+
+    func saveEmbeddingProvider() {
+        saveAPIKey(key: AppSettings.embeddingProvider, value: embeddingProvider.rawValue)
+    }
+
+    func saveEmbeddingOllamaEndpoint() {
+        saveAPIKey(key: AppSettings.embeddingOllamaEndpoint, value: embeddingOllamaEndpoint)
+    }
+
+    func saveEmbeddingOllamaModel() {
+        saveAPIKey(key: AppSettings.embeddingOllamaModel, value: embeddingOllamaModel)
+    }
+
+    func saveEmbeddingOpenRouterModel() {
+        saveAPIKey(key: AppSettings.embeddingOpenRouterModel, value: embeddingOpenRouterModel)
     }
 
     private func saveAPIKey(key: String, value: String) {

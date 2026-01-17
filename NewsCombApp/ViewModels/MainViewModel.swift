@@ -31,6 +31,12 @@ class MainViewModel {
     var totalItemsFetched = 0
     var errorMessage: String?
 
+    // Hypergraph processing state
+    var isProcessingHypergraph = false
+    var hypergraphProgress: (processed: Int, total: Int) = (0, 0)
+    var hypergraphProcessingStatus: String = ""
+    var hypergraphStats: HypergraphStatistics?
+
     private let database = Database.shared
 
     @ObservationIgnored
@@ -38,6 +44,9 @@ class MainViewModel {
 
     @ObservationIgnored
     private let extractService = ContentExtractService()
+
+    @ObservationIgnored
+    private let hypergraphService = HypergraphService()
 
     func loadSources() {
         do {
@@ -193,6 +202,63 @@ class MainViewModel {
         } catch {
             errorMessage = "Failed to load articles: \(error.localizedDescription)"
             return []
+        }
+    }
+
+    // MARK: - Hypergraph Processing
+
+    /// Checks if hypergraph processing is available (LLM provider configured).
+    func isHypergraphProcessingAvailable() -> Bool {
+        hypergraphService.isConfigured()
+    }
+
+    /// Gets the count of unprocessed articles with content.
+    func getUnprocessedArticleCount() -> Int {
+        do {
+            return try hypergraphService.getUnprocessedArticles().count
+        } catch {
+            return 0
+        }
+    }
+
+    /// Processes all unprocessed articles to extract knowledge graphs.
+    func processUnprocessedArticles() async {
+        guard !isProcessingHypergraph else { return }
+
+        // Check if service is configured
+        guard hypergraphService.isConfigured() else {
+            errorMessage = "No LLM provider configured. Configure Ollama or OpenRouter in Settings."
+            return
+        }
+
+        isProcessingHypergraph = true
+        hypergraphProgress = (0, 0)
+        hypergraphProcessingStatus = "Starting..."
+
+        do {
+            let processedCount = try await hypergraphService.processUnprocessedArticles { [weak self] processed, total, title in
+                self?.hypergraphProgress = (processed, total)
+                self?.hypergraphProcessingStatus = "Processing: \(title)"
+            }
+
+            hypergraphProcessingStatus = "Completed: \(processedCount) articles processed"
+
+            // Update stats
+            loadHypergraphStats()
+        } catch {
+            errorMessage = "Hypergraph processing failed: \(error.localizedDescription)"
+            hypergraphProcessingStatus = "Failed"
+        }
+
+        isProcessingHypergraph = false
+    }
+
+    /// Loads hypergraph statistics.
+    func loadHypergraphStats() {
+        do {
+            hypergraphStats = try hypergraphService.getStatistics()
+        } catch {
+            // Silently fail - stats are not critical
         }
     }
 }

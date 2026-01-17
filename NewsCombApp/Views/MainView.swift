@@ -15,6 +15,7 @@ struct MainView: View {
         NavigationStack {
             List {
                 allArticlesSection
+                hypergraphSection
                 sourcesSection
             }
             .navigationTitle("NewsComb")
@@ -52,6 +53,23 @@ struct MainView: View {
                     .disabled(isExporting || viewModel.isRefreshing || viewModel.metrics.isEmpty)
                 }
 
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        Task {
+                            await viewModel.processUnprocessedArticles()
+                        }
+                    } label: {
+                        if viewModel.isProcessingHypergraph {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Label("Process Knowledge Graph", systemImage: "brain")
+                        }
+                    }
+                    .disabled(viewModel.isProcessingHypergraph || viewModel.isRefreshing || viewModel.metrics.isEmpty)
+                    .help("Extract knowledge graphs from article content using AI")
+                }
+
                 ToolbarItem(placement: .destructiveAction) {
                     Button("Clear All", systemImage: "trash") {
                         showingClearAllConfirmation = true
@@ -73,6 +91,7 @@ struct MainView: View {
             }
             .onAppear {
                 viewModel.loadSources()
+                viewModel.loadHypergraphStats()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
@@ -199,6 +218,58 @@ struct MainView: View {
                     Image(systemName: "doc.text.fill")
                         .foregroundStyle(.blue)
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var hypergraphSection: some View {
+        if viewModel.isProcessingHypergraph || viewModel.hypergraphStats != nil {
+            Section {
+                if viewModel.isProcessingHypergraph {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Processing Knowledge Graph")
+                                .font(.headline)
+                        }
+
+                        if viewModel.hypergraphProgress.total > 0 {
+                            ProgressView(
+                                value: Double(viewModel.hypergraphProgress.processed),
+                                total: Double(viewModel.hypergraphProgress.total)
+                            )
+
+                            Text("\(viewModel.hypergraphProgress.processed)/\(viewModel.hypergraphProgress.total) articles")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Text(viewModel.hypergraphProcessingStatus)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                if let stats = viewModel.hypergraphStats {
+                    Label {
+                        VStack(alignment: .leading) {
+                            Text("Knowledge Graph")
+                                .font(.headline)
+                            Text("\(stats.nodeCount) concepts, \(stats.edgeCount) relationships")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "brain.head.profile")
+                            .foregroundStyle(.purple)
+                    }
+                }
+            } header: {
+                Text("Knowledge Extraction")
             }
         }
     }

@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import SQLiteExtensions
 
 public final class Database: Sendable {
     public static let shared = Database()
@@ -8,6 +9,10 @@ public final class Database: Sendable {
 
     private init() {
         do {
+
+            // Initialize all SQLite extensions
+            SQLiteExtensions.initialize_sqlite3_extensions()
+
             let fileManager = FileManager.default
             let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             let dbDirectory = appSupport.appending(path: "NewsComb")
@@ -15,6 +20,7 @@ public final class Database: Sendable {
             try fileManager.createDirectory(at: dbDirectory, withIntermediateDirectories: true)
 
             let dbPath = dbDirectory.appending(path: "newscomb.sqlite")
+            print("database: \(dbPath)")
             dbQueue = try DatabaseQueue(path: dbPath.path)
 
             try migrate()
@@ -55,6 +61,68 @@ public final class Database: Sendable {
 
                 CREATE INDEX IF NOT EXISTS idx_feed_item_source ON feed_item(source_id);
                 CREATE INDEX IF NOT EXISTS idx_feed_item_guid ON feed_item(guid);
+
+                -- Hypergraph tables for knowledge extraction
+
+                CREATE TABLE IF NOT EXISTS hypergraph_node (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    node_id TEXT NOT NULL UNIQUE,
+                    label TEXT NOT NULL,
+                    node_type TEXT,
+                    first_seen_at REAL NOT NULL DEFAULT (unixepoch()),
+                    metadata_json TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_hypergraph_node_id ON hypergraph_node(node_id);
+
+                CREATE TABLE IF NOT EXISTS hypergraph_edge (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    edge_id TEXT NOT NULL UNIQUE,
+                    relation TEXT NOT NULL,
+                    created_at REAL NOT NULL DEFAULT (unixepoch()),
+                    metadata_json TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_hypergraph_edge_id ON hypergraph_edge(edge_id);
+                CREATE INDEX IF NOT EXISTS idx_hypergraph_edge_relation ON hypergraph_edge(relation);
+
+                CREATE TABLE IF NOT EXISTS hypergraph_incidence (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    edge_id INTEGER NOT NULL REFERENCES hypergraph_edge(id) ON DELETE CASCADE,
+                    node_id INTEGER NOT NULL REFERENCES hypergraph_node(id) ON DELETE CASCADE,
+                    role TEXT NOT NULL,
+                    position INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(edge_id, node_id, role)
+                );
+                CREATE INDEX IF NOT EXISTS idx_hypergraph_incidence_edge ON hypergraph_incidence(edge_id);
+                CREATE INDEX IF NOT EXISTS idx_hypergraph_incidence_node ON hypergraph_incidence(node_id);
+
+                CREATE TABLE IF NOT EXISTS article_hypergraph (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    feed_item_id INTEGER NOT NULL REFERENCES feed_item(id) ON DELETE CASCADE,
+                    processed_at REAL NOT NULL DEFAULT (unixepoch()),
+                    processing_status TEXT NOT NULL DEFAULT 'pending',
+                    error_message TEXT,
+                    chunk_count INTEGER DEFAULT 0,
+                    UNIQUE(feed_item_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_article_hypergraph_status ON article_hypergraph(processing_status);
+
+                CREATE TABLE IF NOT EXISTS article_edge_provenance (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    edge_id INTEGER NOT NULL REFERENCES hypergraph_edge(id) ON DELETE CASCADE,
+                    feed_item_id INTEGER NOT NULL REFERENCES feed_item(id) ON DELETE CASCADE,
+                    chunk_index INTEGER,
+                    chunk_text TEXT,
+                    confidence REAL,
+                    UNIQUE(edge_id, feed_item_id, chunk_index)
+                );
+                CREATE INDEX IF NOT EXISTS idx_article_edge_provenance_edge ON article_edge_provenance(edge_id);
+                CREATE INDEX IF NOT EXISTS idx_article_edge_provenance_feed ON article_edge_provenance(feed_item_id);
+
+                -- Node embeddings virtual table using sqlite-vec (768-dim vectors)
+                CREATE VIRTUAL TABLE IF NOT EXISTS node_embedding USING vec0(
+                    node_id INTEGER PRIMARY KEY,
+                    embedding float[768]
+                );
             """)
         }
     }

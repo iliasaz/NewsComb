@@ -9,7 +9,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             rssSourcesSection
-            apiKeysSection
+            knowledgeExtractionSection
         }
         .formStyle(.grouped)
         .frame(minWidth: 450, minHeight: 300)
@@ -89,19 +89,82 @@ struct SettingsView: View {
         #endif
     }
 
-    private var apiKeysSection: some View {
+    private var knowledgeExtractionSection: some View {
         Section {
-            SecureField("OpenRouter API Key", text: $viewModel.openRouterKey)
-                .textContentType(.password)
-                .onChange(of: viewModel.openRouterKey) {
-                    viewModel.saveOpenRouterKey()
+            // LLM Provider
+            Picker("LLM Provider", selection: $viewModel.llmProvider) {
+                ForEach(LLMProviderOption.allCases) { option in
+                    Text(option.displayName).tag(option)
                 }
+            }
+            .onChange(of: viewModel.llmProvider) {
+                viewModel.saveLLMProvider()
+            }
+
+            if viewModel.llmProvider == .ollama {
+                TextField("Ollama Endpoint", text: $viewModel.ollamaEndpoint)
+                    .textContentType(.URL)
+                    .onChange(of: viewModel.ollamaEndpoint) {
+                        viewModel.saveOllamaEndpoint()
+                    }
+
+                TextField("Chat Model", text: $viewModel.ollamaModel)
+                    .onChange(of: viewModel.ollamaModel) {
+                        viewModel.saveOllamaModel()
+                    }
+            }
+
+            if viewModel.llmProvider == .openrouter {
+                SecureField("OpenRouter API Key", text: $viewModel.openRouterKey)
+                    .textContentType(.password)
+                    .onChange(of: viewModel.openRouterKey) {
+                        viewModel.saveOpenRouterKey()
+                    }
+
+                TextField("Chat Model", text: $viewModel.openRouterModel)
+                    .onChange(of: viewModel.openRouterModel) {
+                        viewModel.saveOpenRouterModel()
+                    }
+            }
+
+            Divider()
+
+            // Embedding Provider
+            Picker("Embedding Provider", selection: $viewModel.embeddingProvider) {
+                ForEach(EmbeddingProviderOption.allCases) { option in
+                    Text(option.displayName).tag(option)
+                }
+            }
+            .onChange(of: viewModel.embeddingProvider) {
+                viewModel.saveEmbeddingProvider()
+            }
+
+            if viewModel.embeddingProvider == .ollama {
+                TextField("Embedding Endpoint", text: $viewModel.embeddingOllamaEndpoint)
+                    .textContentType(.URL)
+                    .onChange(of: viewModel.embeddingOllamaEndpoint) {
+                        viewModel.saveEmbeddingOllamaEndpoint()
+                    }
+
+                TextField("Embedding Model", text: $viewModel.embeddingOllamaModel)
+                    .onChange(of: viewModel.embeddingOllamaModel) {
+                        viewModel.saveEmbeddingOllamaModel()
+                    }
+            }
+
+            if viewModel.embeddingProvider == .openrouter {
+                TextField("Embedding Model", text: $viewModel.embeddingOpenRouterModel)
+                    .onChange(of: viewModel.embeddingOpenRouterModel) {
+                        viewModel.saveEmbeddingOpenRouterModel()
+                    }
+            }
         } header: {
-            Text("API Keys")
+            Text("Knowledge Extraction")
         } footer: {
-            Text("OpenRouter is used for AI-powered summarization.")
+            Text("Configure LLM for knowledge extraction and embedding model for semantic search.")
         }
     }
+
 }
 
 #Preview {
