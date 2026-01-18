@@ -23,4 +23,6 @@ extension AppSettings {
     static let feedbinUsername = "feedbin_username"
     static let feedbinSecret = "feedbin_secret"
     static let openRouterKey = "openrouter_key"
+    static let graphNodeColor = "graph_node_color"
+    static let defaultGraphNodeColor = "808080"
 }

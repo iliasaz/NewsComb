@@ -33,4 +33,12 @@ extension AppSettings {
     static let embeddingOllamaEndpoint = "embedding_ollama_endpoint"
     static let embeddingOllamaModel = "embedding_ollama_model"
     static let embeddingOpenRouterModel = "embedding_openrouter_model"
+
+    // Feed Configuration
+    static let articleAgeLimitDays = "article_age_limit_days"
+    static let defaultArticleAgeLimitDays = 7
+
+    // Graph Visualization
+    static let graphNodeColor = "graph_node_color"
+    static let defaultGraphNodeColor = "32D74B"  // Flora green
 }
