@@ -6,6 +6,7 @@ import AppKit
 struct MainView: View {
     @State private var viewModel = MainViewModel()
     @State private var showingClearAllConfirmation = false
+    @State private var showingStatistics = false
     @State private var isExporting = false
     @State private var exportError: String?
     @State private var exportSuccess: String?
@@ -112,6 +113,13 @@ struct MainView: View {
                 }
                 #endif
 
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Statistics", systemImage: "chart.bar.fill") {
+                        showingStatistics = true
+                    }
+                    .help("View feed and article statistics")
+                }
+
                 ToolbarItem(placement: .destructiveAction) {
                     Button("Clear All", systemImage: "trash") {
                         showingClearAllConfirmation = true
@@ -181,6 +189,96 @@ struct MainView: View {
                 if let message = exportSuccess {
                     Text(message)
                 }
+            }
+            .sheet(isPresented: $showingStatistics) {
+                StatisticsSheet(viewModel: viewModel)
+            }
+        }
+    }
+
+    // MARK: - Statistics Sheet
+
+    private struct StatisticsSheet: View {
+        let viewModel: MainViewModel
+        @Environment(\.dismiss) private var dismiss
+
+        var body: some View {
+            NavigationStack {
+                List {
+                    feedStatisticsSection
+                    articleStatisticsSection
+                    if viewModel.hypergraphStats != nil {
+                        knowledgeGraphSection
+                    }
+                    lastRefreshSection
+                }
+                .navigationTitle("Statistics")
+                #if os(macOS)
+                .frame(minWidth: 350, minHeight: 400)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            dismiss()
+                        }
+                    }
+                }
+            }
+        }
+
+        private var feedStatisticsSection: some View {
+            Section {
+                LabeledContent("Total Feeds", value: "\(viewModel.metrics.count)")
+                LabeledContent("Active Feeds", value: "\(viewModel.nonEmptyFeedsCount)")
+                LabeledContent("Empty Feeds", value: "\(viewModel.metrics.count - viewModel.nonEmptyFeedsCount)")
+            } header: {
+                Label("Feeds", systemImage: "antenna.radiowaves.left.and.right")
+            }
+        }
+
+        private var articleStatisticsSection: some View {
+            Section {
+                LabeledContent("Total Articles", value: "\(viewModel.totalArticlesCount)")
+                if viewModel.nonEmptyFeedsCount > 0 {
+                    let average = viewModel.totalArticlesCount / viewModel.nonEmptyFeedsCount
+                    LabeledContent("Average per Feed", value: "\(average)")
+                }
+            } header: {
+                Label("Articles", systemImage: "doc.text.fill")
+            }
+        }
+
+        private var knowledgeGraphSection: some View {
+            Section {
+                if let stats = viewModel.hypergraphStats {
+                    LabeledContent("Concepts (Nodes)", value: "\(stats.nodeCount)")
+                    LabeledContent("Relationships (Edges)", value: "\(stats.edgeCount)")
+                }
+            } header: {
+                Label("Knowledge Graph", systemImage: "brain.head.profile")
+            }
+        }
+
+        private var lastRefreshSection: some View {
+            Section {
+                if let lastRefresh = viewModel.lastRefreshTime {
+                    LabeledContent("Last Refresh") {
+                        Text(lastRefresh, format: .dateTime)
+                    }
+                    if viewModel.newArticlesFromLastRefresh > 0 {
+                        LabeledContent("New Articles") {
+                            Text("\(viewModel.newArticlesFromLastRefresh)")
+                                .foregroundStyle(.green)
+                        }
+                    } else {
+                        LabeledContent("New Articles", value: "0")
+                    }
+                } else {
+                    Text("No refresh performed yet")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Label("Last Refresh", systemImage: "arrow.clockwise")
             }
         }
     }
@@ -252,13 +350,31 @@ struct MainView: View {
                     VStack(alignment: .leading) {
                         Text("All Articles")
                             .font(.headline)
-                        Text("View all fetched articles")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+
+                        if viewModel.totalArticlesCount > 0 {
+                            Text("\(viewModel.totalArticlesCount) articles from \(viewModel.nonEmptyFeedsCount) feed\(viewModel.nonEmptyFeedsCount == 1 ? "" : "s")")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("No articles yet")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 } icon: {
                     Image(systemName: "doc.text.fill")
                         .foregroundStyle(.blue)
+                }
+            }
+
+            // Show new articles indicator after refresh
+            if viewModel.newArticlesFromLastRefresh > 0 {
+                HStack {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(.green)
+                    Text("\(viewModel.newArticlesFromLastRefresh) new article\(viewModel.newArticlesFromLastRefresh == 1 ? "" : "s") from last refresh")
+                        .font(.caption)
+                        .foregroundStyle(.green)
                 }
             }
         }

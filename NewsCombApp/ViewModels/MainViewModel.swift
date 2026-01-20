@@ -34,6 +34,10 @@ class MainViewModel {
     // RSS source management
     var newSourceURL: String = ""
 
+    // Feed statistics
+    var newArticlesFromLastRefresh: Int = 0
+    var lastRefreshTime: Date?
+
     // Hypergraph processing state
     var isProcessingHypergraph = false
     var hypergraphProgress: (processed: Int, total: Int) = (0, 0)
@@ -58,19 +62,37 @@ class MainViewModel {
     @ObservationIgnored
     private let nodeMergingService = NodeMergingService()
 
+    // MARK: - Computed Statistics
+
+    /// Number of feeds that have at least one article
+    var nonEmptyFeedsCount: Int {
+        metrics.filter { $0.itemCount > 0 }.count
+    }
+
+    /// Total number of articles across all feeds
+    var totalArticlesCount: Int {
+        metrics.reduce(0) { $0 + $1.itemCount }
+    }
+
     func loadSources() {
         do {
             let sources = try database.read { db in
                 try RSSSource.fetchAll(db)
             }
 
-            metrics = sources.compactMap { source in
+            metrics = try sources.compactMap { source -> SourceMetric? in
                 guard let id = source.id else { return nil }
+
+                // Load actual item count for this source
+                let itemCount = try database.read { db in
+                    try FeedItem.filter(FeedItem.Columns.sourceId == id).fetchCount(db)
+                }
+
                 return SourceMetric(
                     id: id,
                     sourceName: source.title ?? source.url,
                     sourceURL: source.url,
-                    status: .pending
+                    status: itemCount > 0 ? .done(itemCount: itemCount) : .pending
                 )
             }
         } catch {
@@ -165,6 +187,10 @@ class MainViewModel {
         isRefreshing = true
         defer { isRefreshing = false }
         totalItemsFetched = 0
+        newArticlesFromLastRefresh = 0
+
+        // Count existing articles before refresh
+        let articlesBeforeRefresh = getTotalArticleCountFromDatabase()
 
         var sources: [RSSSource] = []
         do {
@@ -198,7 +224,23 @@ class MainViewModel {
                 }
             }
         }
+
+        // Calculate new articles downloaded
+        let articlesAfterRefresh = getTotalArticleCountFromDatabase()
+        newArticlesFromLastRefresh = max(0, articlesAfterRefresh - articlesBeforeRefresh)
+        lastRefreshTime = Date()
         // isRefreshing is reset by defer
+    }
+
+    /// Gets the total article count from the database
+    private func getTotalArticleCountFromDatabase() -> Int {
+        do {
+            return try database.read { db in
+                try FeedItem.fetchCount(db)
+            }
+        } catch {
+            return 0
+        }
     }
 
     /// Clear all articles and hypergraph data from all feed sources.
