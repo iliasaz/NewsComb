@@ -1,6 +1,9 @@
 import Foundation
 @preconcurrency import FeedKit
 import GRDB
+import OSLog
+
+private let logger = Logger(subsystem: "com.newscomb", category: "RSSService")
 
 struct FetchResult: Sendable {
     let sourceId: Int64
@@ -126,13 +129,8 @@ struct RSSService {
         }
     }
 
-    /// Maximum number of articles per feed to attempt content extraction
-    /// (to avoid long waits on large feeds)
-    private static let maxContentExtractionPerFeed = 5
-
     private func processFeed(_ feed: Feed, source: RSSSource, extractService: ContentExtractService, cutoffDate: Date) async throws -> Int {
         var itemCount = 0
-        var extractionCount = 0
 
         switch feed {
         case .rss(let rssFeed):
@@ -143,11 +141,8 @@ struct RSSService {
                         continue
                     }
 
-                    // Only extract content for the first few items
-                    let shouldExtract = extractionCount < Self.maxContentExtractionPerFeed
-                    try await processRSSItem(item, source: source, extractService: extractService, extractContent: shouldExtract)
+                    try await processRSSItem(item, source: source, extractService: extractService)
                     itemCount += 1
-                    if shouldExtract { extractionCount += 1 }
                 }
             }
         case .atom(let atomFeed):
@@ -159,10 +154,8 @@ struct RSSService {
                         continue
                     }
 
-                    let shouldExtract = extractionCount < Self.maxContentExtractionPerFeed
-                    try await processAtomEntry(entry, source: source, extractService: extractService, extractContent: shouldExtract)
+                    try await processAtomEntry(entry, source: source, extractService: extractService)
                     itemCount += 1
-                    if shouldExtract { extractionCount += 1 }
                 }
             }
         case .json(let jsonFeed):
@@ -173,10 +166,8 @@ struct RSSService {
                         continue
                     }
 
-                    let shouldExtract = extractionCount < Self.maxContentExtractionPerFeed
-                    try await processJSONItem(item, source: source, extractService: extractService, extractContent: shouldExtract)
+                    try await processJSONItem(item, source: source, extractService: extractService)
                     itemCount += 1
-                    if shouldExtract { extractionCount += 1 }
                 }
             }
         }
@@ -184,7 +175,7 @@ struct RSSService {
         return itemCount
     }
 
-    private func processRSSItem(_ item: RSSFeedItem, source: RSSSource, extractService: ContentExtractService, extractContent: Bool = true) async throws {
+    private func processRSSItem(_ item: RSSFeedItem, source: RSSSource, extractService: ContentExtractService) async throws {
         guard let sourceId = source.id else { return }
 
         let guid = item.guid?.value ?? item.link ?? UUID().uuidString
@@ -202,13 +193,21 @@ struct RSSService {
         if let contentEncoded = item.content?.contentEncoded, !contentEncoded.isEmpty {
             // Feed provides full content - use it directly (it's HTML)
             fullContent = contentEncoded
-        } else if extractContent && needsFullContent(description: description) && !link.isEmpty {
+        } else if needsFullContent(description: description) && !link.isEmpty {
             // No content:encoded, try to extract from the article URL (if allowed)
             let result = await extractService.extractContentWithFinalURL(from: link)
             fullContent = result.content
             // Use the final URL after redirects if available
             if let redirectedURL = result.finalURL {
                 finalLink = redirectedURL
+            }
+        }
+
+        // If extraction failed but we have substantial rss_description, use that as full_content
+        if fullContent == nil || fullContent?.isEmpty == true {
+            if let desc = description, desc.count >= 200, !desc.hasSuffix("..."), !desc.hasSuffix("…") {
+                fullContent = desc
+                logger.debug("Using RSS description as full content for: \(title, privacy: .public)")
             }
         }
 
@@ -224,7 +223,7 @@ struct RSSService {
         )
     }
 
-    private func processAtomEntry(_ entry: AtomFeedEntry, source: RSSSource, extractService: ContentExtractService, extractContent: Bool = true) async throws {
+    private func processAtomEntry(_ entry: AtomFeedEntry, source: RSSSource, extractService: ContentExtractService) async throws {
         guard let sourceId = source.id else { return }
 
         let guid = entry.id ?? entry.links?.first?.attributes?.href ?? UUID().uuidString
@@ -238,11 +237,19 @@ struct RSSService {
         var fullContent: String?
         var finalLink = link
 
-        if extractContent && needsFullContent(description: description) && !link.isEmpty {
+        if needsFullContent(description: description) && !link.isEmpty {
             let result = await extractService.extractContentWithFinalURL(from: link)
             fullContent = result.content
             if let redirectedURL = result.finalURL {
                 finalLink = redirectedURL
+            }
+        }
+
+        // If extraction failed but we have substantial description, use that as full_content
+        if fullContent == nil || fullContent?.isEmpty == true {
+            if let desc = description, desc.count >= 200, !desc.hasSuffix("..."), !desc.hasSuffix("…") {
+                fullContent = desc
+                logger.debug("Using Atom summary as full content for: \(title, privacy: .public)")
             }
         }
 
@@ -258,7 +265,7 @@ struct RSSService {
         )
     }
 
-    private func processJSONItem(_ item: JSONFeedItem, source: RSSSource, extractService: ContentExtractService, extractContent: Bool = true) async throws {
+    private func processJSONItem(_ item: JSONFeedItem, source: RSSSource, extractService: ContentExtractService) async throws {
         guard let sourceId = source.id else { return }
 
         let guid = item.id ?? item.url ?? UUID().uuidString
@@ -272,11 +279,19 @@ struct RSSService {
         var fullContent: String?
         var finalLink = link
 
-        if extractContent && needsFullContent(description: description) && !link.isEmpty {
+        if needsFullContent(description: description) && !link.isEmpty {
             let result = await extractService.extractContentWithFinalURL(from: link)
             fullContent = result.content
             if let redirectedURL = result.finalURL {
                 finalLink = redirectedURL
+            }
+        }
+
+        // If extraction failed but we have substantial description, use that as full_content
+        if fullContent == nil || fullContent?.isEmpty == true {
+            if let desc = description, desc.count >= 200, !desc.hasSuffix("..."), !desc.hasSuffix("…") {
+                fullContent = desc
+                logger.debug("Using JSON feed summary as full content for: \(title, privacy: .public)")
             }
         }
 
@@ -316,6 +331,28 @@ struct RSSService {
         fullContent: String?,
         author: String?
     ) throws {
+        // Determine the best available content
+        let effectiveContent = fullContent ?? rssDescription
+
+        // Check if content is too short or truncated
+        if let content = effectiveContent {
+            let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if trimmed.count < 100 {
+                logger.info("Skipping article (content too short: \(trimmed.count) chars): \(title, privacy: .public)")
+                return
+            }
+
+            if trimmed.hasSuffix("...") || trimmed.hasSuffix("…") {
+                logger.info("Skipping article (truncated content ending with ...): \(title, privacy: .public)")
+                return
+            }
+        } else {
+            // No content at all
+            logger.info("Skipping article (no content): \(title, privacy: .public)")
+            return
+        }
+
         try database.write { db in
             try db.execute(
                 sql: """
