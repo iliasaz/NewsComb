@@ -1,14 +1,11 @@
 import SwiftUI
-#if canImport(AppKit)
-import AppKit
-#endif
 
 struct SettingsView: View {
     @State private var viewModel = SettingsViewModel()
 
     var body: some View {
         Form {
-            rssSourcesSection
+            feedSettingsSection
             knowledgeExtractionSection
         }
         .formStyle(.grouped)
@@ -28,65 +25,24 @@ struct SettingsView: View {
         }
     }
 
-    private var rssSourcesSection: some View {
+    private var feedSettingsSection: some View {
         Section {
-            ForEach(viewModel.rssSources) { source in
+            Stepper(value: $viewModel.articleAgeLimitDays, in: 1...365) {
                 HStack {
-                    VStack(alignment: .leading) {
-                        if let title = source.title {
-                            Text(title)
-                                .bold()
-                        }
-                        Text(source.url)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
+                    Text("Article Age Limit")
                     Spacer()
-
-                    Button("Remove", systemImage: "trash", role: .destructive) {
-                        viewModel.deleteSource(source)
-                    }
-                    .buttonStyle(.borderless)
-                    .labelStyle(.iconOnly)
-                    .help("Remove this RSS source")
+                    Text("\(viewModel.articleAgeLimitDays) day\(viewModel.articleAgeLimitDays == 1 ? "" : "s")")
+                        .foregroundStyle(.secondary)
                 }
             }
-
-            HStack {
-                TextField("RSS Feed URL", text: $viewModel.newSourceURL)
-                    .textContentType(.URL)
-                    #if os(iOS)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    #endif
-
-                Button("Add", systemImage: "plus") {
-                    viewModel.addSource()
-                }
-                .disabled(viewModel.newSourceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-
-            Button("Paste from Clipboard", systemImage: "doc.on.clipboard") {
-                pasteFromClipboard()
+            .onChange(of: viewModel.articleAgeLimitDays) {
+                viewModel.saveArticleAgeLimitDays()
             }
         } header: {
-            Text("RSS Sources")
+            Text("Feed Settings")
         } footer: {
-            Text("Add RSS feed URLs individually or paste multiple URLs from clipboard (one per line or comma-separated).")
+            Text("Only fetch articles published within the last \(viewModel.articleAgeLimitDays) day\(viewModel.articleAgeLimitDays == 1 ? "" : "s"). Older articles will be skipped.")
         }
-    }
-
-    private func pasteFromClipboard() {
-        #if canImport(AppKit)
-        if let string = NSPasteboard.general.string(forType: .string) {
-            viewModel.pasteMultipleSources(string)
-        }
-        #else
-        if let string = UIPasteboard.general.string {
-            viewModel.pasteMultipleSources(string)
-        }
-        #endif
     }
 
     private var knowledgeExtractionSection: some View {

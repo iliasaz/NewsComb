@@ -31,11 +31,18 @@ class MainViewModel {
     var totalItemsFetched = 0
     var errorMessage: String?
 
+    // RSS source management
+    var newSourceURL: String = ""
+
     // Hypergraph processing state
     var isProcessingHypergraph = false
     var hypergraphProgress: (processed: Int, total: Int) = (0, 0)
     var hypergraphProcessingStatus: String = ""
     var hypergraphStats: HypergraphStatistics?
+
+    // Graph simplification state
+    var isSimplifyingGraph = false
+    var simplifyProgress: String = ""
 
     private let database = Database.shared
 
@@ -47,6 +54,9 @@ class MainViewModel {
 
     @ObservationIgnored
     private let hypergraphService = HypergraphService()
+
+    @ObservationIgnored
+    private let nodeMergingService = NodeMergingService()
 
     func loadSources() {
         do {
@@ -65,6 +75,87 @@ class MainViewModel {
             }
         } catch {
             errorMessage = "Failed to load sources: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - RSS Source Management
+
+    /// Add a new RSS source from the URL field.
+    func addSource() {
+        let trimmed = newSourceURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        addSourceURL(trimmed)
+        newSourceURL = ""
+    }
+
+    /// Paste multiple RSS sources from text (newline or comma separated).
+    func pasteMultipleSources(_ text: String) {
+        let urls = text.components(separatedBy: CharacterSet.newlines)
+            .flatMap { $0.components(separatedBy: ",") }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && $0.hasPrefix("http") }
+
+        for url in urls {
+            addSourceURL(url)
+        }
+    }
+
+    private func addSourceURL(_ url: String) {
+        let normalizedURL = normalizeURL(url)
+
+        // Check if URL already exists (normalized comparison)
+        let existingURLs = metrics.map { normalizeURL($0.sourceURL) }
+        if existingURLs.contains(normalizedURL) {
+            errorMessage = "This feed URL already exists in your sources."
+            return
+        }
+
+        do {
+            _ = try database.write { db in
+                try RSSSource(url: normalizedURL).insert(db, onConflict: .ignore)
+            }
+            loadSources()
+        } catch {
+            errorMessage = "Failed to add source: \(error.localizedDescription)"
+        }
+    }
+
+    /// Normalize URL for consistent comparison.
+    private func normalizeURL(_ urlString: String) -> String {
+        guard var components = URLComponents(string: urlString) else {
+            return urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        // Lowercase scheme and host
+        components.scheme = components.scheme?.lowercased()
+        components.host = components.host?.lowercased()
+
+        // Remove default ports
+        if let port = components.port {
+            if (components.scheme == "http" && port == 80) ||
+               (components.scheme == "https" && port == 443) {
+                components.port = nil
+            }
+        }
+
+        // Remove trailing slash from path
+        if components.path.hasSuffix("/") && components.path.count > 1 {
+            components.path = String(components.path.dropLast())
+        }
+
+        return components.string ?? urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Delete an RSS source by its ID.
+    func deleteSource(sourceId: Int64) {
+        do {
+            _ = try database.write { db in
+                try RSSSource.filter(RSSSource.Columns.id == sourceId).deleteAll(db)
+            }
+            loadSources()
+        } catch {
+            errorMessage = "Failed to delete source: \(error.localizedDescription)"
         }
     }
 
@@ -110,10 +201,39 @@ class MainViewModel {
         // isRefreshing is reset by defer
     }
 
-    /// Clear all articles from all feed sources
+    /// Clear all articles and hypergraph data from all feed sources.
+    /// Preserves only the RSS source URLs.
     func clearAllArticles() {
         do {
-            _ = try database.write { db in
+            try database.write { db in
+                // Clear hypergraph-related tables first (respect foreign key constraints)
+                // Order matters: delete from dependent tables first
+
+                // 1. Clear provenance (references edges and feed items)
+                try db.execute(sql: "DELETE FROM article_edge_provenance")
+
+                // 2. Clear article processing status (references feed items)
+                try db.execute(sql: "DELETE FROM article_hypergraph")
+
+                // 3. Clear merge history (references nodes)
+                try db.execute(sql: "DELETE FROM node_merge_history")
+
+                // 4. Clear embedding metadata (references nodes)
+                try db.execute(sql: "DELETE FROM node_embedding_metadata")
+
+                // 5. Clear embeddings (virtual table)
+                try db.execute(sql: "DELETE FROM node_embedding")
+
+                // 6. Clear incidences (references edges and nodes)
+                try db.execute(sql: "DELETE FROM hypergraph_incidence")
+
+                // 7. Clear edges
+                try db.execute(sql: "DELETE FROM hypergraph_edge")
+
+                // 8. Clear nodes
+                try db.execute(sql: "DELETE FROM hypergraph_node")
+
+                // 9. Finally, clear feed items
                 try FeedItem.deleteAll(db)
             }
 
@@ -123,9 +243,10 @@ class MainViewModel {
             }
 
             totalItemsFetched = 0
+            hypergraphStats = nil
             errorMessage = nil
         } catch {
-            errorMessage = "Failed to clear all articles: \(error.localizedDescription)"
+            errorMessage = "Failed to clear all data: \(error.localizedDescription)"
         }
     }
 
@@ -245,12 +366,22 @@ class MainViewModel {
 
             // Update stats
             loadHypergraphStats()
+        } catch HypergraphServiceError.cancelled {
+            hypergraphProcessingStatus = "Cancelled at \(hypergraphProgress.processed)/\(hypergraphProgress.total)"
+            // Update stats even on cancel - some articles may have been processed
+            loadHypergraphStats()
         } catch {
             errorMessage = "Hypergraph processing failed: \(error.localizedDescription)"
             hypergraphProcessingStatus = "Failed"
         }
 
         isProcessingHypergraph = false
+    }
+
+    /// Cancels the current hypergraph processing operation.
+    func cancelHypergraphProcessing() {
+        hypergraphService.cancelProcessing()
+        hypergraphProcessingStatus = "Cancelling..."
     }
 
     /// Loads hypergraph statistics.
@@ -260,5 +391,42 @@ class MainViewModel {
         } catch {
             // Silently fail - stats are not critical
         }
+    }
+
+    // MARK: - Graph Simplification
+
+    /// Simplifies the hypergraph by merging similar nodes based on embedding similarity.
+    func simplifyGraph() async {
+        guard !isSimplifyingGraph else { return }
+
+        isSimplifyingGraph = true
+        simplifyProgress = "Analyzing node similarity..."
+
+        do {
+            let result = try nodeMergingService.simplifyHypergraph()
+
+            if result.mergedPairs > 0 {
+                simplifyProgress = "Merged \(result.mergedPairs) similar node\(result.mergedPairs == 1 ? "" : "s")"
+            } else {
+                simplifyProgress = "No similar nodes found to merge"
+            }
+
+            // Update stats to reflect changes
+            loadHypergraphStats()
+        } catch {
+            errorMessage = "Simplification failed: \(error.localizedDescription)"
+            simplifyProgress = "Failed"
+        }
+
+        // Keep progress visible briefly before clearing
+        try? await Task.sleep(for: .seconds(2))
+        isSimplifyingGraph = false
+        simplifyProgress = ""
+    }
+
+    /// Checks if the hypergraph has enough data for simplification.
+    func canSimplifyGraph() -> Bool {
+        guard let stats = hypergraphStats else { return false }
+        return stats.nodeCount > 1
     }
 }

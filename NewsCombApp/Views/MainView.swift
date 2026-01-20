@@ -10,12 +10,17 @@ struct MainView: View {
     @State private var exportError: String?
     @State private var exportSuccess: String?
     @Environment(\.scenePhase) private var scenePhase
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     var body: some View {
         NavigationStack {
             List {
                 allArticlesSection
+                graphRAGSection
                 hypergraphSection
+                addFeedSection
                 sourcesSection
             }
             .navigationTitle("NewsComb")
@@ -23,8 +28,13 @@ struct MainView: View {
                 FeedItemsView(sourceId: metric.id, sourceName: metric.sourceName)
             }
             .navigationDestination(for: String.self) { destination in
-                if destination == "all" {
+                switch destination {
+                case "all":
                     FeedItemsView()
+                case "graphrag":
+                    GraphRAGView()
+                default:
+                    EmptyView()
                 }
             }
             .toolbar {
@@ -54,21 +64,53 @@ struct MainView: View {
                 }
 
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        Task {
-                            await viewModel.processUnprocessedArticles()
+                    if viewModel.isProcessingHypergraph {
+                        Button("Stop", systemImage: "stop.fill", role: .destructive) {
+                            viewModel.cancelHypergraphProcessing()
                         }
-                    } label: {
-                        if viewModel.isProcessingHypergraph {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
+                        .help("Stop knowledge graph processing")
+                    } else {
+                        Button {
+                            Task {
+                                await viewModel.processUnprocessedArticles()
+                            }
+                        } label: {
                             Label("Process Knowledge Graph", systemImage: "brain")
                         }
+                        .disabled(viewModel.isRefreshing || viewModel.metrics.isEmpty)
+                        .help("Extract knowledge graphs from article content using AI")
                     }
-                    .disabled(viewModel.isProcessingHypergraph || viewModel.isRefreshing || viewModel.metrics.isEmpty)
-                    .help("Extract knowledge graphs from article content using AI")
                 }
+
+                ToolbarItem(placement: .primaryAction) {
+                    if viewModel.isSimplifyingGraph {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text(viewModel.simplifyProgress)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Button("Simplify Graph", systemImage: "arrow.triangle.merge") {
+                            Task {
+                                await viewModel.simplifyGraph()
+                            }
+                        }
+                        .disabled(!viewModel.canSimplifyGraph() || viewModel.isRefreshing)
+                        .help("Merge similar nodes in the knowledge graph")
+                    }
+                }
+
+                #if os(macOS)
+                ToolbarItem(placement: .primaryAction) {
+                    Button("View Graph", systemImage: "chart.dots.scatter") {
+                        openWindow(id: "graph-visualization")
+                    }
+                    .disabled(viewModel.hypergraphStats == nil || (viewModel.hypergraphStats?.nodeCount ?? 0) == 0)
+                    .help("Open interactive graph visualization")
+                }
+                #endif
 
                 ToolbarItem(placement: .destructiveAction) {
                     Button("Clear All", systemImage: "trash") {
@@ -102,11 +144,11 @@ struct MainView: View {
                 viewModel.loadSources()
             }
             .overlay {
-                if viewModel.metrics.isEmpty && !viewModel.isRefreshing {
+                if viewModel.metrics.isEmpty && !viewModel.isRefreshing && viewModel.newSourceURL.isEmpty {
                     ContentUnavailableView(
                         "No RSS Sources",
                         systemImage: "newspaper",
-                        description: Text("Add RSS sources in Settings to get started.")
+                        description: Text("Add RSS feed URLs above to get started.")
                     )
                 }
             }
@@ -223,6 +265,30 @@ struct MainView: View {
     }
 
     @ViewBuilder
+    private var graphRAGSection: some View {
+        if viewModel.hypergraphStats != nil && (viewModel.hypergraphStats?.nodeCount ?? 0) > 0 {
+            Section {
+                NavigationLink(value: "graphrag") {
+                    Label {
+                        VStack(alignment: .leading) {
+                            Text("Ask Your News")
+                                .font(.headline)
+                            Text("Query your knowledge graph")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "text.bubble.fill")
+                            .foregroundStyle(.purple)
+                    }
+                }
+            } header: {
+                Text("Knowledge Query")
+            }
+        }
+    }
+
+    @ViewBuilder
     private var hypergraphSection: some View {
         if viewModel.isProcessingHypergraph || viewModel.hypergraphStats != nil {
             Section {
@@ -233,6 +299,12 @@ struct MainView: View {
                                 .controlSize(.small)
                             Text("Processing Knowledge Graph")
                                 .font(.headline)
+                            Spacer()
+                            Button("Stop", systemImage: "stop.fill", role: .destructive) {
+                                viewModel.cancelHypergraphProcessing()
+                            }
+                            .buttonStyle(.borderless)
+                            .controlSize(.small)
                         }
 
                         if viewModel.hypergraphProgress.total > 0 {
@@ -274,6 +346,44 @@ struct MainView: View {
         }
     }
 
+    private var addFeedSection: some View {
+        Section {
+            HStack {
+                TextField("RSS Feed URL", text: $viewModel.newSourceURL)
+                    .textContentType(.URL)
+                    #if os(iOS)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    #endif
+
+                Button("Add", systemImage: "plus") {
+                    viewModel.addSource()
+                }
+                .disabled(viewModel.newSourceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            Button("Paste from Clipboard", systemImage: "doc.on.clipboard") {
+                pasteFromClipboard()
+            }
+        } header: {
+            Text("Add RSS Feed")
+        } footer: {
+            Text("Add RSS feed URLs individually or paste multiple URLs (one per line or comma-separated).")
+        }
+    }
+
+    private func pasteFromClipboard() {
+        #if os(macOS)
+        if let string = NSPasteboard.general.string(forType: .string) {
+            viewModel.pasteMultipleSources(string)
+        }
+        #else
+        if let string = UIPasteboard.general.string {
+            viewModel.pasteMultipleSources(string)
+        }
+        #endif
+    }
+
     private var sourcesSection: some View {
         Section {
             ForEach(viewModel.metrics) { metric in
@@ -294,6 +404,11 @@ struct MainView: View {
                     }
                 }
                 .disabled(metric.status == .fetching || metric.status == .pending)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button("Delete", systemImage: "trash", role: .destructive) {
+                        viewModel.deleteSource(sourceId: metric.id)
+                    }
+                }
                 .contextMenu {
                     Button("Copy URL", systemImage: "doc.on.doc") {
                         #if os(macOS)
@@ -321,10 +436,16 @@ struct MainView: View {
                     }
                     .disabled(metric.status == .fetching)
 
-                    Button("Clear Content", systemImage: "trash", role: .destructive) {
+                    Button("Clear Content", systemImage: "trash") {
                         viewModel.clearFeedContent(sourceId: metric.id)
                     }
                     .disabled(metric.status == .fetching)
+
+                    Divider()
+
+                    Button("Remove Feed", systemImage: "minus.circle", role: .destructive) {
+                        viewModel.deleteSource(sourceId: metric.id)
+                    }
                 }
             }
         } header: {
