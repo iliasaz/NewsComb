@@ -334,6 +334,34 @@ struct GraphVisualizationView: View {
         return words.prefix(maxWords).joined(separator: " ") + "..."
     }
 
+    /// Formats a relation string to be human-readable.
+    /// Converts "0_works_for" or "works_for" to "Works For".
+    private func formatRelation(_ relation: String) -> String {
+        // Remove leading numeric prefixes (like "0_" or "chunk_0_")
+        var cleaned = relation
+
+        // Remove patterns like "0_", "1_", "chunk_0_", etc. from the beginning
+        let prefixPatterns = [#"^\d+_"#, #"^chunk_\d+_"#, #"^rel_\d+_"#]
+        for pattern in prefixPatterns {
+            if let regex = try? Regex(pattern) {
+                cleaned = cleaned.replacing(regex, with: "")
+            }
+        }
+
+        // Also remove trailing chunk references like "_chunk_0"
+        if let suffixRegex = try? Regex(#"_chunk_\d+$"#) {
+            cleaned = cleaned.replacing(suffixRegex, with: "")
+        }
+
+        // Replace underscores with spaces and capitalize words
+        let words = cleaned.split(separator: "_")
+        let formatted = words.map { word in
+            word.prefix(1).uppercased() + word.dropFirst().lowercased()
+        }.joined(separator: " ")
+
+        return formatted.isEmpty ? relation : formatted
+    }
+
     // MARK: - Gestures
 
     private func canvasGesture(in size: CGSize) -> some Gesture {
@@ -501,8 +529,8 @@ struct GraphVisualizationView: View {
         let centerPos = edgeCenterPosition(edge, in: size)
 
         VStack(alignment: .leading, spacing: 6) {
-            // Relation/type of connection
-            Text(edge.relation)
+            // Relation/type of connection (formatted for readability)
+            Text(formatRelation(edge.relation))
                 .font(.headline)
                 .foregroundStyle(.pink)
 
