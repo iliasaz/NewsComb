@@ -64,6 +64,11 @@ class SettingsViewModel {
     var llmMaxTokens: Int = AppSettings.defaultLLMMaxTokens
     var ragMaxNodes: Int = AppSettings.defaultRAGMaxNodes
     var ragMaxChunks: Int = AppSettings.defaultRAGMaxChunks
+    var maxConcurrentProcessing: Int = AppSettings.defaultMaxConcurrentProcessing
+
+    // Extraction Prompts
+    var extractionSystemPrompt: String = AppSettings.defaultExtractionPrompt
+    var distillationSystemPrompt: String = AppSettings.defaultDistillationPrompt
 
     private let database = Database.shared
 
@@ -158,6 +163,20 @@ class SettingsViewModel {
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.ragMaxChunks).fetchOne(db),
                    let value = Int(setting.value) {
                     ragMaxChunks = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.maxConcurrentProcessing).fetchOne(db),
+                   let value = Int(setting.value) {
+                    maxConcurrentProcessing = value
+                }
+
+                // Load extraction prompts
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.extractionSystemPrompt).fetchOne(db) {
+                    extractionSystemPrompt = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.distillationSystemPrompt).fetchOne(db) {
+                    distillationSystemPrompt = setting.value
                 }
             }
         } catch {
@@ -314,6 +333,30 @@ class SettingsViewModel {
 
     func saveRAGMaxChunks() {
         saveAPIKey(key: AppSettings.ragMaxChunks, value: String(ragMaxChunks))
+    }
+
+    func saveMaxConcurrentProcessing() {
+        saveAPIKey(key: AppSettings.maxConcurrentProcessing, value: String(maxConcurrentProcessing))
+    }
+
+    // MARK: - Extraction Prompts Save Methods
+
+    func saveExtractionSystemPrompt() {
+        saveAPIKey(key: AppSettings.extractionSystemPrompt, value: extractionSystemPrompt)
+    }
+
+    func saveDistillationSystemPrompt() {
+        saveAPIKey(key: AppSettings.distillationSystemPrompt, value: distillationSystemPrompt)
+    }
+
+    func resetExtractionPromptToDefault() {
+        extractionSystemPrompt = AppSettings.defaultExtractionPrompt
+        saveExtractionSystemPrompt()
+    }
+
+    func resetDistillationPromptToDefault() {
+        distillationSystemPrompt = AppSettings.defaultDistillationPrompt
+        saveDistillationSystemPrompt()
     }
 
     private func saveAPIKey(key: String, value: String) {

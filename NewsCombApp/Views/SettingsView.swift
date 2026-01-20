@@ -8,9 +8,10 @@ struct SettingsView: View {
             feedSettingsSection
             knowledgeExtractionSection
             algorithmParametersSection
+            extractionPromptsSection
         }
         .formStyle(.grouped)
-        .frame(minWidth: 450, minHeight: 400)
+        .frame(minWidth: 550, minHeight: 600)
         .onAppear {
             viewModel.loadData()
         }
@@ -203,10 +204,83 @@ struct SettingsView: View {
             .onChange(of: viewModel.ragMaxChunks) {
                 viewModel.saveRAGMaxChunks()
             }
+
+            Divider()
+
+            // Concurrent Processing
+            Stepper(value: $viewModel.maxConcurrentProcessing, in: 1...20) {
+                HStack {
+                    Text("Max Concurrent Articles")
+                    Spacer()
+                    Text("\(viewModel.maxConcurrentProcessing)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.maxConcurrentProcessing) {
+                viewModel.saveMaxConcurrentProcessing()
+            }
         } header: {
             Text("Algorithm Parameters")
         } footer: {
             Text("Fine-tune knowledge extraction, node merging, and query parameters.")
+        }
+    }
+
+    private var extractionPromptsSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Extraction System Prompt")
+                        .font(.headline)
+                    Spacer()
+                    Button("Reset to Default") {
+                        viewModel.resetExtractionPromptToDefault()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+                }
+
+                TextEditor(text: $viewModel.extractionSystemPrompt)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 200)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(.rect(cornerRadius: 8))
+                    .onChange(of: viewModel.extractionSystemPrompt) {
+                        viewModel.saveExtractionSystemPrompt()
+                    }
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Distillation System Prompt")
+                        .font(.headline)
+                    Spacer()
+                    Button("Reset to Default") {
+                        viewModel.resetDistillationPromptToDefault()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+                }
+
+                TextEditor(text: $viewModel.distillationSystemPrompt)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 100)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(.rect(cornerRadius: 8))
+                    .onChange(of: viewModel.distillationSystemPrompt) {
+                        viewModel.saveDistillationSystemPrompt()
+                    }
+            }
+        } header: {
+            Text("Extraction Prompts")
+        } footer: {
+            Text("Customize the system prompts used for knowledge graph extraction. The extraction prompt instructs the LLM how to extract entities and relationships. The distillation prompt is used for optional text summarization before extraction.")
         }
     }
 

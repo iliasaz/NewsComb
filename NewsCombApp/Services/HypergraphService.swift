@@ -173,9 +173,6 @@ final class HypergraphService: Sendable {
         }
     }
 
-    /// Maximum number of articles to process concurrently.
-    private static let maxConcurrentProcessing = 10
-
     /// Processes all unprocessed articles with progress callback.
     /// Articles are processed in parallel with a configurable concurrency limit.
     /// Processing can be cancelled by calling `cancelProcessing()`.
@@ -191,14 +188,18 @@ final class HypergraphService: Sendable {
             return 0
         }
 
+        // Load max concurrent setting
+        let settings = try loadSettings()
+        let maxConcurrent = settings.maxConcurrentProcessing
+
         let totalCount = articles.count
         var processedCount = 0
         var failedCount = 0
 
-        logger.info("Starting parallel processing with max \(Self.maxConcurrentProcessing) concurrent tasks")
+        logger.info("Starting parallel processing with max \(maxConcurrent) concurrent tasks")
 
         // Process articles in batches with limited concurrency
-        let batches = articles.chunked(into: Self.maxConcurrentProcessing)
+        let batches = articles.chunked(into: maxConcurrent)
         var completedSoFar = 0
 
         for batch in batches {
@@ -277,13 +278,21 @@ final class HypergraphService: Sendable {
             let embeddingModel = settings.embeddingOllamaModel ?? "nomic-embed-text:v1.5"
             logger.info("Configuring Ollama: endpoint=\(endpoint, privacy: .public), model=\(model, privacy: .public), embedding=\(embeddingModel, privacy: .public)")
 
+            if let extractionPrompt = settings.extractionSystemPrompt {
+                logger.info("Using custom extraction prompt (\(extractionPrompt.count) chars)")
+            }
+
             let host = URL(string: endpoint) ?? URL(string: "http://localhost:11434")!
             let ollama = OllamaService(
                 host: host,
                 chatModel: model,
                 embeddingModel: embeddingModel
             )
-            return DocumentProcessor(ollamaService: ollama)
+            return DocumentProcessor(
+                ollamaService: ollama,
+                extractionSystemPrompt: settings.extractionSystemPrompt,
+                distillationSystemPrompt: settings.distillationSystemPrompt
+            )
 
         case "openrouter":
             guard let apiKey = settings.openRouterKey, !apiKey.isEmpty else {
@@ -293,6 +302,10 @@ final class HypergraphService: Sendable {
             let chatModel = settings.openRouterModel ?? "meta-llama/llama-4-maverick"
             logger.info("Configuring OpenRouter: model=\(chatModel, privacy: .public)")
 
+            if let extractionPrompt = settings.extractionSystemPrompt {
+                logger.info("Using custom extraction prompt (\(extractionPrompt.count) chars)")
+            }
+
             let openRouter = try OpenRouterService(
                 apiKey: apiKey,
                 model: chatModel
@@ -301,7 +314,9 @@ final class HypergraphService: Sendable {
             return DocumentProcessor(
                 llmProvider: openRouter,
                 ollamaService: embeddingOllama,
-                chatModel: chatModel
+                chatModel: chatModel,
+                extractionSystemPrompt: settings.extractionSystemPrompt,
+                distillationSystemPrompt: settings.distillationSystemPrompt
             )
 
         default:
@@ -383,6 +398,29 @@ final class HypergraphService: Sendable {
                 .filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel)
                 .fetchOne(db) {
                 settings.embeddingOpenRouterModel = model.value
+            }
+
+            // Processing configuration
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.maxConcurrentProcessing)
+                .fetchOne(db),
+               let value = Int(setting.value) {
+                settings.maxConcurrentProcessing = value
+            }
+
+            // Custom prompts
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.extractionSystemPrompt)
+                .fetchOne(db),
+               !setting.value.isEmpty {
+                settings.extractionSystemPrompt = setting.value
+            }
+
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.distillationSystemPrompt)
+                .fetchOne(db),
+               !setting.value.isEmpty {
+                settings.distillationSystemPrompt = setting.value
             }
 
             return settings
@@ -975,6 +1013,13 @@ struct LLMSettings: Sendable {
     var embeddingOllamaEndpoint: String?
     var embeddingOllamaModel: String?
     var embeddingOpenRouterModel: String?
+
+    // Processing configuration
+    var maxConcurrentProcessing: Int = AppSettings.defaultMaxConcurrentProcessing
+
+    // Custom prompts (nil means use defaults)
+    var extractionSystemPrompt: String?
+    var distillationSystemPrompt: String?
 }
 
 struct HypergraphStatistics: Sendable {

@@ -61,4 +61,85 @@ extension AppSettings {
     static let defaultRAGMaxNodes = 10
     static let ragMaxChunks = "rag_max_chunks"
     static let defaultRAGMaxChunks = 5
+
+    // Algorithm Parameters - Concurrent Processing
+    static let maxConcurrentProcessing = "max_concurrent_processing"
+    static let defaultMaxConcurrentProcessing = 10
+
+    // Hypergraph Extraction Prompts
+    static let extractionSystemPrompt = "extraction_system_prompt"
+    static let distillationSystemPrompt = "distillation_system_prompt"
+
+    // MARK: - Default Tech News Prompts
+
+    /// Default extraction prompt optimized for tech news articles.
+    static let defaultExtractionPrompt = """
+    You are a knowledge graph extractor that extracts precise Subject–Verb–Object triples from tech news articles.
+
+    You are provided with a context chunk (delimited by triple backticks: ```).
+    Extract factual relationships between entities mentioned in the text.
+
+    Guidelines:
+    1) Focus on extracting relationships about:
+       - Companies and their actions (launches, acquires, partners with, competes with)
+       - Products and technologies (features, capabilities, integrations)
+       - People in their professional roles (CEO announces, researcher discovers)
+       - Market dynamics (raises funding, IPO, valuation)
+       - Technical specifications and comparisons
+
+    2) Entity extraction rules:
+       - Use full company names (e.g., "Apple Inc." or "Apple", not just pronouns)
+       - Include product names with version/model when mentioned (e.g., "iPhone 15 Pro", "GPT-4")
+       - For people, use their full name with title/role when relevant (e.g., "CEO Tim Cook")
+       - Preserve technical terms exactly as written
+
+    3) Avoid:
+       - Vague references like "the company", "the product", "it", "they"
+       - Generic terms like "technology", "solution", "platform" without specifics
+       - Opinion statements or speculation
+       - Author names or journalist bylines as entities
+
+    4) Relationship types to capture:
+       - Actions: "launches", "announces", "releases", "acquires", "invests in"
+       - Partnerships: "partners with", "collaborates with", "integrates with"
+       - Competition: "competes with", "rivals", "challenges"
+       - Features: "supports", "enables", "includes", "offers"
+       - Causation: "leads to", "results in", "causes", "enables"
+
+    Output Specification:
+    Return a JSON object with a single field 'events' (a list of objects).
+    Each object must have:
+    - 'source': a list of strings (entities performing the action)
+    - 'relation': a string (the verb/relationship)
+    - 'target': a list of strings (entities receiving the action)
+
+    Example output:
+    {
+      "events": [
+        {"source": ["Apple"], "relation": "announces", "target": ["Vision Pro headset"]},
+        {"source": ["Vision Pro"], "relation": "features", "target": ["M2 chip", "R1 processor"]},
+        {"source": ["Microsoft"], "relation": "partners with", "target": ["OpenAI"]},
+        {"source": ["Tesla"], "relation": "reduces price of", "target": ["Model Y"]},
+        {"source": ["Google DeepMind"], "relation": "releases", "target": ["Gemini AI model"]},
+        {"source": ["Gemini"], "relation": "competes with", "target": ["GPT-4", "Claude"]}
+      ]
+    }
+    Return only valid JSON. Extract all factual relationships from the text.
+    """
+
+    /// Default distillation prompt optimized for tech news articles.
+    static let defaultDistillationPrompt = """
+    You are a tech news summarizer. Given a news article chunk (delimited by ```), produce:
+    1) A concise headline summarizing the main news
+    2) Key facts as bullet points
+    3) Companies, products, and people mentioned
+
+    Focus on factual information. Ignore:
+    - Author names and bylines
+    - Publication metadata
+    - Promotional language
+    - Speculation or opinion
+
+    Preserve technical terms, product names, and company names exactly as written.
+    """
 }
