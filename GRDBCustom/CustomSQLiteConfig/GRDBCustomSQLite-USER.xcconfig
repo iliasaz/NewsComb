@@ -1,0 +1,3 @@
+// As many -D options as there are custom SQLite compilation options
+// Note: there is one space between -D and the option name.
+CUSTOM_OTHER_SWIFT_FLAGS = -D SQLITE_ENABLE_SNAPSHOT -D SQLITE_ENABLE_FTS5
