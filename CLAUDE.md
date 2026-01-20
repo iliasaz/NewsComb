@@ -85,6 +85,18 @@ This project uses [GRDB.swift](https://github.com/groue/GRDB.swift) for SQLite p
 - Use raw SQL with parameterized arguments for complex upserts and joins.
 
 
+## Logging instructions
+
+- For iOS/macOS applications, always use Apple's unified logging system with `OSLog`:
+  - Import `OSLog` (not `os.log`)
+  - Create loggers with `Logger(subsystem:category:)`
+  - Use appropriate log levels: `.debug`, `.info`, `.notice`, `.error`, `.fault`
+  - Example: `private let logger = Logger(subsystem: "com.newscomb.app", category: "networking")`
+- For cross-platform or server-side Swift applications, use [apple/swift-log](https://github.com/apple/swift-log) instead
+- Never use `print()` statements for logging in production code
+- Include relevant context in log messages but avoid logging sensitive data
+
+
 ## Project structure
 
 - Use a consistent project structure, with folder layout determined by app features.
