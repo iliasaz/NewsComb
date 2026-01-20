@@ -7,9 +7,10 @@ struct SettingsView: View {
         Form {
             feedSettingsSection
             knowledgeExtractionSection
+            algorithmParametersSection
         }
         .formStyle(.grouped)
-        .frame(minWidth: 450, minHeight: 300)
+        .frame(minWidth: 450, minHeight: 400)
         .onAppear {
             viewModel.loadData()
         }
@@ -118,6 +119,94 @@ struct SettingsView: View {
             Text("Knowledge Extraction")
         } footer: {
             Text("Configure LLM for knowledge extraction and embedding model for semantic search.")
+        }
+    }
+
+    private var algorithmParametersSection: some View {
+        Section {
+            // Text Chunking
+            Stepper(value: $viewModel.chunkSize, in: 200...2000, step: 100) {
+                HStack {
+                    Text("Chunk Size")
+                    Spacer()
+                    Text("\(viewModel.chunkSize) chars")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.chunkSize) {
+                viewModel.saveChunkSize()
+            }
+
+            Divider()
+
+            // Node Merging
+            HStack {
+                Text("Similarity Threshold")
+                Spacer()
+                Text("\(viewModel.similarityThreshold, format: .percent.precision(.fractionLength(0)))")
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: $viewModel.similarityThreshold, in: 0.5...0.99, step: 0.01)
+                .onChange(of: viewModel.similarityThreshold) {
+                    viewModel.saveSimilarityThreshold()
+                }
+
+            Divider()
+
+            // LLM Parameters
+            HStack {
+                Text("LLM Temperature")
+                Spacer()
+                Text("\(viewModel.llmTemperature, format: .number.precision(.fractionLength(1)))")
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: $viewModel.llmTemperature, in: 0...1, step: 0.1)
+                .onChange(of: viewModel.llmTemperature) {
+                    viewModel.saveLLMTemperature()
+                }
+
+            Stepper(value: $viewModel.llmMaxTokens, in: 256...8192, step: 256) {
+                HStack {
+                    Text("Max Response Tokens")
+                    Spacer()
+                    Text("\(viewModel.llmMaxTokens)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.llmMaxTokens) {
+                viewModel.saveLLMMaxTokens()
+            }
+
+            Divider()
+
+            // RAG Query Parameters
+            Stepper(value: $viewModel.ragMaxNodes, in: 1...50) {
+                HStack {
+                    Text("RAG Max Nodes")
+                    Spacer()
+                    Text("\(viewModel.ragMaxNodes)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.ragMaxNodes) {
+                viewModel.saveRAGMaxNodes()
+            }
+
+            Stepper(value: $viewModel.ragMaxChunks, in: 1...20) {
+                HStack {
+                    Text("RAG Max Chunks")
+                    Spacer()
+                    Text("\(viewModel.ragMaxChunks)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.ragMaxChunks) {
+                viewModel.saveRAGMaxChunks()
+            }
+        } header: {
+            Text("Algorithm Parameters")
+        } footer: {
+            Text("Fine-tune knowledge extraction, node merging, and query parameters.")
         }
     }
 

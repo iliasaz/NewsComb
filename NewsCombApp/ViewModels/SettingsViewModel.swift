@@ -54,6 +54,17 @@ class SettingsViewModel {
     var embeddingOllamaModel: String = "nomic-embed-text:v1.5"
     var embeddingOpenRouterModel: String = "openai/text-embedding-3-small"
 
+    // Feed Configuration
+    var articleAgeLimitDays: Int = AppSettings.defaultArticleAgeLimitDays
+
+    // Algorithm Parameters
+    var chunkSize: Int = AppSettings.defaultChunkSize
+    var similarityThreshold: Float = AppSettings.defaultSimilarityThreshold
+    var llmTemperature: Float = AppSettings.defaultLLMTemperature
+    var llmMaxTokens: Int = AppSettings.defaultLLMMaxTokens
+    var ragMaxNodes: Int = AppSettings.defaultRAGMaxNodes
+    var ragMaxChunks: Int = AppSettings.defaultRAGMaxChunks
+
     private let database = Database.shared
 
     func loadData() {
@@ -110,6 +121,43 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel).fetchOne(db) {
                     embeddingOpenRouterModel = setting.value
+                }
+
+                // Load feed configuration
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.articleAgeLimitDays).fetchOne(db),
+                   let days = Int(setting.value) {
+                    articleAgeLimitDays = days
+                }
+
+                // Load algorithm parameters
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.chunkSize).fetchOne(db),
+                   let value = Int(setting.value) {
+                    chunkSize = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.similarityThreshold).fetchOne(db),
+                   let value = Float(setting.value) {
+                    similarityThreshold = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.llmTemperature).fetchOne(db),
+                   let value = Float(setting.value) {
+                    llmTemperature = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.llmMaxTokens).fetchOne(db),
+                   let value = Int(setting.value) {
+                    llmMaxTokens = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.ragMaxNodes).fetchOne(db),
+                   let value = Int(setting.value) {
+                    ragMaxNodes = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.ragMaxChunks).fetchOne(db),
+                   let value = Int(setting.value) {
+                    ragMaxChunks = value
                 }
             }
         } catch {
@@ -236,6 +284,36 @@ class SettingsViewModel {
 
     func saveEmbeddingOpenRouterModel() {
         saveAPIKey(key: AppSettings.embeddingOpenRouterModel, value: embeddingOpenRouterModel)
+    }
+
+    func saveArticleAgeLimitDays() {
+        saveAPIKey(key: AppSettings.articleAgeLimitDays, value: String(articleAgeLimitDays))
+    }
+
+    // MARK: - Algorithm Parameters Save Methods
+
+    func saveChunkSize() {
+        saveAPIKey(key: AppSettings.chunkSize, value: String(chunkSize))
+    }
+
+    func saveSimilarityThreshold() {
+        saveAPIKey(key: AppSettings.similarityThreshold, value: String(similarityThreshold))
+    }
+
+    func saveLLMTemperature() {
+        saveAPIKey(key: AppSettings.llmTemperature, value: String(llmTemperature))
+    }
+
+    func saveLLMMaxTokens() {
+        saveAPIKey(key: AppSettings.llmMaxTokens, value: String(llmMaxTokens))
+    }
+
+    func saveRAGMaxNodes() {
+        saveAPIKey(key: AppSettings.ragMaxNodes, value: String(ragMaxNodes))
+    }
+
+    func saveRAGMaxChunks() {
+        saveAPIKey(key: AppSettings.ragMaxChunks, value: String(ragMaxChunks))
     }
 
     private func saveAPIKey(key: String, value: String) {
