@@ -1,4 +1,5 @@
 import SwiftUI
+import HyperGraphReasoning
 
 /// Interactive graph visualization view using Canvas.
 struct GraphVisualizationView: View {
@@ -529,8 +530,8 @@ struct GraphVisualizationView: View {
         let centerPos = edgeCenterPosition(edge, in: size)
 
         VStack(alignment: .leading, spacing: 6) {
-            // Relation/type of connection (formatted for readability)
-            Text(formatRelation(edge.relation))
+            // Relation/type of connection (extracted from edgeId)
+            Text(formatRelation(ContextCollector.extractRelation(from: edge.edgeId) ?? edge.relation))
                 .font(.headline)
                 .foregroundStyle(.pink)
 

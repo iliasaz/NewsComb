@@ -22,7 +22,7 @@ public final class Database: Sendable {
             try fileManager.createDirectory(at: dbDirectory, withIntermediateDirectories: true)
 
             let dbPath = dbDirectory.appending(path: "newscomb.sqlite")
-            Self.logger.info("Database path: \(dbPath.path(percentEncoded: false), privacy: .public)")
+            Self.logger.info("Database path: open '\(dbPath.path(percentEncoded: false), privacy: .public)'")
             dbQueue = try DatabaseQueue(path: dbPath.path)
 
             try migrate()
