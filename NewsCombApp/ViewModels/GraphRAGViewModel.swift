@@ -109,6 +109,7 @@ extension GraphRAGViewModel {
         "What companies are mentioned and how are they related?",
         "What events happened recently?",
         "What connections exist between different people mentioned?",
-        "Summarize the key themes across all articles."
+        "Summarize the key themes across all articles.",
+        "I'm CEO of a cloud provider. Generate plausible scenarios for how the top news topics may impact my business."
     ]
 }

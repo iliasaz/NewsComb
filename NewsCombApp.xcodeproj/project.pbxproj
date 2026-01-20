@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		490FA38C2F1B7D1200BAEBFC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA38B2F1B7D1200BAEBFC /* GRDB */; };
+		490FA38E2F1B7D1200BAEBFC /* SQLiteExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA38D2F1B7D1200BAEBFC /* SQLiteExtensions */; };
+		490FA3912F1B7E1000BAEBFC /* HyperGraphReasoning in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3902F1B7E1000BAEBFC /* HyperGraphReasoning */; };
 		491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000021 /* FeedKit */; };
 		491E2BE42F16EC2300D1840C /* PostlightSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000050 /* PostlightSwift */; };
 /* End PBXBuildFile section */
@@ -27,6 +30,19 @@
 			remoteInfo = NewsCombApp;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		490FA1BC2F1B324000BAEBFC /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		8A0000000000000000000001 /* NewsCombApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NewsCombApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -70,7 +86,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				490FA3912F1B7E1000BAEBFC /* HyperGraphReasoning in Frameworks */,
+				490FA38C2F1B7D1200BAEBFC /* GRDB in Frameworks */,
 				491E2BE42F16EC2300D1840C /* PostlightSwift in Frameworks */,
+				490FA38E2F1B7D1200BAEBFC /* SQLiteExtensions in Frameworks */,
 				491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -130,6 +149,7 @@
 				8A0000000000000000000007 /* Sources */,
 				8A0000000000000000000003 /* Frameworks */,
 				8A0000000000000000000008 /* Resources */,
+				490FA1BC2F1B324000BAEBFC /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -142,6 +162,9 @@
 			packageProductDependencies = (
 				8A0000000000000000000021 /* FeedKit */,
 				8A0000000000000000000050 /* PostlightSwift */,
+				490FA38B2F1B7D1200BAEBFC /* GRDB */,
+				490FA38D2F1B7D1200BAEBFC /* SQLiteExtensions */,
+				490FA3902F1B7E1000BAEBFC /* HyperGraphReasoning */,
 			);
 			productName = NewsCombApp;
 			productReference = 8A0000000000000000000001 /* NewsCombApp.app */;
@@ -196,7 +219,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1620;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
 					8A0000000000000000000002 = {
@@ -224,6 +247,8 @@
 			packageReferences = (
 				8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */,
 				8A0000000000000000000051 /* XCRemoteSwiftPackageReference "postlight-swift" */,
+				490FA38A2F1B7D1200BAEBFC /* XCLocalSwiftPackageReference "GRDBCustom" */,
+				490FA38F2F1B7E1000BAEBFC /* XCLocalSwiftPackageReference "../HyperGraphReasoning/hypergraph-reasoning-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8A0000000000000000000005 /* Products */;
@@ -610,6 +635,17 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		490FA38A2F1B7D1200BAEBFC /* XCLocalSwiftPackageReference "GRDBCustom" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = GRDBCustom;
+		};
+		490FA38F2F1B7E1000BAEBFC /* XCLocalSwiftPackageReference "../HyperGraphReasoning/hypergraph-reasoning-swift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../HyperGraphReasoning/hypergraph-reasoning-swift";
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -630,6 +666,18 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		490FA38B2F1B7D1200BAEBFC /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GRDB;
+		};
+		490FA38D2F1B7D1200BAEBFC /* SQLiteExtensions */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SQLiteExtensions;
+		};
+		490FA3902F1B7E1000BAEBFC /* HyperGraphReasoning */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HyperGraphReasoning;
+		};
 		8A0000000000000000000021 /* FeedKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */;

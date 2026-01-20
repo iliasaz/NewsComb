@@ -16,6 +16,11 @@ struct NewsCombApp: App {
         Settings {
             SettingsView()
         }
+
+        Window("Knowledge Graph", id: "graph-visualization") {
+            GraphVisualizationView()
+        }
+        .defaultSize(width: 1200, height: 800)
         #endif
     }
 }

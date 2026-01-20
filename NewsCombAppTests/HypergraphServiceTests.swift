@@ -185,6 +185,10 @@ final class HypergraphServiceTests: XCTestCase {
             HypergraphServiceError.databaseError("test error").errorDescription,
             "Database error: test error"
         )
+        XCTAssertEqual(
+            HypergraphServiceError.cancelled.errorDescription,
+            "Processing was cancelled"
+        )
     }
 
     // MARK: - AppSettings LLM Keys Tests

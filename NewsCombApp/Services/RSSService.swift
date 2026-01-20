@@ -12,12 +12,35 @@ struct FetchResult: Sendable {
 struct RSSService {
     private let database = Database.shared
 
+    /// Returns the article age limit in days from settings, or the default value.
+    private func getArticleAgeLimitDays() -> Int {
+        do {
+            return try database.read { db in
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.articleAgeLimitDays).fetchOne(db),
+                   let days = Int(setting.value) {
+                    return days
+                }
+                return AppSettings.defaultArticleAgeLimitDays
+            }
+        } catch {
+            return AppSettings.defaultArticleAgeLimitDays
+        }
+    }
+
+    /// Returns the cutoff date for articles based on the age limit setting.
+    private func getArticleCutoffDate() -> Date {
+        let ageLimitDays = getArticleAgeLimitDays()
+        return Calendar.current.date(byAdding: .day, value: -ageLimitDays, to: Date()) ?? Date()
+    }
+
     @concurrent
     func fetchAllFeeds(sources: [RSSSource], extractService: ContentExtractService) async -> [FetchResult] {
-        await withTaskGroup(of: FetchResult.self, returning: [FetchResult].self) { group in
+        let cutoffDate = getArticleCutoffDate()
+
+        return await withTaskGroup(of: FetchResult.self, returning: [FetchResult].self) { group in
             for source in sources {
                 group.addTask {
-                    await fetchFeed(source: source, extractService: extractService)
+                    await fetchFeed(source: source, extractService: extractService, cutoffDate: cutoffDate)
                 }
             }
 
@@ -36,10 +59,12 @@ struct RSSService {
         extractService: ContentExtractService,
         onResult: @MainActor @escaping (FetchResult) -> Void
     ) async {
+        let cutoffDate = getArticleCutoffDate()
+
         await withTaskGroup(of: FetchResult.self) { group in
             for source in sources {
                 group.addTask {
-                    await self.fetchFeed(source: source, extractService: extractService)
+                    await self.fetchFeed(source: source, extractService: extractService, cutoffDate: cutoffDate)
                 }
             }
 
@@ -50,7 +75,7 @@ struct RSSService {
     }
 
     @concurrent
-    private func fetchFeed(source: RSSSource, extractService: ContentExtractService) async -> FetchResult {
+    private func fetchFeed(source: RSSSource, extractService: ContentExtractService, cutoffDate: Date) async -> FetchResult {
         guard let sourceId = source.id else {
             return FetchResult(
                 sourceId: 0,
@@ -76,7 +101,7 @@ struct RSSService {
 
             switch result {
             case .success(let feed):
-                let items = try await processFeed(feed, source: source, extractService: extractService)
+                let items = try await processFeed(feed, source: source, extractService: extractService, cutoffDate: cutoffDate)
                 return FetchResult(
                     sourceId: sourceId,
                     sourceName: source.title ?? source.url,
@@ -105,33 +130,53 @@ struct RSSService {
     /// (to avoid long waits on large feeds)
     private static let maxContentExtractionPerFeed = 5
 
-    private func processFeed(_ feed: Feed, source: RSSSource, extractService: ContentExtractService) async throws -> Int {
+    private func processFeed(_ feed: Feed, source: RSSSource, extractService: ContentExtractService, cutoffDate: Date) async throws -> Int {
         var itemCount = 0
+        var extractionCount = 0
 
         switch feed {
         case .rss(let rssFeed):
             if let items = rssFeed.items {
-                for (index, item) in items.enumerated() {
+                for item in items {
+                    // Skip articles older than the cutoff date
+                    if let pubDate = item.pubDate, pubDate < cutoffDate {
+                        continue
+                    }
+
                     // Only extract content for the first few items
-                    let shouldExtract = index < Self.maxContentExtractionPerFeed
+                    let shouldExtract = extractionCount < Self.maxContentExtractionPerFeed
                     try await processRSSItem(item, source: source, extractService: extractService, extractContent: shouldExtract)
                     itemCount += 1
+                    if shouldExtract { extractionCount += 1 }
                 }
             }
         case .atom(let atomFeed):
             if let entries = atomFeed.entries {
-                for (index, entry) in entries.enumerated() {
-                    let shouldExtract = index < Self.maxContentExtractionPerFeed
+                for entry in entries {
+                    // Skip articles older than the cutoff date
+                    let entryDate = entry.published ?? entry.updated
+                    if let pubDate = entryDate, pubDate < cutoffDate {
+                        continue
+                    }
+
+                    let shouldExtract = extractionCount < Self.maxContentExtractionPerFeed
                     try await processAtomEntry(entry, source: source, extractService: extractService, extractContent: shouldExtract)
                     itemCount += 1
+                    if shouldExtract { extractionCount += 1 }
                 }
             }
         case .json(let jsonFeed):
             if let items = jsonFeed.items {
-                for (index, item) in items.enumerated() {
-                    let shouldExtract = index < Self.maxContentExtractionPerFeed
+                for item in items {
+                    // Skip articles older than the cutoff date
+                    if let pubDate = item.datePublished, pubDate < cutoffDate {
+                        continue
+                    }
+
+                    let shouldExtract = extractionCount < Self.maxContentExtractionPerFeed
                     try await processJSONItem(item, source: source, extractService: extractService, extractContent: shouldExtract)
                     itemCount += 1
+                    if shouldExtract { extractionCount += 1 }
                 }
             }
         }
