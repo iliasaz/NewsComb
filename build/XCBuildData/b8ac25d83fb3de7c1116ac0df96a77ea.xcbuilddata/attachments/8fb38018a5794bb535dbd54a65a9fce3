@@ -1,4 +1,0 @@
-module PostlightSwift {
-header "PostlightSwift-Swift.h"
-export *
-}

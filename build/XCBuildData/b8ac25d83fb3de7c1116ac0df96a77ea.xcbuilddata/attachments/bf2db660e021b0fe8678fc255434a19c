@@ -1,4 +1,0 @@
-module GRDB {
-header "GRDB-Swift.h"
-export *
-}
