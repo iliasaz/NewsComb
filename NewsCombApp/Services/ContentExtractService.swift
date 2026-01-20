@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import PostlightSwift
 
 /// Result of content extraction including the final URL after redirects
@@ -10,6 +11,7 @@ struct ExtractionResult {
 /// Service for extracting full article content from URLs using the Postlight parser
 struct ContentExtractService {
     private let parser = Parser()
+    private let logger = Logger(subsystem: "com.newscomb", category: "ContentExtractService")
 
     /// Shared URL session configured like NetNewsWire - ephemeral with no cookies
     private static let urlSession: URLSession = {
@@ -60,7 +62,7 @@ struct ContentExtractService {
 
             // Check if we got valid HTML
             guard let html = String(data: data, encoding: .utf8) else {
-                print("Content extraction failed for \(articleURL): Could not decode response as UTF-8")
+                logger.error("Content extraction failed for \(articleURL, privacy: .public): Could not decode response as UTF-8")
                 return ExtractionResult(content: nil, finalURL: finalURL.absoluteString)
             }
 
@@ -69,7 +71,7 @@ struct ContentExtractService {
             let article = try await parser.parse(html: html, url: finalURL, options: options)
             return ExtractionResult(content: article.content, finalURL: finalURL.absoluteString)
         } catch {
-            print("Content extraction failed for \(articleURL): \(error.localizedDescription)")
+            logger.error("Content extraction failed for \(articleURL, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return ExtractionResult(content: nil, finalURL: nil)
         }
     }
@@ -88,7 +90,7 @@ struct ContentExtractService {
             let article = try await parser.parse(url: url, options: options)
             return article
         } catch {
-            print("Article extraction failed for \(articleURL): \(error.localizedDescription)")
+            logger.error("Article extraction failed for \(articleURL, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
@@ -109,7 +111,7 @@ struct ContentExtractService {
             let article = try await parser.parse(html: html, url: sourceURL, options: options)
             return article.content
         } catch {
-            print("HTML extraction failed: \(error.localizedDescription)")
+            logger.error("HTML extraction failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }

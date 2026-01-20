@@ -1,8 +1,10 @@
 import Foundation
 import GRDB
+import OSLog
 import SQLiteExtensions
 
 public final class Database: Sendable {
+    private static let logger = Logger(subsystem: "com.newscomb", category: "Database")
     public static let shared = Database()
 
     let dbQueue: DatabaseQueue
@@ -20,7 +22,7 @@ public final class Database: Sendable {
             try fileManager.createDirectory(at: dbDirectory, withIntermediateDirectories: true)
 
             let dbPath = dbDirectory.appending(path: "newscomb.sqlite")
-            print("database: \(dbPath)")
+            Self.logger.info("Database path: \(dbPath.path(percentEncoded: false), privacy: .public)")
             dbQueue = try DatabaseQueue(path: dbPath.path)
 
             try migrate()
@@ -123,7 +125,67 @@ public final class Database: Sendable {
                     node_id INTEGER PRIMARY KEY,
                     embedding float[768]
                 );
+
+                -- Metadata for tracking computed embeddings (companion to virtual table)
+                CREATE TABLE IF NOT EXISTS node_embedding_metadata (
+                    node_id INTEGER PRIMARY KEY REFERENCES hypergraph_node(id) ON DELETE CASCADE,
+                    computed_at REAL NOT NULL DEFAULT (unixepoch()),
+                    model_name TEXT,
+                    embedding_version INTEGER DEFAULT 1
+                );
+
+                -- History of node merges for tracking and potential undo
+                CREATE TABLE IF NOT EXISTS node_merge_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    merged_at REAL NOT NULL DEFAULT (unixepoch()),
+                    kept_node_id INTEGER NOT NULL REFERENCES hypergraph_node(id),
+                    removed_node_id INTEGER NOT NULL,
+                    removed_node_label TEXT NOT NULL,
+                    similarity_score REAL NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_node_merge_history_kept ON node_merge_history(kept_node_id);
+
+                -- Article chunks for fine-grained provenance tracking
+                CREATE TABLE IF NOT EXISTS article_chunk (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    feed_item_id INTEGER NOT NULL REFERENCES feed_item(id) ON DELETE CASCADE,
+                    chunk_index INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at REAL NOT NULL DEFAULT (unixepoch()),
+                    UNIQUE(feed_item_id, chunk_index)
+                );
+                CREATE INDEX IF NOT EXISTS idx_article_chunk_feed ON article_chunk(feed_item_id);
+
+                -- Chunk embeddings virtual table using sqlite-vec (768-dim vectors)
+                CREATE VIRTUAL TABLE IF NOT EXISTS chunk_embedding USING vec0(
+                    chunk_id INTEGER PRIMARY KEY,
+                    embedding float[768]
+                );
+
+                -- Metadata for tracking computed chunk embeddings
+                CREATE TABLE IF NOT EXISTS chunk_embedding_metadata (
+                    chunk_id INTEGER PRIMARY KEY REFERENCES article_chunk(id) ON DELETE CASCADE,
+                    computed_at REAL NOT NULL DEFAULT (unixepoch()),
+                    model_name TEXT,
+                    embedding_version INTEGER DEFAULT 1
+                );
             """)
+
+            // Add source_chunk_id column to hypergraph_edge if it doesn't exist
+            // SQLite doesn't support IF NOT EXISTS for columns, so we check first
+            do {
+                let columnExists = try db.columns(in: "hypergraph_edge").contains { $0.name == "source_chunk_id" }
+                if !columnExists {
+                    try db.execute(sql: """
+                        ALTER TABLE hypergraph_edge ADD COLUMN source_chunk_id INTEGER REFERENCES article_chunk(id);
+                    """)
+                    try db.execute(sql: """
+                        CREATE INDEX IF NOT EXISTS idx_hypergraph_edge_chunk ON hypergraph_edge(source_chunk_id);
+                    """)
+                }
+            } catch {
+                // Column might already exist, ignore error
+            }
         }
     }
 

@@ -1,13 +1,29 @@
 import Foundation
 import GRDB
 import HyperGraphReasoning
-import os.log
+import OSLog
 
 /// Service for extracting and persisting hypergraph knowledge from articles.
 final class HypergraphService: Sendable {
 
     private let database = Database.shared
     private let logger = Logger(subsystem: "com.newscomb", category: "HypergraphService")
+
+    // Cancellation support (accessed only from @MainActor methods)
+    @MainActor private var isCancelled = false
+
+    /// Request cancellation of the current batch processing.
+    @MainActor
+    func cancelProcessing() {
+        isCancelled = true
+        logger.info("Cancellation requested")
+    }
+
+    /// Reset the cancellation flag for a new processing run.
+    @MainActor
+    private func resetCancellation() {
+        isCancelled = false
+    }
 
     /// Progress callback during batch processing.
     typealias ProgressCallback = @MainActor @Sendable (Int, Int, String) -> Void
@@ -135,7 +151,7 @@ final class HypergraphService: Sendable {
 
             // Persist the hypergraph
             logger.info("Persisting hypergraph to database...")
-            try persistHypergraph(result: result, feedItemId: feedItemId)
+            try persistHypergraph(result: result, feedItemId: feedItemId, content: content)
             logger.info("Hypergraph persisted successfully")
 
             // Mark as completed
@@ -158,12 +174,15 @@ final class HypergraphService: Sendable {
     }
 
     /// Maximum number of articles to process concurrently.
-    private static let maxConcurrentProcessing = 4
+    private static let maxConcurrentProcessing = 10
 
     /// Processes all unprocessed articles with progress callback.
     /// Articles are processed in parallel with a configurable concurrency limit.
+    /// Processing can be cancelled by calling `cancelProcessing()`.
     @MainActor
     func processUnprocessedArticles(progressCallback: ProgressCallback?) async throws -> Int {
+        resetCancellation()
+
         let articles = try getUnprocessedArticles()
         logger.info("Found \(articles.count) unprocessed articles")
 
@@ -183,6 +202,13 @@ final class HypergraphService: Sendable {
         var completedSoFar = 0
 
         for batch in batches {
+            // Check for cancellation before starting each batch
+            if isCancelled {
+                logger.info("Processing cancelled after \(completedSoFar) articles")
+                progressCallback?(completedSoFar, totalCount, "Cancelled")
+                throw HypergraphServiceError.cancelled
+            }
+
             // Process each batch in parallel
             let results = await withTaskGroup(of: (Int64, String, Bool).self, returning: [(Int64, String, Bool)].self) { group in
                 for article in batch {
@@ -219,6 +245,13 @@ final class HypergraphService: Sendable {
                 }
 
                 progressCallback?(completedSoFar, totalCount, title)
+            }
+
+            // Check for cancellation after each batch
+            if isCancelled {
+                logger.info("Processing cancelled after \(completedSoFar) articles")
+                progressCallback?(completedSoFar, totalCount, "Cancelled")
+                throw HypergraphServiceError.cancelled
             }
         }
 
@@ -356,23 +389,71 @@ final class HypergraphService: Sendable {
         }
     }
 
+    /// Gets the configured embedding model name for tracking.
+    private func getEmbeddingModelName() throws -> String? {
+        try database.read { db in
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel)
+                .fetchOne(db) {
+                return setting.value
+            }
+            return nil
+        }
+    }
+
     // MARK: - Hypergraph Persistence
 
-    private func persistHypergraph(result: ProcessingResult, feedItemId: Int64) throws {
+    private func persistHypergraph(result: ProcessingResult, feedItemId: Int64, content: String) throws {
         logger.debug("Beginning hypergraph persistence for article \(feedItemId)")
         var nodesInserted = 0
         var edgesInserted = 0
         var embeddingsStored = 0
+        var chunksStored = 0
+
+        // Get embedding model name BEFORE the write transaction to avoid reentrancy
+        let embeddingModel = try getEmbeddingModelName()
+
+        // Chunk the content for provenance tracking
+        let chunks = TextChunker.chunkText(content)
 
         try database.write { db in
+            // Store article chunks and build a mapping from chunk index to chunk row ID
+            var chunkIdMap: [Int: Int64] = [:]
+            for (index, chunkContent) in chunks.enumerated() {
+                let chunkRowId = try self.upsertArticleChunk(
+                    db: db,
+                    feedItemId: feedItemId,
+                    chunkIndex: index,
+                    content: chunkContent
+                )
+                chunkIdMap[index] = chunkRowId
+                chunksStored += 1
+            }
+
             // Process each edge in the hypergraph
             for (edgeId, nodeIds) in result.hypergraph.incidenceDict {
                 // Find the metadata for this edge to get the relation
                 let edgeMetadata = result.metadata.first { $0.edge == edgeId }
                 let relation = edgeMetadata.map { self.extractRelation(from: $0) } ?? "unknown"
 
-                // Upsert the edge
-                let edgeRowId = try self.upsertEdge(db: db, edgeId: edgeId, relation: relation)
+                // Extract chunk index from metadata
+                let chunkIndex: Int?
+                if let meta = edgeMetadata {
+                    chunkIndex = Int(meta.chunkID.components(separatedBy: "_").last ?? "")
+                } else {
+                    chunkIndex = nil
+                }
+
+                // Get the chunk row ID if available
+                let sourceChunkId = chunkIndex.flatMap { chunkIdMap[$0] }
+
+                // Upsert the edge with source chunk reference
+                let edgeRowId = try self.upsertEdge(
+                    db: db,
+                    edgeId: edgeId,
+                    relation: relation,
+                    sourceChunkId: sourceChunkId
+                )
                 edgesInserted += 1
 
                 // Process nodes and create incidences
@@ -405,35 +486,52 @@ final class HypergraphService: Sendable {
                     )
                 }
 
-                // Create provenance link
+                // Create provenance link with chunk text
                 if let meta = edgeMetadata {
+                    let chunkText = chunkIndex.flatMap { idx in
+                        idx < chunks.count ? chunks[idx] : nil
+                    }
                     try self.upsertProvenance(
                         db: db,
                         edgeId: edgeRowId,
                         feedItemId: feedItemId,
-                        chunkId: meta.chunkID
+                        chunkId: meta.chunkID,
+                        chunkText: chunkText
                     )
                 }
             }
 
-            self.logger.debug("Persisted \(edgesInserted) edges, \(nodesInserted) node references")
+            self.logger.debug("Persisted \(edgesInserted) edges, \(nodesInserted) node references, \(chunksStored) chunks")
 
-            // Store embeddings
+            // Store embeddings only for nodes that don't already have them (incremental)
+            var skippedEmbeddings = 0
             for (nodeLabel, embedding) in result.embeddings.embeddings {
                 // Get the node's row ID
                 if let node = try HypergraphNode
                     .filter(HypergraphNode.Columns.nodeId == nodeLabel)
                     .fetchOne(db),
                    let nodeRowId = node.id {
+
+                    // Check if this node already has an embedding
+                    if try NodeEmbeddingMetadata.hasEmbedding(db, nodeId: nodeRowId) {
+                        skippedEmbeddings += 1
+                        continue
+                    }
+
+                    // Store the embedding and track in metadata
                     try self.storeEmbedding(db: db, nodeId: nodeRowId, embedding: embedding)
+                    try NodeEmbeddingMetadata.markEmbeddingComputed(db, nodeId: nodeRowId, modelName: embeddingModel)
                     embeddingsStored += 1
                 }
             }
 
-            self.logger.debug("Stored \(embeddingsStored) embeddings")
+            if skippedEmbeddings > 0 {
+                self.logger.debug("Skipped \(skippedEmbeddings) embeddings (already exist)")
+            }
+            self.logger.debug("Stored \(embeddingsStored) new embeddings")
         }
 
-        logger.info("Persistence complete: \(edgesInserted) edges, \(nodesInserted) node refs, \(embeddingsStored) embeddings")
+        logger.info("Persistence complete: \(edgesInserted) edges, \(nodesInserted) node refs, \(embeddingsStored) embeddings, \(chunksStored) chunks")
     }
 
     private func extractRelation(from metadata: ChunkMetadata) -> String {
@@ -464,16 +562,29 @@ final class HypergraphService: Sendable {
         throw HypergraphServiceError.databaseError("Failed to get node ID")
     }
 
-    private func upsertEdge(db: GRDB.Database, edgeId: String, relation: String) throws -> Int64 {
-        try db.execute(
-            sql: """
-                INSERT INTO hypergraph_edge (edge_id, relation, created_at)
-                VALUES (?, ?, unixepoch())
-                ON CONFLICT(edge_id) DO UPDATE SET
-                    relation = excluded.relation
-            """,
-            arguments: [edgeId, relation]
-        )
+    private func upsertEdge(db: GRDB.Database, edgeId: String, relation: String, sourceChunkId: Int64? = nil) throws -> Int64 {
+        if let chunkId = sourceChunkId {
+            try db.execute(
+                sql: """
+                    INSERT INTO hypergraph_edge (edge_id, relation, source_chunk_id, created_at)
+                    VALUES (?, ?, ?, unixepoch())
+                    ON CONFLICT(edge_id) DO UPDATE SET
+                        relation = excluded.relation,
+                        source_chunk_id = COALESCE(excluded.source_chunk_id, source_chunk_id)
+                """,
+                arguments: [edgeId, relation, chunkId]
+            )
+        } else {
+            try db.execute(
+                sql: """
+                    INSERT INTO hypergraph_edge (edge_id, relation, created_at)
+                    VALUES (?, ?, unixepoch())
+                    ON CONFLICT(edge_id) DO UPDATE SET
+                        relation = excluded.relation
+                """,
+                arguments: [edgeId, relation]
+            )
+        }
 
         // Get the row ID
         if let row = try Row.fetchOne(db, sql: "SELECT id FROM hypergraph_edge WHERE edge_id = ?", arguments: [edgeId]) {
@@ -494,18 +605,41 @@ final class HypergraphService: Sendable {
         )
     }
 
-    private func upsertProvenance(db: GRDB.Database, edgeId: Int64, feedItemId: Int64, chunkId: String) throws {
+    private func upsertProvenance(db: GRDB.Database, edgeId: Int64, feedItemId: Int64, chunkId: String, chunkText: String? = nil) throws {
         // Extract chunk index from chunkId if possible
         let chunkIndex = Int(chunkId.components(separatedBy: "_").last ?? "0") ?? 0
 
         try db.execute(
             sql: """
-                INSERT INTO article_edge_provenance (edge_id, feed_item_id, chunk_index)
-                VALUES (?, ?, ?)
-                ON CONFLICT(edge_id, feed_item_id, chunk_index) DO NOTHING
+                INSERT INTO article_edge_provenance (edge_id, feed_item_id, chunk_index, chunk_text)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(edge_id, feed_item_id, chunk_index) DO UPDATE SET
+                    chunk_text = COALESCE(excluded.chunk_text, chunk_text)
             """,
-            arguments: [edgeId, feedItemId, chunkIndex]
+            arguments: [edgeId, feedItemId, chunkIndex, chunkText]
         )
+    }
+
+    private func upsertArticleChunk(db: GRDB.Database, feedItemId: Int64, chunkIndex: Int, content: String) throws -> Int64 {
+        try db.execute(
+            sql: """
+                INSERT INTO article_chunk (feed_item_id, chunk_index, content, created_at)
+                VALUES (?, ?, ?, unixepoch())
+                ON CONFLICT(feed_item_id, chunk_index) DO UPDATE SET
+                    content = excluded.content
+            """,
+            arguments: [feedItemId, chunkIndex, content]
+        )
+
+        // Get the row ID
+        if let row = try Row.fetchOne(
+            db,
+            sql: "SELECT id FROM article_chunk WHERE feed_item_id = ? AND chunk_index = ?",
+            arguments: [feedItemId, chunkIndex]
+        ) {
+            return row["id"]
+        }
+        throw HypergraphServiceError.databaseError("Failed to get article chunk ID")
     }
 
     private func storeEmbedding(db: GRDB.Database, nodeId: Int64, embedding: [Float]) throws {
@@ -639,6 +773,192 @@ final class HypergraphService: Sendable {
             )
         }
     }
+
+    // MARK: - Enhanced Node Merging
+
+    /// Finds nodes similar to a given node using embedding similarity.
+    /// - Parameters:
+    ///   - nodeId: The ID of the node to find similar nodes for
+    ///   - threshold: Similarity threshold (0-1, default 0.85)
+    ///   - limit: Maximum number of similar nodes to return
+    /// - Returns: Array of similar nodes with their similarity scores
+    func findSimilarNodes(to nodeId: Int64, threshold: Float = 0.85, limit: Int = 20) throws -> [(node: HypergraphNode, similarity: Double)] {
+        try database.read { db in
+            // Get the source node's embedding
+            guard let sourceEmbedding = try Row.fetchOne(
+                db,
+                sql: "SELECT embedding FROM node_embedding WHERE node_id = ?",
+                arguments: [nodeId]
+            ) else {
+                logger.debug("No embedding found for node \(nodeId)")
+                return []
+            }
+
+            let embeddingData: Data = sourceEmbedding["embedding"]
+
+            // Convert threshold to L2 distance threshold
+            // For normalized vectors: L2_distance = sqrt(2 * (1 - cosine_similarity))
+            // So: cosine_similarity = 1 - (L2_distance^2 / 2)
+            // Inverse: L2_distance = sqrt(2 * (1 - threshold))
+            let distanceThreshold = sqrt(2 * (1 - Double(threshold)))
+
+            let sql = """
+                SELECT hn.*, vec_distance_L2(ne.embedding, ?) as distance
+                FROM hypergraph_node hn
+                JOIN node_embedding ne ON hn.id = ne.node_id
+                WHERE hn.id != ?
+                  AND vec_distance_L2(ne.embedding, ?) < ?
+                ORDER BY distance ASC
+                LIMIT ?
+            """
+
+            let rows = try Row.fetchAll(
+                db,
+                sql: sql,
+                arguments: [embeddingData, nodeId, embeddingData, distanceThreshold, limit]
+            )
+
+            return rows.compactMap { row -> (node: HypergraphNode, similarity: Double)? in
+                guard let node = try? HypergraphNode(row: row) else { return nil }
+                let distance: Double = row["distance"]
+                // Convert L2 distance to cosine similarity
+                let similarity = 1 - (distance * distance / 2)
+                return (node, similarity)
+            }
+        }
+    }
+
+    /// Merges a source node into a target node, transferring all relationships.
+    /// - Parameters:
+    ///   - sourceId: The ID of the node to merge (will be deleted)
+    ///   - targetId: The ID of the node to merge into (will be kept)
+    ///   - similarityScore: The similarity score between the nodes (for history tracking)
+    func mergeNodes(_ sourceId: Int64, into targetId: Int64, similarityScore: Double = 0) throws {
+        try database.write { db in
+            // Get source node info for history
+            guard let sourceNode = try HypergraphNode.filter(HypergraphNode.Columns.id == sourceId).fetchOne(db) else {
+                throw HypergraphServiceError.databaseError("Source node not found")
+            }
+
+            logger.info("Merging node '\(sourceNode.label, privacy: .public)' (id: \(sourceId)) into node \(targetId)")
+
+            // Update all incidences to point to target node
+            try db.execute(
+                sql: """
+                    UPDATE hypergraph_incidence
+                    SET node_id = ?
+                    WHERE node_id = ?
+                """,
+                arguments: [targetId, sourceId]
+            )
+
+            // Handle duplicate incidences that may arise from the merge
+            // Delete duplicates keeping only the first one
+            try db.execute(
+                sql: """
+                    DELETE FROM hypergraph_incidence
+                    WHERE id NOT IN (
+                        SELECT MIN(id)
+                        FROM hypergraph_incidence
+                        GROUP BY edge_id, node_id, role
+                    )
+                """
+            )
+
+            // Record merge history
+            try db.execute(
+                sql: """
+                    INSERT INTO node_merge_history (kept_node_id, removed_node_id, removed_node_label, similarity_score)
+                    VALUES (?, ?, ?, ?)
+                """,
+                arguments: [targetId, sourceId, sourceNode.label, similarityScore]
+            )
+
+            // Delete source node's embedding
+            try db.execute(
+                sql: "DELETE FROM node_embedding WHERE node_id = ?",
+                arguments: [sourceId]
+            )
+            try db.execute(
+                sql: "DELETE FROM node_embedding_metadata WHERE node_id = ?",
+                arguments: [sourceId]
+            )
+
+            // Delete the source node
+            try db.execute(
+                sql: "DELETE FROM hypergraph_node WHERE id = ?",
+                arguments: [sourceId]
+            )
+
+            // Clean up orphaned edges (edges with no remaining incidences)
+            try db.execute(
+                sql: """
+                    DELETE FROM hypergraph_edge
+                    WHERE id NOT IN (SELECT DISTINCT edge_id FROM hypergraph_incidence)
+                """
+            )
+
+            logger.info("Node merge completed successfully")
+        }
+    }
+
+    /// Gets merge suggestions based on embedding similarity.
+    /// - Parameters:
+    ///   - threshold: Similarity threshold for suggestions (0-1, default 0.85)
+    ///   - limit: Maximum number of suggestions to return
+    /// - Returns: Array of merge suggestions with source, target, and similarity
+    func getMergeSuggestions(threshold: Float = 0.85, limit: Int = 50) throws -> [MergeSuggestion] {
+        try database.read { db in
+            // Convert threshold to L2 distance threshold
+            let distanceThreshold = sqrt(2 * (1 - Double(threshold)))
+
+            // Find similar node pairs using a self-join with sqlite-vec
+            // We need to compare each node's embedding against all others
+            let sql = """
+                SELECT
+                    hn1.id as node1_id, hn1.label as node1_label, hn1.node_type as node1_type,
+                    hn2.id as node2_id, hn2.label as node2_label, hn2.node_type as node2_type,
+                    vec_distance_L2(ne1.embedding, ne2.embedding) as distance
+                FROM hypergraph_node hn1
+                JOIN node_embedding ne1 ON hn1.id = ne1.node_id
+                JOIN hypergraph_node hn2 ON hn1.id < hn2.id
+                JOIN node_embedding ne2 ON hn2.id = ne2.node_id
+                WHERE vec_distance_L2(ne1.embedding, ne2.embedding) < ?
+                ORDER BY distance ASC
+                LIMIT ?
+            """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [distanceThreshold, limit])
+
+            return rows.map { row in
+                let distance: Double = row["distance"]
+                let similarity = 1 - (distance * distance / 2)
+
+                return MergeSuggestion(
+                    node1Id: row["node1_id"],
+                    node1Label: row["node1_label"],
+                    node1Type: row["node1_type"],
+                    node2Id: row["node2_id"],
+                    node2Label: row["node2_label"],
+                    node2Type: row["node2_type"],
+                    similarity: similarity
+                )
+            }
+        }
+    }
+}
+
+/// A suggestion for merging two similar nodes.
+struct MergeSuggestion: Identifiable, Sendable {
+    var id: String { "\(node1Id)-\(node2Id)" }
+
+    let node1Id: Int64
+    let node1Label: String
+    let node1Type: String?
+    let node2Id: Int64
+    let node2Label: String
+    let node2Type: String?
+    let similarity: Double
 }
 
 // MARK: - Supporting Types
@@ -670,6 +990,7 @@ enum HypergraphServiceError: Error, LocalizedError {
     case missingAPIKey
     case noProviderConfigured
     case databaseError(String)
+    case cancelled
 
     var errorDescription: String? {
         switch self {
@@ -683,6 +1004,8 @@ enum HypergraphServiceError: Error, LocalizedError {
             return "No LLM provider configured. Configure Ollama or OpenRouter in Settings."
         case .databaseError(let message):
             return "Database error: \(message)"
+        case .cancelled:
+            return "Processing was cancelled"
         }
     }
 }
