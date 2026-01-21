@@ -17,11 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Checkout HyperGraphReasoning dependency
-        uses: actions/checkout@v4
-        with:
-          repository: iliasaz/hypergraph-reasoning-swift
-          path: ../HyperGraphReasoning/hypergraph-reasoning-swift
+      - name: Clone HyperGraphReasoning dependency
+        run: |
+          mkdir -p ../HyperGraphReasoning
+          git clone https://github.com/iliasaz/hypergraph-reasoning-swift.git ../HyperGraphReasoning/hypergraph-reasoning-swift
 
       - name: List available Xcode versions
         run: ls -d /Applications/Xcode*.app
