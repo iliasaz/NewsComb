@@ -279,7 +279,7 @@ final class GraphRAGService: Sendable {
         let reasoningPaths = convertToReasoningPaths(pathReports)
 
         // Convert path reports to context edges with path structure
-        let edges = convertPathReportsToEdges(pathReports)
+        let edges = try convertPathReportsToEdges(pathReports)
 
         // Also get direct edges for nodes without paths
         let directEdges = try findEdgesForNodes(nodeIds: nodeIds)
@@ -326,30 +326,55 @@ final class GraphRAGService: Sendable {
         }
     }
 
-    /// Converts hypergraph path reports to context edges.
+    /// Converts hypergraph path reports to context edges by fetching edge details from the database.
     private func convertPathReportsToEdges(
         _ reports: [HypergraphPathService.PathReport]
-    ) -> [GraphRAGContext.ContextEdge] {
-        var edges: [GraphRAGContext.ContextEdge] = []
-        var seenEdgeIds: Set<Int64> = []
-
+    ) throws -> [GraphRAGContext.ContextEdge] {
+        // Collect all unique edge IDs from path reports
+        var edgeIds: Set<Int64> = []
         for report in reports {
-            for edgeId in report.edgePath where !seenEdgeIds.contains(edgeId) {
-                seenEdgeIds.insert(edgeId)
-
-                let members = report.edgeMembers[edgeId] ?? []
-                // For path edges, we show all members as a relationship
-                edges.append(GraphRAGContext.ContextEdge(
-                    edgeId: edgeId,
-                    relation: "path_edge",
-                    sourceNodes: members,
-                    targetNodes: [],
-                    chunkText: nil
-                ))
+            for edgeId in report.edgePath {
+                edgeIds.insert(edgeId)
             }
         }
 
-        return edges
+        guard !edgeIds.isEmpty else { return [] }
+
+        // Fetch edge details from the database with proper source/target roles
+        return try database.read { db in
+            let placeholders = edgeIds.map { _ in "?" }.joined(separator: ", ")
+            let sql = """
+                SELECT he.id, he.relation, aep.chunk_text,
+                       GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'source' THEN hn.label END) as sources,
+                       GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'target' THEN hn.label END) as targets
+                FROM hypergraph_edge he
+                JOIN hypergraph_incidence hi ON he.id = hi.edge_id
+                JOIN hypergraph_node hn ON hi.node_id = hn.id
+                LEFT JOIN article_edge_provenance aep ON he.id = aep.edge_id
+                WHERE he.id IN (\(placeholders))
+                GROUP BY he.id
+            """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(Array(edgeIds)))
+            return rows.compactMap { row -> GraphRAGContext.ContextEdge? in
+                let sourcesStr: String? = row["sources"]
+                let targetsStr: String? = row["targets"]
+
+                let sources = sourcesStr?.components(separatedBy: ",").filter { !$0.isEmpty } ?? []
+                let targets = targetsStr?.components(separatedBy: ",").filter { !$0.isEmpty } ?? []
+
+                // Skip edges with no meaningful connection
+                guard !sources.isEmpty || !targets.isEmpty else { return nil }
+
+                return GraphRAGContext.ContextEdge(
+                    edgeId: row["id"],
+                    relation: row["relation"],
+                    sourceNodes: sources,
+                    targetNodes: targets,
+                    chunkText: row["chunk_text"]
+                )
+            }
+        }
     }
 
     /// Merges path-based edges with direct edges, avoiding duplicates.
