@@ -157,15 +157,18 @@ final class GraphRAGService: Sendable {
 
         return try database.read { db in
             let placeholders = nodeIds.map { _ in "?" }.joined(separator: ", ")
+            // First find edges connected to searched nodes, then get ALL their incidences
             let sql = """
-                SELECT DISTINCT he.id, he.relation, aep.chunk_text,
+                SELECT he.id, he.relation, aep.chunk_text,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'source' THEN hn.label END) as sources,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'target' THEN hn.label END) as targets
                 FROM hypergraph_edge he
                 JOIN hypergraph_incidence hi ON he.id = hi.edge_id
                 JOIN hypergraph_node hn ON hi.node_id = hn.id
                 LEFT JOIN article_edge_provenance aep ON he.id = aep.edge_id
-                WHERE hi.node_id IN (\(placeholders))
+                WHERE he.id IN (
+                    SELECT DISTINCT edge_id FROM hypergraph_incidence WHERE node_id IN (\(placeholders))
+                )
                 GROUP BY he.id
                 LIMIT 50
             """
