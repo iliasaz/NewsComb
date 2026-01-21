@@ -27,14 +27,15 @@ jobs:
 
       - name: Select Xcode (latest available)
         run: |
-          # Try Xcode versions in order of preference (newest first)
-          for xcode in /Applications/Xcode_16.4.app /Applications/Xcode_16.3.app /Applications/Xcode_16.2.app /Applications/Xcode.app; do
-            if [ -d "$xcode" ]; then
-              echo "Using $xcode"
-              sudo xcode-select -s "$xcode"
-              break
-            fi
-          done
+          # Find and use the latest Xcode version available
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$LATEST_XCODE" ]; then
+            echo "Using $LATEST_XCODE"
+            sudo xcode-select -s "$LATEST_XCODE"
+          else
+            echo "No Xcode found!"
+            exit 1
+          fi
 
       - name: Show Xcode and Swift version
         run: |
