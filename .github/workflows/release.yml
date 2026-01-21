@@ -9,6 +9,9 @@ env:
   PROJECT: NewsCombApp.xcodeproj
   APP_NAME: NewsCombApp
 
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: macos-15
