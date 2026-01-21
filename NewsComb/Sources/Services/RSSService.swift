@@ -9,6 +9,17 @@ struct FetchResult: Sendable {
     let error: Error?
 }
 
+struct FeedItemData {
+    let sourceId: Int64
+    let guid: String
+    let title: String
+    let link: String
+    let pubDate: Date?
+    let rssDescription: String?
+    let fullContent: String?
+    let author: String?
+}
+
 struct RSSService {
     private let database = Database.shared
 
@@ -124,7 +135,7 @@ struct RSSService {
             fullContent = try? await extractService.extractContent(from: link)
         }
 
-        try upsertFeedItem(
+        try upsertFeedItem(FeedItemData(
             sourceId: sourceId,
             guid: guid,
             title: title,
@@ -133,7 +144,7 @@ struct RSSService {
             rssDescription: description,
             fullContent: fullContent,
             author: item.author
-        )
+        ))
     }
 
     private func processAtomEntry(_ entry: AtomFeedEntry, source: RSSSource, extractService: FeedbinExtractService) async throws {
@@ -149,7 +160,7 @@ struct RSSService {
             fullContent = try? await extractService.extractContent(from: link)
         }
 
-        try upsertFeedItem(
+        try upsertFeedItem(FeedItemData(
             sourceId: sourceId,
             guid: guid,
             title: title,
@@ -158,7 +169,7 @@ struct RSSService {
             rssDescription: description,
             fullContent: fullContent,
             author: entry.authors?.first?.name
-        )
+        ))
     }
 
     private func processJSONItem(_ item: JSONFeedItem, source: RSSSource, extractService: FeedbinExtractService) async throws {
@@ -174,7 +185,7 @@ struct RSSService {
             fullContent = try? await extractService.extractContent(from: link)
         }
 
-        try upsertFeedItem(
+        try upsertFeedItem(FeedItemData(
             sourceId: sourceId,
             guid: guid,
             title: title,
@@ -183,7 +194,7 @@ struct RSSService {
             rssDescription: description,
             fullContent: fullContent,
             author: item.author?.name
-        )
+        ))
     }
 
     private func needsFullContent(description: String?) -> Bool {
@@ -200,16 +211,7 @@ struct RSSService {
         return false
     }
 
-    private func upsertFeedItem(
-        sourceId: Int64,
-        guid: String,
-        title: String,
-        link: String,
-        pubDate: Date?,
-        rssDescription: String?,
-        fullContent: String?,
-        author: String?
-    ) throws {
+    private func upsertFeedItem(_ item: FeedItemData) throws {
         try database.write { db in
             try db.execute(
                 sql: """
@@ -224,7 +226,16 @@ struct RSSService {
                         author = excluded.author,
                         fetched_at = unixepoch()
                 """,
-                arguments: [sourceId, guid, title, link, pubDate?.timeIntervalSince1970, rssDescription, fullContent, author]
+                arguments: [
+                    item.sourceId,
+                    item.guid,
+                    item.title,
+                    item.link,
+                    item.pubDate?.timeIntervalSince1970,
+                    item.rssDescription,
+                    item.fullContent,
+                    item.author
+                ]
             )
         }
     }

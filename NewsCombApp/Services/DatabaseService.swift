@@ -176,6 +176,7 @@ public final class Database: Sendable {
                     query TEXT NOT NULL,
                     answer TEXT NOT NULL,
                     related_nodes_json TEXT,
+                    graph_paths_json TEXT,
                     source_articles_json TEXT,
                     created_at REAL NOT NULL DEFAULT (unixepoch())
                 );
@@ -192,6 +193,18 @@ public final class Database: Sendable {
                     """)
                     try db.execute(sql: """
                         CREATE INDEX IF NOT EXISTS idx_hypergraph_edge_chunk ON hypergraph_edge(source_chunk_id);
+                    """)
+                }
+            } catch {
+                // Column might already exist, ignore error
+            }
+
+            // Add graph_paths_json column to query_history if it doesn't exist
+            do {
+                let columnExists = try db.columns(in: "query_history").contains { $0.name == "graph_paths_json" }
+                if !columnExists {
+                    try db.execute(sql: """
+                        ALTER TABLE query_history ADD COLUMN graph_paths_json TEXT;
                     """)
                 }
             } catch {
