@@ -78,6 +78,8 @@ jobs:
             -configuration Release \
             -destination 'platform=macOS' \
             -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
