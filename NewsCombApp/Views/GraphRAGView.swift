@@ -11,15 +11,22 @@ struct GraphRAGView: View {
 
             Divider()
 
-            if let response = viewModel.currentResponse {
-                responseSection(response)
-            } else if viewModel.isQuerying {
+            if viewModel.isQuerying {
                 loadingSection
             } else {
                 emptyStateSection
             }
         }
         .navigationTitle("Ask Your News")
+        .navigationDestination(item: Binding<QueryHistoryItem?>(
+            get: { viewModel.pendingNavigationItem },
+            set: { viewModel.pendingNavigationItem = $0 }
+        )) { item in
+            AnswerDetailView(response: item.toGraphRAGResponse())
+        }
+        .onAppear {
+            viewModel.loadHistory()
+        }
         .alert("Error", isPresented: .init(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
@@ -106,14 +113,14 @@ struct GraphRAGView: View {
 
     private var emptyStateSection: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
                 if !viewModel.isConfigured() {
                     configurationWarning
                 } else {
                     helpSection
                 }
 
-                if !viewModel.queryHistory.isEmpty {
+                if !viewModel.persistedHistory.isEmpty {
                     historySection
                 }
             }
@@ -142,7 +149,7 @@ struct GraphRAGView: View {
     }
 
     private var helpSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Try asking:")
                 .font(.headline)
 
@@ -156,9 +163,11 @@ struct GraphRAGView: View {
                             .foregroundStyle(.yellow)
                         Text(query)
                             .foregroundStyle(.primary)
+                            .font(.subheadline)
                         Spacer()
                     }
-                    .padding(12)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                     .background(.background.secondary)
                     .clipShape(.rect(cornerRadius: 8))
                 }
@@ -168,9 +177,9 @@ struct GraphRAGView: View {
     }
 
     private var historySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Recent Questions")
+                Text("Question History")
                     .font(.headline)
                 Spacer()
                 Button("Clear", role: .destructive) {
@@ -179,231 +188,42 @@ struct GraphRAGView: View {
                 .font(.caption)
             }
 
-            ForEach(viewModel.queryHistory.prefix(5)) { response in
-                Button {
-                    viewModel.loadFromHistory(response)
-                } label: {
-                    HStack {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .foregroundStyle(.secondary)
-                        Text(response.query)
-                            .lineLimit(1)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Text(response.generatedAt, style: .relative)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(10)
-                    .background(.background.secondary)
-                    .clipShape(.rect(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    // MARK: - Response Section
-
-    private func responseSection(_ response: GraphRAGResponse) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                answerSection(response)
-
-                if !response.relatedNodes.isEmpty {
-                    relatedNodesSection(response.relatedNodes)
-                }
-
-                if !response.sourceArticles.isEmpty {
-                    sourcesSection(response.sourceArticles)
-                }
-            }
-            .padding()
-        }
-    }
-
-    private func answerSection(_ response: GraphRAGResponse) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Answer", systemImage: "text.bubble")
-                .font(.headline)
-
-            Text(response.answer)
-                .textSelection(.enabled)
-
-            HStack {
-                Text("Generated")
-                Text(response.generatedAt, style: .relative)
-                Text("ago")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background.secondary)
-        .clipShape(.rect(cornerRadius: 12))
-    }
-
-    private func relatedNodesSection(_ nodes: [GraphRAGResponse.RelatedNode]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Related Concepts", systemImage: "brain.head.profile")
-                .font(.headline)
-
-            FlowLayout(spacing: 8) {
-                ForEach(nodes.prefix(15)) { node in
-                    NodeChip(
-                        label: node.label,
-                        type: node.nodeType,
-                        similarity: node.similarity
-                    )
-                }
-            }
-        }
-    }
-
-    private func sourcesSection(_ articles: [GraphRAGResponse.SourceArticle]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Sources", systemImage: "doc.text")
-                .font(.headline)
-
-            ForEach(articles) { article in
-                SourceArticleRow(article: article)
-            }
-        }
-    }
-}
-
-// MARK: - Supporting Views
-
-private struct NodeChip: View {
-    let label: String
-    let type: String?
-    let similarity: Double
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Text(label)
-                .lineLimit(1)
-
-            if let type {
-                Text("(\(type))")
-                    .foregroundStyle(.secondary)
-                    .font(.caption2)
-            }
-        }
-        .font(.caption)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(chipColor.opacity(0.2))
-        .foregroundStyle(chipColor)
-        .clipShape(.capsule)
-    }
-
-    private var chipColor: Color {
-        if similarity > 0.9 {
-            return .green
-        } else if similarity > 0.8 {
-            return .blue
-        } else {
-            return .secondary
-        }
-    }
-}
-
-private struct SourceArticleRow: View {
-    let article: GraphRAGResponse.SourceArticle
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(article.title)
-                    .font(.subheadline)
-                    .bold()
-                    .lineLimit(2)
-
-                Spacer()
-
-                if let pubDate = article.pubDate {
-                    Text(pubDate, style: .date)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            if !article.relevantChunks.isEmpty {
-                ForEach(article.relevantChunks.prefix(2)) { chunk in
-                    Text(chunk.content)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(3)
-                        .padding(.leading, 8)
-                        .overlay(alignment: .leading) {
-                            Rectangle()
-                                .fill(.blue.opacity(0.5))
-                                .frame(width: 2)
+            ScrollView {
+                LazyVStack(spacing: 6) {
+                    ForEach(viewModel.persistedHistory) { item in
+                        NavigationLink(value: item) {
+                            HStack {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.query)
+                                        .lineLimit(1)
+                                        .foregroundStyle(.primary)
+                                        .font(.subheadline)
+                                    Text(item.answer)
+                                        .lineLimit(1)
+                                        .foregroundStyle(.secondary)
+                                        .font(.caption)
+                                }
+                                Spacer()
+                                Text(item.createdAt, style: .relative)
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(.background.secondary)
+                            .clipShape(.rect(cornerRadius: 8))
                         }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
-
-            if let link = article.link, let url = URL(string: link) {
-                Link(destination: url) {
-                    Label("Open Article", systemImage: "arrow.up.right.square")
-                        .font(.caption)
-                }
-            }
+            .frame(maxHeight: 250)
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background.secondary)
-        .clipShape(.rect(cornerRadius: 8))
-    }
-}
-
-/// A simple flow layout for wrapping chips.
-private struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = layout(proposal: proposal, subviews: subviews)
-        return result.size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = layout(proposal: proposal, subviews: subviews)
-
-        for (index, placement) in result.placements.enumerated() {
-            subviews[index].place(
-                at: CGPoint(x: bounds.minX + placement.x, y: bounds.minY + placement.y),
-                proposal: ProposedViewSize(placement.size)
-            )
-        }
-    }
-
-    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, placements: [(x: CGFloat, y: CGFloat, size: CGSize)]) {
-        let maxWidth = proposal.width ?? .infinity
-        var placements: [(x: CGFloat, y: CGFloat, size: CGSize)] = []
-
-        var currentX: CGFloat = 0
-        var currentY: CGFloat = 0
-        var lineHeight: CGFloat = 0
-        var totalHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-
-            if currentX + size.width > maxWidth && currentX > 0 {
-                currentX = 0
-                currentY += lineHeight + spacing
-                lineHeight = 0
-            }
-
-            placements.append((x: currentX, y: currentY, size: size))
-            currentX += size.width + spacing
-            lineHeight = max(lineHeight, size.height)
-            totalHeight = currentY + lineHeight
-        }
-
-        return (CGSize(width: maxWidth, height: totalHeight), placements)
     }
 }
 

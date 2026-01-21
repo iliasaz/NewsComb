@@ -38,6 +38,9 @@ struct MainView: View {
                     EmptyView()
                 }
             }
+            .navigationDestination(for: QueryHistoryItem.self) { item in
+                AnswerDetailView(response: item.toGraphRAGResponse())
+            }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Refresh", systemImage: "arrow.clockwise") {

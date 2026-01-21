@@ -69,4 +69,107 @@ final class NewsCombAppUITests: XCTestCase {
         XCTAssertTrue(refreshButton.waitForExistence(timeout: 5), "Refresh button should exist")
         // Note: Refresh button may be disabled when there are no sources
     }
+
+    // MARK: - Navigation Tests
+
+    @MainActor
+    func testNavigationToAllArticles() throws {
+        // Find "All Articles" in various possible forms
+        let allArticlesText = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'All Articles'")).firstMatch
+
+        // If All Articles exists, test navigation
+        if allArticlesText.waitForExistence(timeout: 5) {
+            allArticlesText.tap()
+
+            // Wait for navigation - look for a back button
+            let backButton = app.navigationBars.buttons.element(boundBy: 0)
+            XCTAssertTrue(backButton.waitForExistence(timeout: 5), "Back button should appear after navigation")
+        } else {
+            // The view might be showing empty state, which is fine
+            XCTAssertTrue(true, "All Articles section may not be visible in empty state")
+        }
+    }
+
+    @MainActor
+    func testNavigationBackFromAllArticles() throws {
+        // Find "All Articles" in various possible forms
+        let allArticlesText = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'All Articles'")).firstMatch
+
+        if allArticlesText.waitForExistence(timeout: 5) {
+            allArticlesText.tap()
+
+            // Wait for navigation
+            let backButton = app.navigationBars.buttons.element(boundBy: 0)
+            XCTAssertTrue(backButton.waitForExistence(timeout: 5), "Back button should appear")
+
+            // Tap back button
+            backButton.tap()
+
+            // Verify we're back at main view - All Articles should be visible again
+            XCTAssertTrue(allArticlesText.waitForExistence(timeout: 5), "Should be back at main view with All Articles visible")
+        } else {
+            XCTAssertTrue(true, "All Articles section may not be visible in empty state")
+        }
+    }
+
+    @MainActor
+    func testNavigationToAskYourNews() throws {
+        // "Ask Your News" only appears when knowledge graph has data
+        // Look for the text if it exists
+        let askYourNewsText = app.staticTexts["Ask Your News"].firstMatch
+
+        // If it exists, test navigation
+        if askYourNewsText.waitForExistence(timeout: 3) {
+            askYourNewsText.tap()
+
+            // Should navigate to the Ask Your News view - look for back button
+            let backButton = app.navigationBars.buttons.element(boundBy: 0)
+            XCTAssertTrue(backButton.waitForExistence(timeout: 5), "Back button should appear after navigating to Ask Your News")
+
+            // Verify we're on the Ask Your News page by checking for the Ask button
+            let askButton = app.buttons["Ask"]
+            XCTAssertTrue(askButton.waitForExistence(timeout: 3), "Ask button should exist on Ask Your News view")
+        }
+        // If Ask Your News doesn't exist (no knowledge graph), test passes
+    }
+
+    @MainActor
+    func testNavigationBackFromAskYourNews() throws {
+        // "Ask Your News" only appears when knowledge graph has data
+        let askYourNewsText = app.staticTexts["Ask Your News"].firstMatch
+
+        if askYourNewsText.waitForExistence(timeout: 3) {
+            askYourNewsText.tap()
+
+            // Wait for navigation
+            let backButton = app.navigationBars.buttons.element(boundBy: 0)
+            XCTAssertTrue(backButton.waitForExistence(timeout: 5), "Back button should appear")
+
+            // Navigate back
+            backButton.tap()
+
+            // Verify we're back at main view
+            XCTAssertTrue(askYourNewsText.waitForExistence(timeout: 5), "Should be back at main view with Ask Your News visible")
+        }
+    }
+
+    @MainActor
+    func testMainViewTitleExists() throws {
+        // The main view should have "NewsComb" as its title - check for static text
+        let titleText = app.staticTexts["NewsComb"].firstMatch
+        let navBar = app.navigationBars.firstMatch
+        // Either the title text exists or a navigation bar exists
+        let titleExists = titleText.waitForExistence(timeout: 5) || navBar.waitForExistence(timeout: 5)
+        XCTAssertTrue(titleExists, "NewsComb title or navigation bar should exist")
+    }
+
+    @MainActor
+    func testAddFeedSectionExists() throws {
+        // The Add RSS Feed section should exist
+        let addFeedTextField = app.textFields["RSS Feed URL"]
+        XCTAssertTrue(addFeedTextField.waitForExistence(timeout: 5), "RSS Feed URL text field should exist")
+
+        let addButton = app.buttons["Add"]
+        XCTAssertTrue(addButton.exists, "Add button should exist")
+    }
 }

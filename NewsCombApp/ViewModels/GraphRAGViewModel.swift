@@ -8,14 +8,17 @@ final class GraphRAGViewModel {
 
     var queryText: String = ""
     var isQuerying: Bool = false
-    var currentResponse: GraphRAGResponse?
-    var queryHistory: [GraphRAGResponse] = []
+    var persistedHistory: [QueryHistoryItem] = []
     var errorMessage: String?
+
+    /// Set after executing a query to trigger navigation to the answer view.
+    var pendingNavigationItem: QueryHistoryItem?
 
     // MARK: - Services
 
     private let graphRAGService = GraphRAGService()
     private let hypergraphService = HypergraphService()
+    private let queryHistoryService = QueryHistoryService()
     private let logger = Logger(subsystem: "com.newscomb", category: "GraphRAGViewModel")
 
     // MARK: - Query Execution
@@ -39,12 +42,14 @@ final class GraphRAGViewModel {
             logger.info("Executing GraphRAG query: \(self.queryText, privacy: .public)")
             let response = try await graphRAGService.query(queryText)
 
-            currentResponse = response
-            queryHistory.insert(response, at: 0)
+            // Persist to database
+            try queryHistoryService.save(response)
+            loadHistory()
 
-            // Keep history manageable
-            if queryHistory.count > 20 {
-                queryHistory = Array(queryHistory.prefix(20))
+            // Set the pending navigation item to trigger navigation to the answer view.
+            // The most recently saved item will be first in the history.
+            if let savedItem = persistedHistory.first, savedItem.query == queryText {
+                pendingNavigationItem = savedItem
             }
 
             logger.info("Query completed successfully")
@@ -54,22 +59,40 @@ final class GraphRAGViewModel {
         }
     }
 
-    /// Clears the current query and response.
+    /// Clears the current query.
     func clearQuery() {
         queryText = ""
-        currentResponse = nil
         errorMessage = nil
     }
 
-    /// Loads a previous query from history.
-    func loadFromHistory(_ response: GraphRAGResponse) {
-        queryText = response.query
-        currentResponse = response
+    /// Loads query history from the database.
+    func loadHistory() {
+        do {
+            persistedHistory = try queryHistoryService.fetchRecent(limit: 50)
+        } catch {
+            logger.error("Failed to load history: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Deletes a query history item.
+    func deleteHistoryItem(_ item: QueryHistoryItem) {
+        guard let id = item.id else { return }
+        do {
+            try queryHistoryService.delete(id: id)
+            loadHistory()
+        } catch {
+            logger.error("Failed to delete history item: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     /// Clears the query history.
     func clearHistory() {
-        queryHistory.removeAll()
+        do {
+            try queryHistoryService.deleteAll()
+            persistedHistory.removeAll()
+        } catch {
+            logger.error("Failed to clear history: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     // MARK: - Configuration Check

@@ -169,6 +169,17 @@ public final class Database: Sendable {
                     model_name TEXT,
                     embedding_version INTEGER DEFAULT 1
                 );
+
+                -- Query history for persisting user questions and answers
+                CREATE TABLE IF NOT EXISTS query_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    query TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    related_nodes_json TEXT,
+                    source_articles_json TEXT,
+                    created_at REAL NOT NULL DEFAULT (unixepoch())
+                );
+                CREATE INDEX IF NOT EXISTS idx_query_history_created ON query_history(created_at DESC);
             """)
 
             // Add source_chunk_id column to hypergraph_edge if it doesn't exist
