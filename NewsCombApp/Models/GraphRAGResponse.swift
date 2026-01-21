@@ -34,17 +34,56 @@ struct GraphRAGResponse: Identifiable, Sendable {
         let relation: String
         let sourceNodes: [String]
         let targetNodes: [String]
+        let provenanceText: String?
 
-        /// Formatted display string for the path.
+        init(
+            id: Int64,
+            relation: String,
+            sourceNodes: [String],
+            targetNodes: [String],
+            provenanceText: String? = nil
+        ) {
+            self.id = id
+            self.relation = relation
+            self.sourceNodes = sourceNodes
+            self.targetNodes = targetNodes
+            self.provenanceText = provenanceText
+        }
+
+        /// Natural language sentence describing the relationship.
+        var naturalLanguageSentence: String {
+            let sources = sourceNodes.joined(separator: ", ")
+            let targets = targetNodes.joined(separator: ", ")
+            let verb = formatRelationAsVerb(relation)
+
+            if targets.isEmpty {
+                return "\(sources) \(verb)."
+            }
+            return "\(sources) \(verb) \(targets)."
+        }
+
+        /// Formatted display string for the path (arrow notation).
         var displayText: String {
             let sources = sourceNodes.joined(separator: ", ")
             let targets = targetNodes.joined(separator: ", ")
-            let formattedRelation = relation
+            let formattedRelation = formatRelationAsTitle(relation)
+            return "\(sources) → \(formattedRelation) → \(targets)"
+        }
+
+        /// Formats a relation string as a verb phrase (e.g., "partnered_with" → "partnered with").
+        private func formatRelationAsVerb(_ relation: String) -> String {
+            relation
+                .replacing("_", with: " ")
+                .lowercased()
+        }
+
+        /// Formats a relation string as a title (e.g., "partnered_with" → "Partnered With").
+        private func formatRelationAsTitle(_ relation: String) -> String {
+            relation
                 .replacing("_", with: " ")
                 .split(separator: " ")
                 .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
                 .joined(separator: " ")
-            return "\(sources) → \(formattedRelation) → \(targets)"
         }
     }
 
@@ -56,10 +95,10 @@ struct GraphRAGResponse: Identifiable, Sendable {
         let nodeType: String?
         let distance: Double
 
-        /// Similarity score derived from distance (0-1, higher is more similar).
+        /// Similarity score derived from cosine distance (0-1, higher is more similar).
+        /// Cosine distance = 1 - cosine_similarity, so similarity = 1 - distance.
         var similarity: Double {
-            // Convert L2 distance to similarity (assuming normalized vectors)
-            max(0, 1 - distance / 2)
+            max(0, min(1, 1 - distance))
         }
     }
 
@@ -79,8 +118,9 @@ struct GraphRAGResponse: Identifiable, Sendable {
         let content: String
         let distance: Double
 
+        /// Similarity score derived from cosine distance (0-1, higher is more similar).
         var similarity: Double {
-            max(0, 1 - distance / 2)
+            max(0, min(1, 1 - distance))
         }
     }
 }
@@ -90,6 +130,27 @@ struct GraphRAGContext: Sendable {
     let relevantNodes: [GraphRAGResponse.RelatedNode]
     let relevantEdges: [ContextEdge]
     let relevantChunks: [ChunkWithArticle]
+    let reasoningPaths: [ReasoningPath]
+
+    init(
+        relevantNodes: [GraphRAGResponse.RelatedNode],
+        relevantEdges: [ContextEdge],
+        relevantChunks: [ChunkWithArticle],
+        reasoningPaths: [ReasoningPath] = []
+    ) {
+        self.relevantNodes = relevantNodes
+        self.relevantEdges = relevantEdges
+        self.relevantChunks = relevantChunks
+        self.reasoningPaths = reasoningPaths
+    }
+
+    /// A reasoning path showing how concepts connect through the hypergraph.
+    struct ReasoningPath: Sendable {
+        let sourceConcept: String
+        let targetConcept: String
+        let intermediateNodes: [String]
+        let edgeCount: Int
+    }
 
     /// An edge with its connected nodes for context.
     struct ContextEdge: Sendable {
@@ -122,12 +183,18 @@ struct GraphRAGContext: Sendable {
             parts.append("## Relevant Concepts\n\(nodesList)")
         }
 
+        // Add reasoning paths (structured connections between concepts)
+        if !reasoningPaths.isEmpty {
+            let pathsList = reasoningPaths.prefix(5).map { path in
+                formatReasoningPath(path)
+            }.joined(separator: "\n")
+            parts.append("## Reasoning Paths\n\(pathsList)")
+        }
+
         // Add relationships
         if !relevantEdges.isEmpty {
             let edgesList = relevantEdges.prefix(15).map { edge in
-                let sources = edge.sourceNodes.joined(separator: ", ")
-                let targets = edge.targetNodes.joined(separator: ", ")
-                return "- \(sources) --[\(edge.relation)]--> \(targets)"
+                formatEdge(edge)
             }.joined(separator: "\n")
             parts.append("## Relationships\n\(edgesList)")
         }
@@ -141,5 +208,35 @@ struct GraphRAGContext: Sendable {
         }
 
         return parts.joined(separator: "\n\n")
+    }
+
+    /// Formats a reasoning path as a readable string showing how concepts connect.
+    private func formatReasoningPath(_ path: ReasoningPath) -> String {
+        if path.intermediateNodes.isEmpty {
+            return "- \(path.sourceConcept) connects to \(path.targetConcept)"
+        }
+
+        // Build the path string showing intermediate connections
+        var pathParts: [String] = [path.sourceConcept]
+        for node in path.intermediateNodes {
+            pathParts.append("(via \(node))")
+        }
+        pathParts.append(path.targetConcept)
+
+        return "- " + pathParts.joined(separator: " → ")
+    }
+
+    /// Formats an edge as a natural language relationship.
+    private func formatEdge(_ edge: ContextEdge) -> String {
+        let sources = edge.sourceNodes.joined(separator: ", ")
+        let targets = edge.targetNodes.joined(separator: ", ")
+        let relation = edge.relation
+            .replacing("_", with: " ")
+            .replacing("path edge", with: "relates to")
+
+        if targets.isEmpty {
+            return "- \(sources) (\(relation))"
+        }
+        return "- \(sources) \(relation) \(targets)"
     }
 }

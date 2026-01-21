@@ -14,34 +14,52 @@ final class GraphRAGService: Sendable {
     /// Queries the knowledge graph with a natural language question.
     /// - Parameters:
     ///   - question: The question to answer
-    ///   - maxNodes: Maximum number of similar nodes to retrieve
+    ///   - maxNodes: Maximum number of similar nodes to retrieve per keyword
     ///   - maxChunks: Maximum number of relevant chunks to retrieve
     /// - Returns: A GraphRAGResponse containing the answer and sources
     @MainActor
-    func query(_ question: String, maxNodes: Int = 10, maxChunks: Int = 5) async throws -> GraphRAGResponse {
+    func query(_ question: String, maxNodes: Int = 5, maxChunks: Int = 5) async throws -> GraphRAGResponse {
         logger.info("GraphRAG query: \(question, privacy: .public)")
 
-        // Step 1: Embed the query
-        let queryEmbedding = try await embedQuery(question)
-        logger.debug("Query embedded successfully")
+        // Step 1: Extract keywords from the question using LLM
+        let keywords = try await extractKeywords(from: question)
+        logger.info("Extracted keywords: \(keywords.joined(separator: ", "), privacy: .public)")
 
-        // Step 2: Find similar nodes using sqlite-vec
-        let similarNodes = try findSimilarNodes(queryEmbedding: queryEmbedding, limit: maxNodes)
-        logger.info("Found \(similarNodes.count) similar nodes")
+        // Step 2: Embed each keyword and find similar nodes
+        var allSimilarNodes: [GraphRAGResponse.RelatedNode] = []
+        var seenNodeIds: Set<Int64> = []
 
-        // Step 3: Traverse edges from similar nodes to gather context
+        for keyword in keywords {
+            let keywordEmbedding = try await embedQuery(keyword)
+            let nodes = try findSimilarNodes(queryEmbedding: keywordEmbedding, limit: maxNodes)
+
+            // Deduplicate nodes across keywords
+            for node in nodes where !seenNodeIds.contains(node.id) {
+                seenNodeIds.insert(node.id)
+                allSimilarNodes.append(node)
+            }
+        }
+
+        // Sort by similarity (distance ascending)
+        let similarNodes = allSimilarNodes.sorted { $0.distance < $1.distance }
+        logger.info("Found \(similarNodes.count) similar nodes from \(keywords.count) keywords")
+
+        // Step 3: Embed full question for chunk similarity search
+        let questionEmbedding = try await embedQuery(question)
+
+        // Step 4: Traverse edges from similar nodes to gather context
         let context = try gatherContext(
             fromNodes: similarNodes,
-            queryEmbedding: queryEmbedding,
+            queryEmbedding: questionEmbedding,
             maxChunks: maxChunks
         )
         logger.info("Gathered context: \(context.relevantEdges.count) edges, \(context.relevantChunks.count) chunks")
 
-        // Step 4: Generate answer using LLM
+        // Step 5: Generate answer using LLM
         let answer = try await generateAnswer(question: question, context: context)
         logger.info("Answer generated successfully")
 
-        // Step 5: Build response with sources and graph paths
+        // Step 6: Build response with sources and graph paths
         let sourceArticles = try buildSourceArticles(from: context)
         let graphPaths = buildGraphPaths(from: context)
 
@@ -52,6 +70,105 @@ final class GraphRAGService: Sendable {
             graphPaths: graphPaths,
             sourceArticles: sourceArticles
         )
+    }
+
+    // MARK: - Keyword Extraction
+
+    /// System prompt for keyword extraction.
+    private static let keywordExtractionPrompt = """
+        You are a strict keyword extractor for a knowledge graph search.
+
+        Rules:
+        - Output EXACTLY one JSON object: {"keywords": [<strings>]} with no extra text.
+        - Extract the key entities, concepts, and domain-specific terms from the question.
+        - Include proper nouns (people, organizations, places), technical terms, and important concepts.
+        - Never include verbs, stopwords, or question words (who, what, how, etc.).
+        - Lowercase all keywords unless they are acronyms or proper nouns.
+        - Return 2-5 keywords maximum.
+        - No explanations, just the JSON.
+
+        Example:
+        Question: "How can hydrogel mechanistically relate to PCL?"
+        {"keywords": ["hydrogel", "PCL"]}
+
+        Example:
+        Question: "What companies are partnering with Google Cloud?"
+        {"keywords": ["Google Cloud", "partnerships", "companies"]}
+        """
+
+    /// Extracts keywords from a question using the LLM.
+    @MainActor
+    private func extractKeywords(from question: String) async throws -> [String] {
+        let settings = try loadSettings()
+
+        let userPrompt = "Question: \"\(question)\""
+
+        let response: String
+        switch settings.provider {
+        case "ollama":
+            response = try await generateWithOllama(
+                systemPrompt: Self.keywordExtractionPrompt,
+                userPrompt: userPrompt,
+                settings: settings
+            )
+        case "openrouter":
+            response = try await generateWithOpenRouter(
+                systemPrompt: Self.keywordExtractionPrompt,
+                userPrompt: userPrompt,
+                settings: settings
+            )
+        default:
+            // Fallback: split question into words and filter stopwords
+            return extractKeywordsFallback(from: question)
+        }
+
+        // Parse JSON response
+        return parseKeywordsFromJSON(response) ?? extractKeywordsFallback(from: question)
+    }
+
+    /// Parses keywords from a JSON response like {"keywords": ["a", "b"]}.
+    private func parseKeywordsFromJSON(_ response: String) -> [String]? {
+        // Find JSON in response (handle markdown code blocks)
+        let cleaned = response
+            .replacing("```json", with: "")
+            .replacing("```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let data = cleaned.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let keywords = json["keywords"] as? [String],
+              !keywords.isEmpty else {
+            return nil
+        }
+
+        return keywords
+    }
+
+    /// Fallback keyword extraction using simple NLP heuristics.
+    private func extractKeywordsFallback(from question: String) -> [String] {
+        let stopwords: Set<String> = [
+            "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+            "have", "has", "had", "do", "does", "did", "will", "would", "could",
+            "should", "may", "might", "must", "shall", "can", "need", "dare",
+            "to", "of", "in", "for", "on", "with", "at", "by", "from", "as",
+            "into", "through", "during", "before", "after", "above", "below",
+            "between", "under", "again", "further", "then", "once", "here",
+            "there", "when", "where", "why", "how", "all", "each", "few",
+            "more", "most", "other", "some", "such", "no", "nor", "not",
+            "only", "own", "same", "so", "than", "too", "very", "just",
+            "and", "but", "if", "or", "because", "until", "while", "what",
+            "which", "who", "whom", "this", "that", "these", "those", "am",
+            "about", "it", "its", "they", "their", "them", "we", "us", "our",
+            "you", "your", "he", "she", "him", "her", "his", "i", "me", "my"
+        ]
+
+        let words = question
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { $0.count > 2 && !stopwords.contains($0) }
+
+        // Return unique keywords, max 5
+        return Array(Set(words)).prefix(5).map { $0 }
     }
 
     // MARK: - Embedding
@@ -70,19 +187,29 @@ final class GraphRAGService: Sendable {
 
     // MARK: - Similarity Search
 
-    /// Finds nodes similar to the query using sqlite-vec.
+    /// Similarity threshold for filtering results (cosine distance, lower = more similar).
+    /// Cosine distance of 0.3 corresponds to ~85% similarity.
+    private static let similarityThreshold: Double = 0.5
+
+    /// Finds nodes similar to the query using sqlite-vec with cosine distance.
+    /// Cosine distance = 1 - cosine_similarity, so 0 = identical, 2 = opposite.
     private func findSimilarNodes(queryEmbedding: Data, limit: Int) throws -> [GraphRAGResponse.RelatedNode] {
         try database.read { db in
             let sql = """
                 SELECT hn.id, hn.node_id, hn.label, hn.node_type,
-                       vec_distance_L2(ne.embedding, ?) as distance
+                       vec_distance_cosine(ne.embedding, ?) as distance
                 FROM hypergraph_node hn
                 JOIN node_embedding ne ON hn.id = ne.node_id
+                WHERE vec_distance_cosine(ne.embedding, ?) < ?
                 ORDER BY distance ASC
                 LIMIT ?
             """
 
-            let rows = try Row.fetchAll(db, sql: sql, arguments: [queryEmbedding, limit])
+            let rows = try Row.fetchAll(
+                db,
+                sql: sql,
+                arguments: [queryEmbedding, queryEmbedding, Self.similarityThreshold, limit]
+            )
             return rows.map { row in
                 GraphRAGResponse.RelatedNode(
                     id: row["id"],
@@ -95,21 +222,26 @@ final class GraphRAGService: Sendable {
         }
     }
 
-    /// Finds chunks similar to the query using sqlite-vec.
+    /// Finds chunks similar to the query using sqlite-vec with cosine distance.
     private func findSimilarChunks(queryEmbedding: Data, limit: Int) throws -> [GraphRAGContext.ChunkWithArticle] {
         try database.read { db in
             let sql = """
                 SELECT ac.id as chunk_id, ac.chunk_index, ac.content,
-                       vec_distance_L2(ce.embedding, ?) as distance,
+                       vec_distance_cosine(ce.embedding, ?) as distance,
                        fi.id as article_id, fi.title as article_title
                 FROM article_chunk ac
                 JOIN chunk_embedding ce ON ac.id = ce.chunk_id
                 JOIN feed_item fi ON ac.feed_item_id = fi.id
+                WHERE vec_distance_cosine(ce.embedding, ?) < ?
                 ORDER BY distance ASC
                 LIMIT ?
             """
 
-            let rows = try Row.fetchAll(db, sql: sql, arguments: [queryEmbedding, limit])
+            let rows = try Row.fetchAll(
+                db,
+                sql: sql,
+                arguments: [queryEmbedding, queryEmbedding, Self.similarityThreshold, limit]
+            )
             return rows.map { row in
                 GraphRAGContext.ChunkWithArticle(
                     chunkId: row["chunk_id"],
@@ -125,7 +257,10 @@ final class GraphRAGService: Sendable {
 
     // MARK: - Context Gathering
 
+    private let pathService = HypergraphPathService()
+
     /// Gathers context from the knowledge graph based on similar nodes.
+    /// Uses hypergraph BFS to find reasoning paths between nodes.
     private func gatherContext(
         fromNodes nodes: [GraphRAGResponse.RelatedNode],
         queryEmbedding: Data,
@@ -133,8 +268,24 @@ final class GraphRAGService: Sendable {
     ) throws -> GraphRAGContext {
         let nodeIds = nodes.map { $0.id }
 
-        // Get edges connected to the similar nodes
-        let edges = try findEdgesForNodes(nodeIds: nodeIds)
+        // Find reasoning paths between nodes using hypergraph BFS
+        let pathReports = try pathService.findPaths(
+            between: nodeIds,
+            intersectionThreshold: 1,
+            maxPaths: 3
+        )
+
+        // Convert path reports to reasoning paths for context
+        let reasoningPaths = convertToReasoningPaths(pathReports)
+
+        // Convert path reports to context edges with path structure
+        let edges = convertPathReportsToEdges(pathReports)
+
+        // Also get direct edges for nodes without paths
+        let directEdges = try findEdgesForNodes(nodeIds: nodeIds)
+
+        // Merge edges, preferring path-based ones
+        let allEdges = mergeEdges(pathEdges: edges, directEdges: directEdges)
 
         // Find relevant chunks (from chunk embeddings if available, otherwise from provenance)
         var chunks = try findSimilarChunks(queryEmbedding: queryEmbedding, limit: maxChunks)
@@ -146,9 +297,74 @@ final class GraphRAGService: Sendable {
 
         return GraphRAGContext(
             relevantNodes: nodes,
-            relevantEdges: edges,
-            relevantChunks: chunks
+            relevantEdges: allEdges,
+            relevantChunks: chunks,
+            reasoningPaths: reasoningPaths
         )
+    }
+
+    /// Converts hypergraph path reports to reasoning paths for the context.
+    private func convertToReasoningPaths(
+        _ reports: [HypergraphPathService.PathReport]
+    ) -> [GraphRAGContext.ReasoningPath] {
+        reports.map { report in
+            // Collect all intermediate nodes from hops
+            let intermediateNodes = report.hops.flatMap { $0.intersectionNodes }
+            // Remove duplicates while preserving order
+            let uniqueIntermediates = intermediateNodes.reduce(into: [String]()) { result, node in
+                if !result.contains(node) {
+                    result.append(node)
+                }
+            }
+
+            return GraphRAGContext.ReasoningPath(
+                sourceConcept: report.pair.0,
+                targetConcept: report.pair.1,
+                intermediateNodes: uniqueIntermediates,
+                edgeCount: report.edgePath.count
+            )
+        }
+    }
+
+    /// Converts hypergraph path reports to context edges.
+    private func convertPathReportsToEdges(
+        _ reports: [HypergraphPathService.PathReport]
+    ) -> [GraphRAGContext.ContextEdge] {
+        var edges: [GraphRAGContext.ContextEdge] = []
+        var seenEdgeIds: Set<Int64> = []
+
+        for report in reports {
+            for edgeId in report.edgePath where !seenEdgeIds.contains(edgeId) {
+                seenEdgeIds.insert(edgeId)
+
+                let members = report.edgeMembers[edgeId] ?? []
+                // For path edges, we show all members as a relationship
+                edges.append(GraphRAGContext.ContextEdge(
+                    edgeId: edgeId,
+                    relation: "path_edge",
+                    sourceNodes: members,
+                    targetNodes: [],
+                    chunkText: nil
+                ))
+            }
+        }
+
+        return edges
+    }
+
+    /// Merges path-based edges with direct edges, avoiding duplicates.
+    private func mergeEdges(
+        pathEdges: [GraphRAGContext.ContextEdge],
+        directEdges: [GraphRAGContext.ContextEdge]
+    ) -> [GraphRAGContext.ContextEdge] {
+        var result = pathEdges
+        let pathEdgeIds = Set(pathEdges.map { $0.edgeId })
+
+        for edge in directEdges where !pathEdgeIds.contains(edge.edgeId) {
+            result.append(edge)
+        }
+
+        return result
     }
 
     /// Finds edges connected to the given nodes.
@@ -311,7 +527,7 @@ final class GraphRAGService: Sendable {
 
     // MARK: - Graph Path Building
 
-    /// Converts context edges to graph paths for the response.
+    /// Converts context edges to graph paths for the response, including provenance text.
     private func buildGraphPaths(from context: GraphRAGContext) -> [GraphRAGResponse.GraphPath] {
         context.relevantEdges.compactMap { edge in
             // Skip edges with no meaningful connections
@@ -320,7 +536,8 @@ final class GraphRAGService: Sendable {
                 id: edge.edgeId,
                 relation: edge.relation,
                 sourceNodes: edge.sourceNodes,
-                targetNodes: edge.targetNodes
+                targetNodes: edge.targetNodes,
+                provenanceText: edge.chunkText
             )
         }
     }

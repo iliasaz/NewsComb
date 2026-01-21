@@ -93,7 +93,8 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
                 id: path.id,
                 relation: path.relation,
                 sourceNodes: path.sourceNodes,
-                targetNodes: path.targetNodes
+                targetNodes: path.targetNodes,
+                provenanceText: path.provenanceText
             )
         }
         guard let data = try? JSONEncoder().encode(encodablePaths) else { return nil }
@@ -149,7 +150,8 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
                 id: path.id,
                 relation: path.relation,
                 sourceNodes: path.sourceNodes,
-                targetNodes: path.targetNodes
+                targetNodes: path.targetNodes,
+                provenanceText: path.provenanceText
             )
         }
     }
@@ -209,4 +211,5 @@ private struct EncodableGraphPath: Codable {
     let relation: String
     let sourceNodes: [String]
     let targetNodes: [String]
+    let provenanceText: String?
 }

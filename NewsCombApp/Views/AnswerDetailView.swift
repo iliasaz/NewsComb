@@ -162,32 +162,30 @@ private struct GraphPathRow: View {
     let path: GraphRAGResponse.GraphPath
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "arrow.triangle.branch")
-                .foregroundStyle(.purple)
-                .frame(width: 16)
+        VStack(alignment: .leading, spacing: 6) {
+            // Natural language sentence
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "arrow.triangle.branch")
+                    .foregroundStyle(.purple)
+                    .frame(width: 16)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    ForEach(path.sourceNodes, id: \.self) { node in
-                        Text(node)
-                            .font(.caption)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.blue.opacity(0.15))
-                            .foregroundStyle(.blue)
-                            .clipShape(.capsule)
-                    }
+                Text(path.naturalLanguageSentence)
+                    .font(.subheadline)
+            }
 
-                    Image(systemName: "arrow.right")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-
-                    Text(formattedRelation)
+            // Visual chip representation
+            HStack(spacing: 4) {
+                ForEach(path.sourceNodes, id: \.self) { node in
+                    Text(node)
                         .font(.caption)
-                        .italic()
-                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.blue.opacity(0.15))
+                        .foregroundStyle(.blue)
+                        .clipShape(.capsule)
+                }
 
+                if !path.targetNodes.isEmpty {
                     Image(systemName: "arrow.right")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -203,16 +201,19 @@ private struct GraphPathRow: View {
                     }
                 }
             }
+            .padding(.leading, 24)
+
+            // Provenance text if available
+            if let provenance = path.provenanceText, !provenance.isEmpty {
+                Text("Source: \"\(provenance)\"")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .italic()
+                    .lineLimit(2)
+                    .padding(.leading, 24)
+            }
         }
         .padding(.vertical, 4)
-    }
-
-    private var formattedRelation: String {
-        path.relation
-            .replacing("_", with: " ")
-            .split(separator: " ")
-            .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
-            .joined(separator: " ")
     }
 }
 
@@ -342,8 +343,8 @@ private struct FlowLayout: Layout {
                 .init(id: 2, nodeId: "cloud", label: "Cloud Computing", nodeType: "TOPIC", distance: 0.2)
             ],
             graphPaths: [
-                .init(id: 1, relation: "partnered_with", sourceNodes: ["Palo Alto Networks"], targetNodes: ["Google Cloud"]),
-                .init(id: 2, relation: "acquired", sourceNodes: ["Micron"], targetNodes: ["PSMC"]),
+                .init(id: 1, relation: "partnered_with", sourceNodes: ["Palo Alto Networks"], targetNodes: ["Google Cloud"], provenanceText: "Palo Alto Networks partnered with Google Cloud to modernize their data processing landscape."),
+                .init(id: 2, relation: "acquired", sourceNodes: ["Micron"], targetNodes: ["PSMC"], provenanceText: "Micron acquired a chipmaking campus from PSMC for $1.8 billion."),
                 .init(id: 3, relation: "announced_partnership", sourceNodes: ["ServiceNow"], targetNodes: ["OpenAI"])
             ],
             sourceArticles: [
