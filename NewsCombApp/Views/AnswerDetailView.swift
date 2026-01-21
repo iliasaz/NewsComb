@@ -45,8 +45,21 @@ struct AnswerDetailView: View {
             Label("Answer", systemImage: "text.bubble")
                 .font(.headline)
 
-            Text(response.answer)
+            let markdown = try? AttributedString(
+              markdown: response.answer,
+              options: .init(
+                allowsExtendedAttributes: true,
+                interpretedSyntax: .inlineOnly,
+                failurePolicy: .returnPartiallyParsedIfPossible
+              )
+            )
+            if let markdown {
+              Text(markdown)
                 .textSelection(.enabled)
+            } else {
+              Text(response.answer)
+                .textSelection(.enabled)
+            }
 
             HStack {
                 Text("Generated")
@@ -229,7 +242,16 @@ private struct FlowLayout: Layout {
     NavigationStack {
         AnswerDetailView(response: GraphRAGResponse(
             query: "What are the main topics discussed in recent articles?",
-            answer: "Based on the knowledge graph, the main topics include AI developments, cloud computing, cybersecurity, and technology industry trends.",
+            answer: """
+            Several events have happened recently. Here are a few examples:
+            1. **AWS Community Day events**: Various AWS re:invent re:Caps were hosted around the globe, and the AWS Community Day Tel Aviv 2026 was hosted last week.
+            2. **Micron's acquisition**: Micron acquired a chipmaking campus from Taiwanese outfit Powerchip Semiconductor Manufacturing Corporation (PSMC) for $1.8 billion.
+            3. **Cyberattack on a Warwickshire school**: A cyberattack forced a prolonged closure of Higham Lane School in Nuneaton, but it has since reopened.
+            4. **Palo Alto Networks' data platform transformation**: Palo Alto Networks partnered with Google Cloud to modernize their data processing landscape into a unified multi-tenant platform powered by Dataflow, Pub/Sub, and BigQuery.
+            5. **ServiceNow and OpenAI partnership**: ServiceNow announced a multi-year agreement with OpenAI to expand customer access to OpenAI frontier models.
+            
+            These events were mentioned in the source articles: "AWS Weekly Roundup: Kiro CLI latest features, AWS European Sovereign Cloud, EC2 X8i instances, and more (January 19, 2026)", "Micron finds a way to make more DRAM with $1.8bn chip plant purchase", "Warwickshire school to reopen after cyberattack crippled IT", "How Palo Alto Networks built a multi tenant scalable Unified Data Platform", and "ServiceNow powers actionable enterprise AI with OpenAI".
+            """,
             relatedNodes: [
                 .init(id: 1, nodeId: "ai", label: "Artificial Intelligence", nodeType: "TOPIC", distance: 0.1),
                 .init(id: 2, nodeId: "cloud", label: "Cloud Computing", nodeType: "TOPIC", distance: 0.2)
