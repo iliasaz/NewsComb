@@ -50,19 +50,19 @@ struct AnswerDetailView: View {
                 .font(.headline)
 
             let markdown = try? AttributedString(
-              markdown: response.answer,
-              options: .init(
-                allowsExtendedAttributes: true,
-                interpretedSyntax: .inlineOnly,
-                failurePolicy: .returnPartiallyParsedIfPossible
-              )
+                markdown: response.answer,
+                options: .init(
+                    allowsExtendedAttributes: true,
+                    interpretedSyntax: .inlineOnly,
+                    failurePolicy: .returnPartiallyParsedIfPossible
+                )
             )
             if let markdown {
-              Text(markdown)
-                .textSelection(.enabled)
+                Text(markdown)
+                    .textSelection(.enabled)
             } else {
-              Text(response.answer)
-                .textSelection(.enabled)
+                Text(response.answer)
+                    .textSelection(.enabled)
             }
 
             HStack {
@@ -269,6 +269,16 @@ private struct SourceArticleRow: View {
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 8
 
+    struct LayoutResult {
+        let size: CGSize
+        let placements: [Placement]
+    }
+
+    struct Placement {
+        let origin: CGPoint
+        let size: CGSize
+    }
+
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let result = layout(proposal: proposal, subviews: subviews)
         return result.size
@@ -279,15 +289,15 @@ private struct FlowLayout: Layout {
 
         for (index, placement) in result.placements.enumerated() {
             subviews[index].place(
-                at: CGPoint(x: bounds.minX + placement.x, y: bounds.minY + placement.y),
+                at: CGPoint(x: bounds.minX + placement.origin.x, y: bounds.minY + placement.origin.y),
                 proposal: ProposedViewSize(placement.size)
             )
         }
     }
 
-    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, placements: [(x: CGFloat, y: CGFloat, size: CGSize)]) {
+    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> LayoutResult {
         let maxWidth = proposal.width ?? .infinity
-        var placements: [(x: CGFloat, y: CGFloat, size: CGSize)] = []
+        var placements: [Placement] = []
 
         var currentX: CGFloat = 0
         var currentY: CGFloat = 0
@@ -303,13 +313,13 @@ private struct FlowLayout: Layout {
                 lineHeight = 0
             }
 
-            placements.append((x: currentX, y: currentY, size: size))
+            placements.append(Placement(origin: CGPoint(x: currentX, y: currentY), size: size))
             currentX += size.width + spacing
             lineHeight = max(lineHeight, size.height)
             totalHeight = currentY + lineHeight
         }
 
-        return (CGSize(width: maxWidth, height: totalHeight), placements)
+        return LayoutResult(size: CGSize(width: maxWidth, height: totalHeight), placements: placements)
     }
 }
 
