@@ -327,6 +327,10 @@ final class GraphRAGService: Sendable {
     }
 
     /// Converts hypergraph path reports to context edges by fetching edge details from the database.
+    ///
+    /// - Important: The human-readable relation must be extracted from `edge_id` using
+    ///   `ContextCollector.extractRelation(from:)`. The `relation` column in the database
+    ///   may contain incorrectly extracted values. Edge ID format: "relation_chunkXXX_N".
     private func convertPathReportsToEdges(
         _ reports: [HypergraphPathService.PathReport]
     ) throws -> [GraphRAGContext.ContextEdge] {
@@ -343,8 +347,10 @@ final class GraphRAGService: Sendable {
         // Fetch edge details from the database with proper source/target roles
         return try database.read { db in
             let placeholders = edgeIds.map { _ in "?" }.joined(separator: ", ")
+            // NOTE: We fetch edge_id to extract the human-readable relation using
+            // ContextCollector.extractRelation(). The relation column may have incorrect values.
             let sql = """
-                SELECT he.id, he.relation, aep.chunk_text,
+                SELECT he.id, he.edge_id, he.relation, aep.chunk_text,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'source' THEN hn.label END) as sources,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'target' THEN hn.label END) as targets
                 FROM hypergraph_edge he
@@ -366,9 +372,14 @@ final class GraphRAGService: Sendable {
                 // Skip edges with no meaningful connection
                 guard !sources.isEmpty || !targets.isEmpty else { return nil }
 
+                // Extract human-readable relation from edge_id (format: "relation_chunkXXX_N")
+                // Falls back to the relation column if extraction fails
+                let edgeIdStr: String = row["edge_id"]
+                let relation = ContextCollector.extractRelation(from: edgeIdStr) ?? row["relation"]
+
                 return GraphRAGContext.ContextEdge(
                     edgeId: row["id"],
-                    relation: row["relation"],
+                    relation: relation,
                     sourceNodes: sources,
                     targetNodes: targets,
                     chunkText: row["chunk_text"]
@@ -393,14 +404,20 @@ final class GraphRAGService: Sendable {
     }
 
     /// Finds edges connected to the given nodes.
+    ///
+    /// - Important: The human-readable relation must be extracted from `edge_id` using
+    ///   `ContextCollector.extractRelation(from:)`. The `relation` column in the database
+    ///   may contain incorrectly extracted values. Edge ID format: "relation_chunkXXX_N".
     private func findEdgesForNodes(nodeIds: [Int64]) throws -> [GraphRAGContext.ContextEdge] {
         guard !nodeIds.isEmpty else { return [] }
 
         return try database.read { db in
             let placeholders = nodeIds.map { _ in "?" }.joined(separator: ", ")
             // First find edges connected to searched nodes, then get ALL their incidences
+            // NOTE: We fetch edge_id to extract the human-readable relation using
+            // ContextCollector.extractRelation(). The relation column may have incorrect values.
             let sql = """
-                SELECT he.id, he.relation, aep.chunk_text,
+                SELECT he.id, he.edge_id, he.relation, aep.chunk_text,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'source' THEN hn.label END) as sources,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'target' THEN hn.label END) as targets
                 FROM hypergraph_edge he
@@ -425,9 +442,14 @@ final class GraphRAGService: Sendable {
                 // Skip edges with no meaningful connection
                 guard !sources.isEmpty || !targets.isEmpty else { return nil }
 
+                // Extract human-readable relation from edge_id (format: "relation_chunkXXX_N")
+                // Falls back to the relation column if extraction fails
+                let edgeIdStr: String = row["edge_id"]
+                let relation = ContextCollector.extractRelation(from: edgeIdStr) ?? row["relation"]
+
                 return GraphRAGContext.ContextEdge(
                     edgeId: row["id"],
-                    relation: row["relation"],
+                    relation: relation,
                     sourceNodes: sources,
                     targetNodes: targets,
                     chunkText: row["chunk_text"]
