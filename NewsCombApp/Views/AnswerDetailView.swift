@@ -14,6 +14,10 @@ struct AnswerDetailView: View {
                     relatedNodesSection
                 }
 
+                if !response.graphPaths.isEmpty {
+                    graphPathsSection
+                }
+
                 if !response.sourceArticles.isEmpty {
                     sourcesSection
                 }
@@ -92,6 +96,19 @@ struct AnswerDetailView: View {
         }
     }
 
+    private var graphPathsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Reasoning Paths", systemImage: "point.topright.arrow.triangle.backward.to.point.bottomleft.scurvepath")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(response.graphPaths.prefix(10)) { path in
+                    GraphPathRow(path: path)
+                }
+            }
+        }
+    }
+
     private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Sources", systemImage: "doc.text")
@@ -138,6 +155,64 @@ private struct NodeChip: View {
         } else {
             return .secondary
         }
+    }
+}
+
+private struct GraphPathRow: View {
+    let path: GraphRAGResponse.GraphPath
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "arrow.triangle.branch")
+                .foregroundStyle(.purple)
+                .frame(width: 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    ForEach(path.sourceNodes, id: \.self) { node in
+                        Text(node)
+                            .font(.caption)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.blue.opacity(0.15))
+                            .foregroundStyle(.blue)
+                            .clipShape(.capsule)
+                    }
+
+                    Image(systemName: "arrow.right")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    Text(formattedRelation)
+                        .font(.caption)
+                        .italic()
+                        .foregroundStyle(.secondary)
+
+                    Image(systemName: "arrow.right")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    ForEach(path.targetNodes, id: \.self) { node in
+                        Text(node)
+                            .font(.caption)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.green.opacity(0.15))
+                            .foregroundStyle(.green)
+                            .clipShape(.capsule)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var formattedRelation: String {
+        path.relation
+            .replacing("_", with: " ")
+            .split(separator: " ")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+            .joined(separator: " ")
     }
 }
 
@@ -249,12 +324,17 @@ private struct FlowLayout: Layout {
             3. **Cyberattack on a Warwickshire school**: A cyberattack forced a prolonged closure of Higham Lane School in Nuneaton, but it has since reopened.
             4. **Palo Alto Networks' data platform transformation**: Palo Alto Networks partnered with Google Cloud to modernize their data processing landscape into a unified multi-tenant platform powered by Dataflow, Pub/Sub, and BigQuery.
             5. **ServiceNow and OpenAI partnership**: ServiceNow announced a multi-year agreement with OpenAI to expand customer access to OpenAI frontier models.
-            
+
             These events were mentioned in the source articles: "AWS Weekly Roundup: Kiro CLI latest features, AWS European Sovereign Cloud, EC2 X8i instances, and more (January 19, 2026)", "Micron finds a way to make more DRAM with $1.8bn chip plant purchase", "Warwickshire school to reopen after cyberattack crippled IT", "How Palo Alto Networks built a multi tenant scalable Unified Data Platform", and "ServiceNow powers actionable enterprise AI with OpenAI".
             """,
             relatedNodes: [
                 .init(id: 1, nodeId: "ai", label: "Artificial Intelligence", nodeType: "TOPIC", distance: 0.1),
                 .init(id: 2, nodeId: "cloud", label: "Cloud Computing", nodeType: "TOPIC", distance: 0.2)
+            ],
+            graphPaths: [
+                .init(id: 1, relation: "partnered_with", sourceNodes: ["Palo Alto Networks"], targetNodes: ["Google Cloud"]),
+                .init(id: 2, relation: "acquired", sourceNodes: ["Micron"], targetNodes: ["PSMC"]),
+                .init(id: 3, relation: "announced_partnership", sourceNodes: ["ServiceNow"], targetNodes: ["OpenAI"])
             ],
             sourceArticles: [
                 .init(id: 1, title: "AI Advances in 2026", link: "https://example.com", pubDate: Date(), relevantChunks: [

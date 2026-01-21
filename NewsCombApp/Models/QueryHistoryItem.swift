@@ -7,6 +7,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     let query: String
     let answer: String
     let relatedNodesJson: String?
+    let graphPathsJson: String?
     let sourceArticlesJson: String?
     let createdAt: Date
 
@@ -15,6 +16,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     enum Columns: String, ColumnExpression {
         case id, query, answer
         case relatedNodesJson = "related_nodes_json"
+        case graphPathsJson = "graph_paths_json"
         case sourceArticlesJson = "source_articles_json"
         case createdAt = "created_at"
     }
@@ -22,6 +24,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     enum CodingKeys: String, CodingKey {
         case id, query, answer
         case relatedNodesJson = "related_nodes_json"
+        case graphPathsJson = "graph_paths_json"
         case sourceArticlesJson = "source_articles_json"
         case createdAt = "created_at"
     }
@@ -31,6 +34,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         query: String,
         answer: String,
         relatedNodesJson: String? = nil,
+        graphPathsJson: String? = nil,
         sourceArticlesJson: String? = nil,
         createdAt: Date = Date()
     ) {
@@ -38,6 +42,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         self.query = query
         self.answer = answer
         self.relatedNodesJson = relatedNodesJson
+        self.graphPathsJson = graphPathsJson
         self.sourceArticlesJson = sourceArticlesJson
         self.createdAt = createdAt
     }
@@ -48,6 +53,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         self.query = response.query
         self.answer = response.answer
         self.relatedNodesJson = Self.encodeRelatedNodes(response.relatedNodes)
+        self.graphPathsJson = Self.encodeGraphPaths(response.graphPaths)
         self.sourceArticlesJson = Self.encodeSourceArticles(response.sourceArticles)
         self.createdAt = response.generatedAt
     }
@@ -59,6 +65,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
             query: query,
             answer: answer,
             relatedNodes: decodeRelatedNodes(),
+            graphPaths: decodeGraphPaths(),
             sourceArticles: decodeSourceArticles(),
             generatedAt: createdAt
         )
@@ -77,6 +84,19 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
             )
         }
         guard let data = try? JSONEncoder().encode(encodableNodes) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func encodeGraphPaths(_ paths: [GraphRAGResponse.GraphPath]) -> String? {
+        let encodablePaths = paths.map { path in
+            EncodableGraphPath(
+                id: path.id,
+                relation: path.relation,
+                sourceNodes: path.sourceNodes,
+                targetNodes: path.targetNodes
+            )
+        }
+        guard let data = try? JSONEncoder().encode(encodablePaths) else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
@@ -114,6 +134,22 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
                 label: node.label,
                 nodeType: node.nodeType,
                 distance: node.distance
+            )
+        }
+    }
+
+    private func decodeGraphPaths() -> [GraphRAGResponse.GraphPath] {
+        guard let json = graphPathsJson,
+              let data = json.data(using: .utf8),
+              let paths = try? JSONDecoder().decode([EncodableGraphPath].self, from: data) else {
+            return []
+        }
+        return paths.map { path in
+            GraphRAGResponse.GraphPath(
+                id: path.id,
+                relation: path.relation,
+                sourceNodes: path.sourceNodes,
+                targetNodes: path.targetNodes
             )
         }
     }
@@ -166,4 +202,11 @@ private struct EncodableRelevantChunk: Codable {
     let chunkIndex: Int
     let content: String
     let distance: Double
+}
+
+private struct EncodableGraphPath: Codable {
+    let id: Int64
+    let relation: String
+    let sourceNodes: [String]
+    let targetNodes: [String]
 }

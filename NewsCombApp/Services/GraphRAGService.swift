@@ -41,13 +41,15 @@ final class GraphRAGService: Sendable {
         let answer = try await generateAnswer(question: question, context: context)
         logger.info("Answer generated successfully")
 
-        // Step 5: Build response with sources
+        // Step 5: Build response with sources and graph paths
         let sourceArticles = try buildSourceArticles(from: context)
+        let graphPaths = buildGraphPaths(from: context)
 
         return GraphRAGResponse(
             query: question,
             answer: answer,
             relatedNodes: similarNodes,
+            graphPaths: graphPaths,
             sourceArticles: sourceArticles
         )
     }
@@ -302,6 +304,22 @@ final class GraphRAGService: Sendable {
             model: model,
             temperature: 0.7
         )
+    }
+
+    // MARK: - Graph Path Building
+
+    /// Converts context edges to graph paths for the response.
+    private func buildGraphPaths(from context: GraphRAGContext) -> [GraphRAGResponse.GraphPath] {
+        context.relevantEdges.compactMap { edge in
+            // Skip edges with no meaningful connections
+            guard !edge.sourceNodes.isEmpty || !edge.targetNodes.isEmpty else { return nil }
+            return GraphRAGResponse.GraphPath(
+                id: edge.edgeId,
+                relation: edge.relation,
+                sourceNodes: edge.sourceNodes,
+                targetNodes: edge.targetNodes
+            )
+        }
     }
 
     // MARK: - Source Building

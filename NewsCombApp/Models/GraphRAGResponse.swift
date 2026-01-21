@@ -6,6 +6,7 @@ struct GraphRAGResponse: Identifiable, Sendable {
     let query: String
     let answer: String
     let relatedNodes: [RelatedNode]
+    let graphPaths: [GraphPath]
     let sourceArticles: [SourceArticle]
     let generatedAt: Date
 
@@ -14,6 +15,7 @@ struct GraphRAGResponse: Identifiable, Sendable {
         query: String,
         answer: String,
         relatedNodes: [RelatedNode] = [],
+        graphPaths: [GraphPath] = [],
         sourceArticles: [SourceArticle] = [],
         generatedAt: Date = Date()
     ) {
@@ -21,8 +23,29 @@ struct GraphRAGResponse: Identifiable, Sendable {
         self.query = query
         self.answer = answer
         self.relatedNodes = relatedNodes
+        self.graphPaths = graphPaths
         self.sourceArticles = sourceArticles
         self.generatedAt = generatedAt
+    }
+
+    /// A path/relationship in the knowledge graph used for reasoning.
+    struct GraphPath: Identifiable, Sendable {
+        let id: Int64
+        let relation: String
+        let sourceNodes: [String]
+        let targetNodes: [String]
+
+        /// Formatted display string for the path.
+        var displayText: String {
+            let sources = sourceNodes.joined(separator: ", ")
+            let targets = targetNodes.joined(separator: ", ")
+            let formattedRelation = relation
+                .replacing("_", with: " ")
+                .split(separator: " ")
+                .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+                .joined(separator: " ")
+            return "\(sources) → \(formattedRelation) → \(targets)"
+        }
     }
 
     /// A node related to the query with its similarity score.
