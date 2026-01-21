@@ -42,6 +42,12 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Configure Xcode for CI (skip macro validation)
+        run: |
+          # Skip macro fingerprint validation - required for Swift macros in CI
+          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+          defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
+
       # ============================================================
       # OPTIONAL: Code Signing Setup
       # Uncomment and configure these steps for signed/notarized builds
