@@ -1,0 +1,163 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+env:
+  SCHEME: NewsCombApp
+  PROJECT: NewsCombApp.xcodeproj
+  APP_NAME: NewsCombApp
+
+jobs:
+  build-and-release:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app || sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      # ============================================================
+      # OPTIONAL: Code Signing Setup
+      # Uncomment and configure these steps for signed/notarized builds
+      # ============================================================
+      #
+      # - name: Install Apple Certificate
+      #   env:
+      #     CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
+      #     CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      #     KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      #   run: |
+      #     # Create variables
+      #     CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+      #     KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+      #
+      #     # Decode certificate from base64
+      #     echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+      #
+      #     # Create temporary keychain
+      #     security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+      #     security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+      #     security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+      #
+      #     # Import certificate to keychain
+      #     security import $CERTIFICATE_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+      #     security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+      #     security list-keychain -d user -s $KEYCHAIN_PATH
+
+      - name: Build Archive
+        run: |
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO
+
+      - name: Export Archive
+        run: |
+          # Create ExportOptions.plist for ad-hoc distribution
+          cat > "$RUNNER_TEMP/ExportOptions.plist" << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>mac-application</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Prepare App Bundle
+        run: |
+          # Find the .app bundle
+          APP_PATH=$(find "$RUNNER_TEMP/export" -name "*.app" -type d | head -1)
+
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: No .app bundle found in export directory"
+            ls -la "$RUNNER_TEMP/export"
+            exit 1
+          fi
+
+          echo "Found app at: $APP_PATH"
+
+          # Copy to workspace for DMG creation
+          cp -R "$APP_PATH" "$GITHUB_WORKSPACE/$APP_NAME.app"
+
+          echo "APP_PATH=$GITHUB_WORKSPACE/$APP_NAME.app" >> $GITHUB_ENV
+
+      # ============================================================
+      # OPTIONAL: Notarization
+      # Uncomment for signed builds
+      # ============================================================
+      #
+      # - name: Notarize App
+      #   env:
+      #     APPLE_ID: ${{ secrets.APPLE_ID }}
+      #     APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+      #     TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      #   run: |
+      #     # Create a ZIP for notarization
+      #     ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/app.zip"
+      #
+      #     # Submit for notarization
+      #     xcrun notarytool submit "$RUNNER_TEMP/app.zip" \
+      #       --apple-id "$APPLE_ID" \
+      #       --password "$APPLE_ID_PASSWORD" \
+      #       --team-id "$TEAM_ID" \
+      #       --wait
+      #
+      #     # Staple the notarization ticket
+      #     xcrun stapler staple "$APP_PATH"
+
+      - name: Create DMG
+        run: |
+          DMG_NAME="${APP_NAME}-${{ github.event.release.tag_name }}"
+          hdiutil create -volname "$APP_NAME" \
+            -srcfolder "$APP_PATH" \
+            -ov -format UDZO \
+            "${DMG_NAME}.dmg"
+
+          echo "DMG created:"
+          ls -lh "${DMG_NAME}.dmg"
+          echo "DMG_PATH=${DMG_NAME}.dmg" >> $GITHUB_ENV
+
+      - name: Upload DMG to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ============================================================
+      # OPTIONAL: Cleanup keychain
+      # Uncomment if using code signing
+      # ============================================================
+      #
+      # - name: Cleanup Keychain
+      #   if: always()
+      #   run: |
+      #     security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
