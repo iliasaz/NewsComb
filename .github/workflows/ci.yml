@@ -13,8 +13,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.app
+      - name: List available Xcode versions
+        run: ls -d /Applications/Xcode*.app
+
+      - name: Select Xcode (latest available)
+        run: |
+          # Find and use the latest Xcode version available
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$LATEST_XCODE" ]; then
+            echo "Using $LATEST_XCODE"
+            sudo xcode-select -s "$LATEST_XCODE"
+          else
+            echo "No Xcode found!"
+            exit 1
+          fi
+
+      - name: Show Xcode and Swift version
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Configure Xcode for CI (skip macro validation)
+        run: |
+          # Skip macro fingerprint validation - required for Swift macros in CI
+          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+          defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
 
       - name: Build Package
         run: |
