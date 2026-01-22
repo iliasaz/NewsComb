@@ -17,50 +17,6 @@ final class DeepAnalysisService: Sendable {
     private let database = Database.shared
     private let logger = Logger(subsystem: "com.newscomb", category: "DeepAnalysisService")
 
-    // MARK: - Agent Prompts
-
-    /// System prompt for the Engineer agent - synthesizes with academic citations.
-    private static let engineerSystemPrompt = """
-        You are a research engineer with scientific backgrounds. Your task is to synthesize \
-        information from a knowledge graph into a well-structured answer.
-
-        Rules:
-        1. Use academic citation style: '<statement> [1]' where [1] references your sources
-        2. Include a References section at the end with: [1] <REFERENCE>: <reasoning>
-        3. Only cite information from the provided knowledge graph relationships
-        4. Mark hypothetical ideas clearly as "hypothetically" or "potentially"
-        5. Do not fabricate references - only use what's provided
-        6. Be concise but thorough
-        7. Focus on factual connections found in the graph
-
-        Format your response as:
-        ANSWER:
-        [Your synthesized answer with citations]
-
-        REFERENCES:
-        [1] <reference title>: <why this supports the claim>
-        [2] ...
-        """
-
-    /// System prompt for the Hypothesizer agent - generates hypotheses.
-    private static let hypothesizerSystemPrompt = """
-        You are a creative hypothesizer and research strategist. Based on the synthesized \
-        analysis and knowledge graph connections, your task is to suggest:
-
-        1. **Potential Experiments**: Investigations that could reveal new insights
-        2. **Hidden Connections**: Patterns or relationships not explicitly stated
-        3. **Follow-up Questions**: Questions worth exploring further
-        4. **Novel Applications**: Practical applications of the discovered knowledge
-
-        Rules:
-        - Be creative but grounded in the provided information
-        - Each suggestion should be actionable and specific
-        - Explain the reasoning behind each hypothesis
-        - Prioritize suggestions by potential impact
-
-        Format your response as bullet points under each category.
-        """
-
     // MARK: - Public API
 
     /// Performs deep analysis on an existing GraphRAG response using simulated multi-agent workflow.
@@ -81,6 +37,9 @@ final class DeepAnalysisService: Sendable {
         graphPaths: [GraphRAGResponse.GraphPath]
     ) async throws -> DeepAnalysisResult {
         logger.info("Starting deep analysis for question: \(question, privacy: .public)")
+
+        // Load agent prompts from settings
+        let agentPrompts = try loadAgentPrompts()
 
         // Format the context from the graph data
         let formattedContext = formatContext(
@@ -104,7 +63,7 @@ final class DeepAnalysisService: Sendable {
             """
 
         let synthesizedAnswer = try await generateWithLLM(
-            systemPrompt: Self.engineerSystemPrompt,
+            systemPrompt: agentPrompts.engineerPrompt,
             userPrompt: engineerPrompt
         )
         logger.info("Engineer agent completed")
@@ -124,7 +83,7 @@ final class DeepAnalysisService: Sendable {
             """
 
         let hypotheses = try await generateWithLLM(
-            systemPrompt: Self.hypothesizerSystemPrompt,
+            systemPrompt: agentPrompts.hypothesizerPrompt,
             userPrompt: hypothesizerPrompt
         )
         logger.info("Hypothesizer agent completed")
@@ -133,6 +92,38 @@ final class DeepAnalysisService: Sendable {
             synthesizedAnswer: synthesizedAnswer,
             hypotheses: hypotheses
         )
+    }
+
+    // MARK: - Agent Prompts
+
+    private struct AgentPrompts {
+        let engineerPrompt: String
+        let hypothesizerPrompt: String
+    }
+
+    /// Loads agent prompts from the database, falling back to defaults if not configured.
+    private func loadAgentPrompts() throws -> AgentPrompts {
+        try database.read { db in
+            var engineerPrompt = AppSettings.defaultEngineerAgentPrompt
+            var hypothesizerPrompt = AppSettings.defaultHypothesizerAgentPrompt
+
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.engineerAgentPrompt)
+                .fetchOne(db) {
+                engineerPrompt = setting.value
+            }
+
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.hypothesizerAgentPrompt)
+                .fetchOne(db) {
+                hypothesizerPrompt = setting.value
+            }
+
+            return AgentPrompts(
+                engineerPrompt: engineerPrompt,
+                hypothesizerPrompt: hypothesizerPrompt
+            )
+        }
     }
 
     // MARK: - Private Helpers

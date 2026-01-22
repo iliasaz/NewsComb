@@ -9,6 +9,7 @@ struct SettingsView: View {
             knowledgeExtractionSection
             algorithmParametersSection
             extractionPromptsSection
+            deepAnalysisPromptsSection
         }
         .formStyle(.grouped)
         .frame(minWidth: 550, minHeight: 600)
@@ -296,6 +297,63 @@ struct SettingsView: View {
         }
     }
 
+    private var deepAnalysisPromptsSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Engineer Agent Prompt")
+                        .font(.headline)
+                    Spacer()
+                    Button("Reset to Default") {
+                        viewModel.resetEngineerAgentPromptToDefault()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+                }
+
+                TextEditor(text: $viewModel.engineerAgentPrompt)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 200)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(.rect(cornerRadius: 8))
+                    .onChange(of: viewModel.engineerAgentPrompt) {
+                        viewModel.saveEngineerAgentPrompt()
+                    }
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Hypothesizer Agent Prompt")
+                        .font(.headline)
+                    Spacer()
+                    Button("Reset to Default") {
+                        viewModel.resetHypothesizerAgentPromptToDefault()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+                }
+
+                TextEditor(text: $viewModel.hypothesizerAgentPrompt)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 150)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(.rect(cornerRadius: 8))
+                    .onChange(of: viewModel.hypothesizerAgentPrompt) {
+                        viewModel.saveHypothesizerAgentPrompt()
+                    }
+            }
+        } header: {
+            Text("Deep Analysis Agent Prompts")
+        } footer: {
+            Text("Customize the prompts for the 'Dive Deeper' multi-agent analysis. The Engineer agent synthesizes insights with academic citations. The Hypothesizer agent generates experiments and follow-up questions.")
+        }
+    }
 }
 
 #Preview {

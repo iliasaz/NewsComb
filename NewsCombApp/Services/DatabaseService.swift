@@ -223,12 +223,46 @@ public final class Database: Sendable {
                 // Column might already exist, ignore error
             }
 
-            // Add deep_analysis_json column to query_history for "Dive Deeper" feature
+            // Add deep_analysis_json column to query_history for "Dive Deeper" feature (legacy)
             do {
                 let columnExists = try db.columns(in: "query_history").contains { $0.name == "deep_analysis_json" }
                 if !columnExists {
                     try db.execute(sql: """
                         ALTER TABLE query_history ADD COLUMN deep_analysis_json TEXT;
+                    """)
+                }
+            } catch {
+                // Column might already exist, ignore error
+            }
+
+            // Add separate columns for synthesized analysis and hypotheses
+            do {
+                let synthesizedExists = try db.columns(in: "query_history").contains { $0.name == "synthesized_analysis" }
+                if !synthesizedExists {
+                    try db.execute(sql: """
+                        ALTER TABLE query_history ADD COLUMN synthesized_analysis TEXT;
+                    """)
+                }
+            } catch {
+                // Column might already exist, ignore error
+            }
+
+            do {
+                let hypothesesExists = try db.columns(in: "query_history").contains { $0.name == "hypotheses" }
+                if !hypothesesExists {
+                    try db.execute(sql: """
+                        ALTER TABLE query_history ADD COLUMN hypotheses TEXT;
+                    """)
+                }
+            } catch {
+                // Column might already exist, ignore error
+            }
+
+            do {
+                let analyzedAtExists = try db.columns(in: "query_history").contains { $0.name == "analyzed_at" }
+                if !analyzedAtExists {
+                    try db.execute(sql: """
+                        ALTER TABLE query_history ADD COLUMN analyzed_at REAL;
                     """)
                 }
             } catch {

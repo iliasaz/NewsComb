@@ -32,7 +32,7 @@ final class AnswerDetailViewModel {
     init(historyItem: QueryHistoryItem) {
         self.historyItem = historyItem
         self.response = historyItem.toGraphRAGResponse()
-        self.deepAnalysisResult = historyItem.decodeDeepAnalysis()
+        self.deepAnalysisResult = historyItem.toDeepAnalysisResult()
     }
 
     /// Whether deep analysis is available (LLM provider configured).
@@ -41,9 +41,14 @@ final class AnswerDetailViewModel {
         return service.isConfigured()
     }
 
-    /// Whether the "Dive Deeper" button should be shown.
-    var showDiveDeeper: Bool {
-        deepAnalysisResult == nil && !isAnalyzing
+    /// Whether the history item already has deep analysis results.
+    var hasExistingAnalysis: Bool {
+        deepAnalysisResult != nil
+    }
+
+    /// The button label - "Dive Deeper" for first analysis, "Analyze Again" for re-analysis.
+    var analyzeButtonLabel: String {
+        hasExistingAnalysis ? "Analyze Again" : "Dive Deeper"
     }
 
     /// Performs deep analysis using the multi-agent workflow.
@@ -91,10 +96,17 @@ final class AnswerDetailViewModel {
             try db.execute(
                 sql: """
                     UPDATE query_history
-                    SET deep_analysis_json = ?
+                    SET synthesized_analysis = ?,
+                        hypotheses = ?,
+                        analyzed_at = ?
                     WHERE id = ?
                 """,
-                arguments: [updatedItem.deepAnalysisJson, itemId]
+                arguments: [
+                    result.synthesizedAnswer,
+                    result.hypotheses,
+                    result.analyzedAt,
+                    itemId
+                ]
             )
         }
 

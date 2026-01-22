@@ -71,6 +71,10 @@ class SettingsViewModel {
     var extractionSystemPrompt: String = AppSettings.defaultExtractionPrompt
     var distillationSystemPrompt: String = AppSettings.defaultDistillationPrompt
 
+    // Deep Analysis Agent Prompts
+    var engineerAgentPrompt: String = AppSettings.defaultEngineerAgentPrompt
+    var hypothesizerAgentPrompt: String = AppSettings.defaultHypothesizerAgentPrompt
+
     private let database = Database.shared
 
     func loadData() {
@@ -183,6 +187,15 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.distillationSystemPrompt).fetchOne(db) {
                     distillationSystemPrompt = setting.value
+                }
+
+                // Load deep analysis agent prompts
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.engineerAgentPrompt).fetchOne(db) {
+                    engineerAgentPrompt = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.hypothesizerAgentPrompt).fetchOne(db) {
+                    hypothesizerAgentPrompt = setting.value
                 }
             }
         } catch {
@@ -367,6 +380,26 @@ class SettingsViewModel {
     func resetDistillationPromptToDefault() {
         distillationSystemPrompt = AppSettings.defaultDistillationPrompt
         saveDistillationSystemPrompt()
+    }
+
+    // MARK: - Deep Analysis Agent Prompts Save Methods
+
+    func saveEngineerAgentPrompt() {
+        saveAPIKey(key: AppSettings.engineerAgentPrompt, value: engineerAgentPrompt)
+    }
+
+    func saveHypothesizerAgentPrompt() {
+        saveAPIKey(key: AppSettings.hypothesizerAgentPrompt, value: hypothesizerAgentPrompt)
+    }
+
+    func resetEngineerAgentPromptToDefault() {
+        engineerAgentPrompt = AppSettings.defaultEngineerAgentPrompt
+        saveEngineerAgentPrompt()
+    }
+
+    func resetHypothesizerAgentPromptToDefault() {
+        hypothesizerAgentPrompt = AppSettings.defaultHypothesizerAgentPrompt
+        saveHypothesizerAgentPrompt()
     }
 
     private func saveAPIKey(key: String, value: String) {

@@ -172,30 +172,7 @@ struct AnswerDetailView: View {
                 .background(.background.secondary)
                 .clipShape(.rect(cornerRadius: 12))
 
-            } else if let result = viewModel.deepAnalysisResult {
-                // Result state - show synthesized answer and hypotheses
-                DeepAnalysisResultView(result: result)
-
-            } else if viewModel.isDeepAnalysisAvailable {
-                // Initial state - show "Dive Deeper" button
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Use AI agents to synthesize insights with academic citations and generate hypotheses.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Button("Dive Deeper", systemImage: "sparkles") {
-                        Task {
-                            await viewModel.performDeepAnalysis()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.background.secondary)
-                .clipShape(.rect(cornerRadius: 12))
-
-            } else {
+            } else if !viewModel.isDeepAnalysisAvailable {
                 // No LLM configured
                 Text("Configure an LLM provider in Settings to enable deep analysis.")
                     .font(.caption)
@@ -204,6 +181,44 @@ struct AnswerDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.background.secondary)
                     .clipShape(.rect(cornerRadius: 12))
+
+            } else {
+                // LLM is available - show results and/or button
+                VStack(alignment: .leading, spacing: 16) {
+                    // Show existing results if available
+                    if let result = viewModel.deepAnalysisResult {
+                        DeepAnalysisResultView(result: result)
+                    }
+
+                    // Always show the analyze button when LLM is configured
+                    VStack(alignment: .leading, spacing: 12) {
+                        if !viewModel.hasExistingAnalysis {
+                            Text("Use AI agents to synthesize insights with academic citations and generate hypotheses.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if viewModel.hasExistingAnalysis {
+                            Button(viewModel.analyzeButtonLabel, systemImage: "sparkles") {
+                                Task {
+                                    await viewModel.performDeepAnalysis()
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                        } else {
+                            Button(viewModel.analyzeButtonLabel, systemImage: "sparkles") {
+                                Task {
+                                    await viewModel.performDeepAnalysis()
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background.secondary)
+                    .clipShape(.rect(cornerRadius: 12))
+                }
             }
 
             // Error display

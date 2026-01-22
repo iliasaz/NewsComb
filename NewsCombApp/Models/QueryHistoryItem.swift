@@ -10,7 +10,10 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     let reasoningPathsJson: String?
     let graphPathsJson: String?
     let sourceArticlesJson: String?
-    var deepAnalysisJson: String?
+    var deepAnalysisJson: String?  // Legacy - kept for backwards compatibility
+    var synthesizedAnalysis: String?
+    var hypotheses: String?
+    var analyzedAt: Date?
     let createdAt: Date
 
     static let databaseTableName = "query_history"
@@ -22,6 +25,9 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         case graphPathsJson = "graph_paths_json"
         case sourceArticlesJson = "source_articles_json"
         case deepAnalysisJson = "deep_analysis_json"
+        case synthesizedAnalysis = "synthesized_analysis"
+        case hypotheses
+        case analyzedAt = "analyzed_at"
         case createdAt = "created_at"
     }
 
@@ -32,6 +38,9 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         case graphPathsJson = "graph_paths_json"
         case sourceArticlesJson = "source_articles_json"
         case deepAnalysisJson = "deep_analysis_json"
+        case synthesizedAnalysis = "synthesized_analysis"
+        case hypotheses
+        case analyzedAt = "analyzed_at"
         case createdAt = "created_at"
     }
 
@@ -44,6 +53,9 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         graphPathsJson: String? = nil,
         sourceArticlesJson: String? = nil,
         deepAnalysisJson: String? = nil,
+        synthesizedAnalysis: String? = nil,
+        hypotheses: String? = nil,
+        analyzedAt: Date? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -54,6 +66,9 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         self.graphPathsJson = graphPathsJson
         self.sourceArticlesJson = sourceArticlesJson
         self.deepAnalysisJson = deepAnalysisJson
+        self.synthesizedAnalysis = synthesizedAnalysis
+        self.hypotheses = hypotheses
+        self.analyzedAt = analyzedAt
         self.createdAt = createdAt
     }
 
@@ -223,14 +238,23 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
 
     // MARK: - Deep Analysis
 
-    /// Encodes a DeepAnalysisResult to JSON string.
-    static func encodeDeepAnalysis(_ result: DeepAnalysisResult) -> String? {
-        guard let data = try? JSONEncoder().encode(result) else { return nil }
-        return String(data: data, encoding: .utf8)
+    /// Whether this item has deep analysis results.
+    var hasDeepAnalysis: Bool {
+        synthesizedAnalysis != nil || hypotheses != nil
     }
 
-    /// Decodes the stored deep analysis JSON to a DeepAnalysisResult.
-    func decodeDeepAnalysis() -> DeepAnalysisResult? {
+    /// Converts the stored deep analysis fields to a DeepAnalysisResult.
+    func toDeepAnalysisResult() -> DeepAnalysisResult? {
+        // First try the new separate columns
+        if let synthesis = synthesizedAnalysis, let hypo = hypotheses {
+            return DeepAnalysisResult(
+                synthesizedAnswer: synthesis,
+                hypotheses: hypo,
+                analyzedAt: analyzedAt ?? createdAt
+            )
+        }
+
+        // Fall back to legacy JSON column for backwards compatibility
         guard let json = deepAnalysisJson,
               let data = json.data(using: .utf8),
               let result = try? JSONDecoder().decode(DeepAnalysisResult.self, from: data) else {
@@ -242,7 +266,9 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     /// Returns a copy with the deep analysis result set.
     func withDeepAnalysis(_ result: DeepAnalysisResult) -> QueryHistoryItem {
         var copy = self
-        copy.deepAnalysisJson = Self.encodeDeepAnalysis(result)
+        copy.synthesizedAnalysis = result.synthesizedAnswer
+        copy.hypotheses = result.hypotheses
+        copy.analyzedAt = result.analyzedAt
         return copy
     }
 }
