@@ -42,6 +42,9 @@ final class HypergraphPathService: Sendable {
     ///   - intersectionThreshold: Minimum number of shared nodes for edges to be "connected" (s-connectivity)
     ///   - maxPaths: Maximum number of paths to find per node pair
     /// - Returns: Array of path reports
+    /// Maximum BFS depth to prevent exploring very long paths
+    private static let maxBFSDepth = 4
+
     func findPaths(
         between nodeIds: [Int64],
         intersectionThreshold: Int = 1,
@@ -49,8 +52,8 @@ final class HypergraphPathService: Sendable {
     ) throws -> [PathReport] {
         guard nodeIds.count >= 2 else { return [] }
 
-        // Build the hypergraph index
-        let index = try buildHypergraphIndex()
+        // Build the hypergraph index with precomputed edge adjacency
+        let index = try buildHypergraphIndex(intersectionThreshold: intersectionThreshold)
         logger.info("Built hypergraph index: \(index.nodeToEdges.count) nodes, \(index.edgeToNodes.count) edges")
 
         // Get node labels for reporting
@@ -112,10 +115,14 @@ final class HypergraphPathService: Sendable {
         var edgeToNodes: [Int64: Set<Int64>] = [:]
         /// Maps node ID to label
         var nodeLabels: [Int64: String] = [:]
+        /// Precomputed edge adjacency: maps edge ID to adjacent edge IDs (s-connected)
+        /// This is the key optimization - avoids recomputing set intersections during BFS
+        var edgeAdjacency: [Int64: Set<Int64>] = [:]
     }
 
     /// Builds an in-memory index of the hypergraph for efficient BFS.
-    private func buildHypergraphIndex() throws -> HypergraphIndex {
+    /// Precomputes edge adjacency to avoid expensive set intersections during path finding.
+    private func buildHypergraphIndex(intersectionThreshold: Int = 1) throws -> HypergraphIndex {
         try database.read { db in
             var index = HypergraphIndex()
 
@@ -138,6 +145,39 @@ final class HypergraphPathService: Sendable {
                 index.nodeLabels[nodeId] = label
             }
 
+            // Precompute edge adjacency (s-connectivity)
+            // This is the key optimization: compute intersections ONCE, not during every BFS step
+            logger.info("Precomputing edge adjacency for \(index.edgeToNodes.count) edges...")
+            let startTime = ContinuousClock.now
+
+            for (edgeId, edgeNodes) in index.edgeToNodes {
+                var adjacentEdges: Set<Int64> = []
+
+                // Find all edges that share >= threshold nodes with this edge
+                for nodeId in edgeNodes {
+                    if let candidateEdges = index.nodeToEdges[nodeId] {
+                        for candidateEdge in candidateEdges where candidateEdge != edgeId {
+                            // Skip if already computed as adjacent
+                            guard !adjacentEdges.contains(candidateEdge) else { continue }
+
+                            // Check intersection (only compute once per edge pair)
+                            if let candidateNodes = index.edgeToNodes[candidateEdge] {
+                                let intersectionCount = edgeNodes.intersection(candidateNodes).count
+                                if intersectionCount >= intersectionThreshold {
+                                    adjacentEdges.insert(candidateEdge)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                index.edgeAdjacency[edgeId] = adjacentEdges
+            }
+
+            let elapsed = ContinuousClock.now - startTime
+            let avgAdjacency = index.edgeAdjacency.values.map { $0.count }.reduce(0, +) / max(1, index.edgeAdjacency.count)
+            logger.info("Edge adjacency computed in \(elapsed). Average adjacency: \(avgAdjacency) edges")
+
             return index
         }
     }
@@ -145,6 +185,7 @@ final class HypergraphPathService: Sendable {
     // MARK: - BFS Path Finding
 
     /// Finds shortest paths between two sets of edges using BFS.
+    /// Limited to maxBFSDepth to prevent exploring very long (and less useful) paths.
     private func findShortestPaths(
         from sourceEdges: Set<Int64>,
         to targetEdges: Set<Int64>,
@@ -171,6 +212,11 @@ final class HypergraphPathService: Sendable {
         while queueIndex < queue.count && pathsFound.count < maxPaths {
             let (currentEdge, currentDepth) = queue[queueIndex]
             queueIndex += 1
+
+            // Stop if we've exceeded max depth (long paths are less useful for reasoning)
+            if currentDepth > Self.maxBFSDepth {
+                break
+            }
 
             // Check if we reached a target edge
             if targetEdges.contains(currentEdge) {
@@ -218,32 +264,16 @@ final class HypergraphPathService: Sendable {
         return pathsFound
     }
 
-    /// Finds edges that share at least `threshold` nodes with the given edge.
+    /// Returns precomputed adjacent edges (O(1) lookup instead of O(n) intersection computation).
     private func findNeighborEdges(
         of edge: Int64,
         index: HypergraphIndex,
         intersectionThreshold: Int
     ) -> Set<Int64> {
-        guard let edgeNodes = index.edgeToNodes[edge] else { return [] }
-
-        var neighbors: Set<Int64> = []
-
-        // Find all edges that share nodes with this edge
-        for nodeId in edgeNodes {
-            if let adjacentEdges = index.nodeToEdges[nodeId] {
-                for adjacentEdge in adjacentEdges where adjacentEdge != edge {
-                    // Check intersection threshold
-                    if let adjacentNodes = index.edgeToNodes[adjacentEdge] {
-                        let intersection = edgeNodes.intersection(adjacentNodes)
-                        if intersection.count >= intersectionThreshold {
-                            neighbors.insert(adjacentEdge)
-                        }
-                    }
-                }
-            }
-        }
-
-        return neighbors
+        // Use precomputed adjacency - this is the key optimization!
+        // Previously this computed set intersections on every call, which was O(n) per call.
+        // Now it's O(1) lookup since adjacency was computed during index building.
+        return index.edgeAdjacency[edge] ?? []
     }
 
     /// Reconstructs all paths to an edge using parent pointers.
