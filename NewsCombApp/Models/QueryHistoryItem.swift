@@ -10,6 +10,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     let reasoningPathsJson: String?
     let graphPathsJson: String?
     let sourceArticlesJson: String?
+    var deepAnalysisJson: String?
     let createdAt: Date
 
     static let databaseTableName = "query_history"
@@ -20,6 +21,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         case reasoningPathsJson = "reasoning_paths_json"
         case graphPathsJson = "graph_paths_json"
         case sourceArticlesJson = "source_articles_json"
+        case deepAnalysisJson = "deep_analysis_json"
         case createdAt = "created_at"
     }
 
@@ -29,6 +31,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         case reasoningPathsJson = "reasoning_paths_json"
         case graphPathsJson = "graph_paths_json"
         case sourceArticlesJson = "source_articles_json"
+        case deepAnalysisJson = "deep_analysis_json"
         case createdAt = "created_at"
     }
 
@@ -40,6 +43,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         reasoningPathsJson: String? = nil,
         graphPathsJson: String? = nil,
         sourceArticlesJson: String? = nil,
+        deepAnalysisJson: String? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -49,6 +53,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         self.reasoningPathsJson = reasoningPathsJson
         self.graphPathsJson = graphPathsJson
         self.sourceArticlesJson = sourceArticlesJson
+        self.deepAnalysisJson = deepAnalysisJson
         self.createdAt = createdAt
     }
 
@@ -214,6 +219,31 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
                 }
             )
         }
+    }
+
+    // MARK: - Deep Analysis
+
+    /// Encodes a DeepAnalysisResult to JSON string.
+    static func encodeDeepAnalysis(_ result: DeepAnalysisResult) -> String? {
+        guard let data = try? JSONEncoder().encode(result) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// Decodes the stored deep analysis JSON to a DeepAnalysisResult.
+    func decodeDeepAnalysis() -> DeepAnalysisResult? {
+        guard let json = deepAnalysisJson,
+              let data = json.data(using: .utf8),
+              let result = try? JSONDecoder().decode(DeepAnalysisResult.self, from: data) else {
+            return nil
+        }
+        return result
+    }
+
+    /// Returns a copy with the deep analysis result set.
+    func withDeepAnalysis(_ result: DeepAnalysisResult) -> QueryHistoryItem {
+        var copy = self
+        copy.deepAnalysisJson = Self.encodeDeepAnalysis(result)
+        return copy
     }
 }
 

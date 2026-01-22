@@ -1,5 +1,24 @@
 import Foundation
 
+/// Result of the "Dive Deeper" agentic analysis workflow.
+/// Contains synthesized insights with citations and hypotheses based on knowledge graph connections.
+struct DeepAnalysisResult: Codable, Equatable, Hashable, Sendable {
+    /// The synthesized answer with academic-style citations [1], [2], etc.
+    let synthesizedAnswer: String
+
+    /// Hypotheses and experiment suggestions based on discovered connections.
+    let hypotheses: String
+
+    /// Timestamp when the analysis was performed.
+    let analyzedAt: Date
+
+    init(synthesizedAnswer: String, hypotheses: String, analyzedAt: Date = Date()) {
+        self.synthesizedAnswer = synthesizedAnswer
+        self.hypotheses = hypotheses
+        self.analyzedAt = analyzedAt
+    }
+}
+
 /// Response from a GraphRAG query over the knowledge graph.
 struct GraphRAGResponse: Identifiable, Sendable {
     let id: UUID

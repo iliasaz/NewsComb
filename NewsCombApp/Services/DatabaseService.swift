@@ -222,6 +222,18 @@ public final class Database: Sendable {
             } catch {
                 // Column might already exist, ignore error
             }
+
+            // Add deep_analysis_json column to query_history for "Dive Deeper" feature
+            do {
+                let columnExists = try db.columns(in: "query_history").contains { $0.name == "deep_analysis_json" }
+                if !columnExists {
+                    try db.execute(sql: """
+                        ALTER TABLE query_history ADD COLUMN deep_analysis_json TEXT;
+                    """)
+                }
+            } catch {
+                // Column might already exist, ignore error
+            }
         }
     }
 
