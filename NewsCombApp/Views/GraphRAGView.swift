@@ -22,7 +22,7 @@ struct GraphRAGView: View {
             get: { viewModel.pendingNavigationItem },
             set: { viewModel.pendingNavigationItem = $0 }
         )) { item in
-            AnswerDetailView(response: item.toGraphRAGResponse())
+            AnswerDetailView(historyItem: item)
         }
         .onAppear {
             viewModel.loadHistory()

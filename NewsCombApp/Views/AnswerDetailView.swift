@@ -2,13 +2,25 @@ import SwiftUI
 
 /// View for displaying a saved question/answer from history.
 struct AnswerDetailView: View {
-    let response: GraphRAGResponse
+    @State private var viewModel: AnswerDetailViewModel
+
+    /// Creates the view with a query history item.
+    init(historyItem: QueryHistoryItem) {
+        _viewModel = State(initialValue: AnswerDetailViewModel(historyItem: historyItem))
+    }
+
+    private var response: GraphRAGResponse {
+        viewModel.response
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 questionSection
                 answerSection
+
+                // Deep Analysis section
+                deepAnalysisSection
 
                 if !response.relatedNodes.isEmpty {
                     relatedNodesSection
@@ -137,6 +149,141 @@ struct AnswerDetailView: View {
             ForEach(response.sourceArticles) { article in
                 SourceArticleRow(article: article)
             }
+        }
+    }
+
+    // MARK: - Deep Analysis Section
+
+    private var deepAnalysisSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Deep Analysis", systemImage: "sparkles")
+                .font(.headline)
+
+            if viewModel.isAnalyzing {
+                // Loading state
+                HStack(spacing: 12) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Running multi-agent analysis...")
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.background.secondary)
+                .clipShape(.rect(cornerRadius: 12))
+
+            } else if let result = viewModel.deepAnalysisResult {
+                // Result state - show synthesized answer and hypotheses
+                DeepAnalysisResultView(result: result)
+
+            } else if viewModel.isDeepAnalysisAvailable {
+                // Initial state - show "Dive Deeper" button
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Use AI agents to synthesize insights with academic citations and generate hypotheses.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Button("Dive Deeper", systemImage: "sparkles") {
+                        Task {
+                            await viewModel.performDeepAnalysis()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.background.secondary)
+                .clipShape(.rect(cornerRadius: 12))
+
+            } else {
+                // No LLM configured
+                Text("Configure an LLM provider in Settings to enable deep analysis.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background.secondary)
+                    .clipShape(.rect(cornerRadius: 12))
+            }
+
+            // Error display
+            if let error = viewModel.analysisError {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.red.opacity(0.1))
+                .clipShape(.rect(cornerRadius: 8))
+            }
+        }
+    }
+}
+
+// MARK: - Deep Analysis Result View
+
+private struct DeepAnalysisResultView: View {
+    let result: DeepAnalysisResult
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Synthesized Answer
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Synthesized Analysis", systemImage: "text.quote")
+                    .font(.subheadline)
+                    .bold()
+
+                renderMarkdown(result.synthesizedAnswer)
+                    .textSelection(.enabled)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.blue.opacity(0.05))
+            .clipShape(.rect(cornerRadius: 12))
+
+            // Hypotheses
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Hypotheses & Experiments", systemImage: "lightbulb")
+                    .font(.subheadline)
+                    .bold()
+
+                renderMarkdown(result.hypotheses)
+                    .textSelection(.enabled)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.purple.opacity(0.05))
+            .clipShape(.rect(cornerRadius: 12))
+
+            // Timestamp
+            HStack {
+                Text("Analyzed")
+                Text(result.analyzedAt, style: .relative)
+                Text("ago")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func renderMarkdown(_ text: String) -> some View {
+        let markdown = try? AttributedString(
+            markdown: text,
+            options: .init(
+                allowsExtendedAttributes: true,
+                interpretedSyntax: .inlineOnlyPreservingWhitespace,
+                failurePolicy: .returnPartiallyParsedIfPossible
+            )
+        )
+        if let markdown {
+            Text(markdown)
+        } else {
+            Text(text)
         }
     }
 }
@@ -408,37 +555,23 @@ private struct FlowLayout: Layout {
 
 #Preview {
     NavigationStack {
-        AnswerDetailView(response: GraphRAGResponse(
+        AnswerDetailView(historyItem: QueryHistoryItem(
+            id: 1,
             query: "What are the main topics discussed in recent articles?",
             answer: """
             Several events have happened recently. Here are a few examples:
-            1. **AWS Community Day events**: Various AWS re:invent re:Caps were hosted around the globe, and the AWS Community Day Tel Aviv 2026 was hosted last week.
-            2. **Micron's acquisition**: Micron acquired a chipmaking campus from Taiwanese outfit Powerchip Semiconductor Manufacturing Corporation (PSMC) for $1.8 billion.
-            3. **Cyberattack on a Warwickshire school**: A cyberattack forced a prolonged closure of Higham Lane School in Nuneaton, but it has since reopened.
-            4. **Palo Alto Networks' data platform transformation**: Palo Alto Networks partnered with Google Cloud to modernize their data processing landscape into a unified multi-tenant platform powered by Dataflow, Pub/Sub, and BigQuery.
-            5. **ServiceNow and OpenAI partnership**: ServiceNow announced a multi-year agreement with OpenAI to expand customer access to OpenAI frontier models.
-
-            These events were mentioned in the source articles: "AWS Weekly Roundup: Kiro CLI latest features, AWS European Sovereign Cloud, EC2 X8i instances, and more (January 19, 2026)", "Micron finds a way to make more DRAM with $1.8bn chip plant purchase", "Warwickshire school to reopen after cyberattack crippled IT", "How Palo Alto Networks built a multi tenant scalable Unified Data Platform", and "ServiceNow powers actionable enterprise AI with OpenAI".
+            1. **AWS Community Day events**: Various AWS re:invent re:Caps were hosted around the globe.
+            2. **Micron's acquisition**: Micron acquired a chipmaking campus from PSMC for $1.8 billion.
+            3. **Palo Alto Networks' data platform transformation**: Partnered with Google Cloud.
+            4. **ServiceNow and OpenAI partnership**: Multi-year agreement announced.
             """,
-            relatedNodes: [
-                .init(id: 1, nodeId: "ai", label: "Artificial Intelligence", nodeType: "TOPIC", distance: 0.1),
-                .init(id: 2, nodeId: "cloud", label: "Cloud Computing", nodeType: "TOPIC", distance: 0.2)
-            ],
-            reasoningPaths: [
-                .init(sourceConcept: "Palo Alto Networks", targetConcept: "BigQuery", intermediateNodes: ["Google Cloud", "Dataflow"], edgeCount: 3),
-                .init(sourceConcept: "ServiceNow", targetConcept: "AI", intermediateNodes: ["OpenAI"], edgeCount: 2),
-                .init(sourceConcept: "Micron", targetConcept: "PSMC", intermediateNodes: [], edgeCount: 1)
-            ],
-            graphPaths: [
-                .init(id: 1, relation: "partnered with", sourceNodes: ["Palo Alto Networks"], targetNodes: ["Google Cloud"], provenanceText: "Palo Alto Networks partnered with Google Cloud to modernize their data processing landscape."),
-                .init(id: 2, relation: "acquired", sourceNodes: ["Micron"], targetNodes: ["PSMC"], provenanceText: "Micron acquired a chipmaking campus from PSMC for $1.8 billion."),
-                .init(id: 3, relation: "announced partnership", sourceNodes: ["ServiceNow"], targetNodes: ["OpenAI"])
-            ],
-            sourceArticles: [
-                .init(id: 1, title: "AI Advances in 2026", link: "https://example.com", pubDate: Date(), relevantChunks: [
-                    .init(id: 1, chunkIndex: 0, content: "Recent advances in AI have transformed...", distance: 0.1)
-                ])
-            ]
+            reasoningPathsJson: """
+            [{"sourceConcept":"Palo Alto Networks","targetConcept":"BigQuery","intermediateNodes":["Google Cloud","Dataflow"],"edgeCount":3},
+             {"sourceConcept":"ServiceNow","targetConcept":"AI","intermediateNodes":["OpenAI"],"edgeCount":2}]
+            """,
+            graphPathsJson: """
+            [{"id":1,"relation":"partnered with","sourceNodes":["Palo Alto Networks"],"targetNodes":["Google Cloud"],"provenanceText":"Partnered to modernize data processing."}]
+            """
         ))
     }
 }

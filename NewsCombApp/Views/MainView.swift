@@ -39,7 +39,7 @@ struct MainView: View {
                 }
             }
             .navigationDestination(for: QueryHistoryItem.self) { item in
-                AnswerDetailView(response: item.toGraphRAGResponse())
+                AnswerDetailView(historyItem: item)
             }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
