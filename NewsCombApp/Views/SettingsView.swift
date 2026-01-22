@@ -205,6 +205,18 @@ struct SettingsView: View {
                 viewModel.saveRAGMaxChunks()
             }
 
+            Stepper(value: $viewModel.maxPathDepth, in: 1...8) {
+                HStack {
+                    Text("Max Path Depth")
+                    Spacer()
+                    Text("\(viewModel.maxPathDepth) (up to \(viewModel.maxPathDepth + 1) hops)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.maxPathDepth) {
+                viewModel.saveMaxPathDepth()
+            }
+
             Divider()
 
             // Concurrent Processing

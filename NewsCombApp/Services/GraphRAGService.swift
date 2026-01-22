@@ -274,11 +274,23 @@ final class GraphRAGService: Sendable {
     ) throws -> GraphRAGContext {
         let nodeIds = nodes.map { $0.id }
 
+        // Read maxPathDepth setting from database
+        let maxPathDepth = try database.read { db -> Int in
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.maxPathDepth)
+                .fetchOne(db),
+               let value = Int(setting.value) {
+                return value
+            }
+            return AppSettings.defaultMaxPathDepth
+        }
+
         // Find reasoning paths between nodes using hypergraph BFS
         let pathReports = try pathService.findPaths(
             between: nodeIds,
             intersectionThreshold: 1,
-            maxPaths: 3
+            maxPaths: 3,
+            maxDepth: maxPathDepth
         )
 
         // Convert path reports to reasoning paths for context

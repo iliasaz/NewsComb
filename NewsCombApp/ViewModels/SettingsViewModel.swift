@@ -64,6 +64,7 @@ class SettingsViewModel {
     var llmMaxTokens: Int = AppSettings.defaultLLMMaxTokens
     var ragMaxNodes: Int = AppSettings.defaultRAGMaxNodes
     var ragMaxChunks: Int = AppSettings.defaultRAGMaxChunks
+    var maxPathDepth: Int = AppSettings.defaultMaxPathDepth
     var maxConcurrentProcessing: Int = AppSettings.defaultMaxConcurrentProcessing
 
     // Extraction Prompts
@@ -163,6 +164,11 @@ class SettingsViewModel {
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.ragMaxChunks).fetchOne(db),
                    let value = Int(setting.value) {
                     ragMaxChunks = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.maxPathDepth).fetchOne(db),
+                   let value = Int(setting.value) {
+                    maxPathDepth = value
                 }
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.maxConcurrentProcessing).fetchOne(db),
@@ -333,6 +339,10 @@ class SettingsViewModel {
 
     func saveRAGMaxChunks() {
         saveAPIKey(key: AppSettings.ragMaxChunks, value: String(ragMaxChunks))
+    }
+
+    func saveMaxPathDepth() {
+        saveAPIKey(key: AppSettings.maxPathDepth, value: String(maxPathDepth))
     }
 
     func saveMaxConcurrentProcessing() {

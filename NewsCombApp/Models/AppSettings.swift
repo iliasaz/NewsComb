@@ -62,6 +62,10 @@ extension AppSettings {
     static let ragMaxChunks = "rag_max_chunks"
     static let defaultRAGMaxChunks = 5
 
+    // Algorithm Parameters - Graph Path Finding
+    static let maxPathDepth = "max_path_depth"
+    static let defaultMaxPathDepth = 4  // Maximum BFS depth (path length = depth + 1)
+
     // Algorithm Parameters - Concurrent Processing
     static let maxConcurrentProcessing = "max_concurrent_processing"
     static let defaultMaxConcurrentProcessing = 10
