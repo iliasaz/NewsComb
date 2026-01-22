@@ -7,6 +7,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     let query: String
     let answer: String
     let relatedNodesJson: String?
+    let reasoningPathsJson: String?
     let graphPathsJson: String?
     let sourceArticlesJson: String?
     let createdAt: Date
@@ -16,6 +17,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     enum Columns: String, ColumnExpression {
         case id, query, answer
         case relatedNodesJson = "related_nodes_json"
+        case reasoningPathsJson = "reasoning_paths_json"
         case graphPathsJson = "graph_paths_json"
         case sourceArticlesJson = "source_articles_json"
         case createdAt = "created_at"
@@ -24,6 +26,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     enum CodingKeys: String, CodingKey {
         case id, query, answer
         case relatedNodesJson = "related_nodes_json"
+        case reasoningPathsJson = "reasoning_paths_json"
         case graphPathsJson = "graph_paths_json"
         case sourceArticlesJson = "source_articles_json"
         case createdAt = "created_at"
@@ -34,6 +37,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         query: String,
         answer: String,
         relatedNodesJson: String? = nil,
+        reasoningPathsJson: String? = nil,
         graphPathsJson: String? = nil,
         sourceArticlesJson: String? = nil,
         createdAt: Date = Date()
@@ -42,6 +46,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         self.query = query
         self.answer = answer
         self.relatedNodesJson = relatedNodesJson
+        self.reasoningPathsJson = reasoningPathsJson
         self.graphPathsJson = graphPathsJson
         self.sourceArticlesJson = sourceArticlesJson
         self.createdAt = createdAt
@@ -53,6 +58,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         self.query = response.query
         self.answer = response.answer
         self.relatedNodesJson = Self.encodeRelatedNodes(response.relatedNodes)
+        self.reasoningPathsJson = Self.encodeReasoningPaths(response.reasoningPaths)
         self.graphPathsJson = Self.encodeGraphPaths(response.graphPaths)
         self.sourceArticlesJson = Self.encodeSourceArticles(response.sourceArticles)
         self.createdAt = response.generatedAt
@@ -65,6 +71,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
             query: query,
             answer: answer,
             relatedNodes: decodeRelatedNodes(),
+            reasoningPaths: decodeReasoningPaths(),
             graphPaths: decodeGraphPaths(),
             sourceArticles: decodeSourceArticles(),
             generatedAt: createdAt
@@ -84,6 +91,19 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
             )
         }
         guard let data = try? JSONEncoder().encode(encodableNodes) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func encodeReasoningPaths(_ paths: [GraphRAGResponse.ReasoningPath]) -> String? {
+        let encodablePaths = paths.map { path in
+            EncodableReasoningPath(
+                sourceConcept: path.sourceConcept,
+                targetConcept: path.targetConcept,
+                intermediateNodes: path.intermediateNodes,
+                edgeCount: path.edgeCount
+            )
+        }
+        guard let data = try? JSONEncoder().encode(encodablePaths) else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
@@ -135,6 +155,22 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
                 label: node.label,
                 nodeType: node.nodeType,
                 distance: node.distance
+            )
+        }
+    }
+
+    private func decodeReasoningPaths() -> [GraphRAGResponse.ReasoningPath] {
+        guard let json = reasoningPathsJson,
+              let data = json.data(using: .utf8),
+              let paths = try? JSONDecoder().decode([EncodableReasoningPath].self, from: data) else {
+            return []
+        }
+        return paths.map { path in
+            GraphRAGResponse.ReasoningPath(
+                sourceConcept: path.sourceConcept,
+                targetConcept: path.targetConcept,
+                intermediateNodes: path.intermediateNodes,
+                edgeCount: path.edgeCount
             )
         }
     }
@@ -212,4 +248,11 @@ private struct EncodableGraphPath: Codable {
     let sourceNodes: [String]
     let targetNodes: [String]
     let provenanceText: String?
+}
+
+private struct EncodableReasoningPath: Codable {
+    let sourceConcept: String
+    let targetConcept: String
+    let intermediateNodes: [String]
+    let edgeCount: Int
 }

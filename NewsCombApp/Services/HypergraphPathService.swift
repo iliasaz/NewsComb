@@ -93,7 +93,12 @@ final class HypergraphPathService: Sendable {
             }
         }
 
-        logger.info("Found \(reports.count) paths between \(pairs.count) node pairs")
+        // Log path length distribution for debugging
+        let pathLengths = reports.map { $0.edgePath.count }
+        let lengthCounts = Dictionary(grouping: pathLengths, by: { $0 }).mapValues { $0.count }
+        let sortedLengths = lengthCounts.sorted { $0.key < $1.key }
+        let lengthSummary = sortedLengths.map { "length \($0.key): \($0.value)" }.joined(separator: ", ")
+        logger.info("Found \(reports.count) paths between \(pairs.count) node pairs. Distribution: \(lengthSummary)")
         return reports
     }
 

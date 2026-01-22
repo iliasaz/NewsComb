@@ -33,3 +33,7 @@ file_length:
 cyclomatic_complexity:
   warning: 15
   error: 25
+
+function_body_length:
+  warning: 100
+  error: 200

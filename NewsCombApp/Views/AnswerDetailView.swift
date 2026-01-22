@@ -14,6 +14,10 @@ struct AnswerDetailView: View {
                     relatedNodesSection
                 }
 
+                if !response.reasoningPaths.isEmpty {
+                    reasoningPathsSection
+                }
+
                 if !response.graphPaths.isEmpty {
                     graphPathsSection
                 }
@@ -96,9 +100,25 @@ struct AnswerDetailView: View {
         }
     }
 
-    private var graphPathsSection: some View {
+    private var reasoningPathsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Reasoning Paths", systemImage: "point.topright.arrow.triangle.backward.to.point.bottomleft.scurvepath")
+                .font(.headline)
+
+            // Show multi-hop paths first, then single-hop
+            let sortedPaths = response.reasoningPaths.sorted { $0.edgeCount > $1.edgeCount }
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(sortedPaths.prefix(15)) { path in
+                    ReasoningPathRow(path: path)
+                }
+            }
+        }
+    }
+
+    private var graphPathsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Supporting Relationships", systemImage: "arrow.triangle.branch")
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 8) {
@@ -155,6 +175,68 @@ private struct NodeChip: View {
         } else {
             return .secondary
         }
+    }
+}
+
+private struct ReasoningPathRow: View {
+    let path: GraphRAGResponse.ReasoningPath
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Path description with hop count indicator
+            HStack(alignment: .top, spacing: 8) {
+                // Icon indicates path length
+                Image(systemName: path.isMultiHop ? "arrow.triangle.2.circlepath" : "arrow.right")
+                    .foregroundStyle(path.isMultiHop ? .purple : .secondary)
+                    .frame(width: 16)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    // Path description
+                    Text(path.description)
+                        .font(.subheadline)
+
+                    // Edge count badge
+                    Text("\(path.edgeCount) hop\(path.edgeCount == 1 ? "" : "s")")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(path.isMultiHop ? Color.purple.opacity(0.15) : Color.secondary.opacity(0.15))
+                        .foregroundStyle(path.isMultiHop ? .purple : .secondary)
+                        .clipShape(.capsule)
+                }
+            }
+
+            // Visual chip representation for multi-hop paths
+            if path.isMultiHop {
+                HStack(spacing: 4) {
+                    conceptChip(path.sourceConcept, color: .blue)
+
+                    ForEach(path.intermediateNodes, id: \.self) { node in
+                        Image(systemName: "arrow.right")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        conceptChip(node, color: .orange)
+                    }
+
+                    Image(systemName: "arrow.right")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    conceptChip(path.targetConcept, color: .green)
+                }
+                .padding(.leading, 24)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func conceptChip(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.15))
+            .foregroundStyle(color)
+            .clipShape(.capsule)
     }
 }
 
@@ -342,10 +424,15 @@ private struct FlowLayout: Layout {
                 .init(id: 1, nodeId: "ai", label: "Artificial Intelligence", nodeType: "TOPIC", distance: 0.1),
                 .init(id: 2, nodeId: "cloud", label: "Cloud Computing", nodeType: "TOPIC", distance: 0.2)
             ],
+            reasoningPaths: [
+                .init(sourceConcept: "Palo Alto Networks", targetConcept: "BigQuery", intermediateNodes: ["Google Cloud", "Dataflow"], edgeCount: 3),
+                .init(sourceConcept: "ServiceNow", targetConcept: "AI", intermediateNodes: ["OpenAI"], edgeCount: 2),
+                .init(sourceConcept: "Micron", targetConcept: "PSMC", intermediateNodes: [], edgeCount: 1)
+            ],
             graphPaths: [
-                .init(id: 1, relation: "partnered_with", sourceNodes: ["Palo Alto Networks"], targetNodes: ["Google Cloud"], provenanceText: "Palo Alto Networks partnered with Google Cloud to modernize their data processing landscape."),
+                .init(id: 1, relation: "partnered with", sourceNodes: ["Palo Alto Networks"], targetNodes: ["Google Cloud"], provenanceText: "Palo Alto Networks partnered with Google Cloud to modernize their data processing landscape."),
                 .init(id: 2, relation: "acquired", sourceNodes: ["Micron"], targetNodes: ["PSMC"], provenanceText: "Micron acquired a chipmaking campus from PSMC for $1.8 billion."),
-                .init(id: 3, relation: "announced_partnership", sourceNodes: ["ServiceNow"], targetNodes: ["OpenAI"])
+                .init(id: 3, relation: "announced partnership", sourceNodes: ["ServiceNow"], targetNodes: ["OpenAI"])
             ],
             sourceArticles: [
                 .init(id: 1, title: "AI Advances in 2026", link: "https://example.com", pubDate: Date(), relevantChunks: [

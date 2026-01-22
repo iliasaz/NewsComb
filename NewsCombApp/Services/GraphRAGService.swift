@@ -59,14 +59,20 @@ final class GraphRAGService: Sendable {
         let answer = try await generateAnswer(question: question, context: context)
         logger.info("Answer generated successfully")
 
-        // Step 6: Build response with sources and graph paths
+        // Step 6: Build response with sources, reasoning paths, and supporting edges
         let sourceArticles = try buildSourceArticles(from: context)
+        let reasoningPaths = buildReasoningPaths(from: context)
         let graphPaths = buildGraphPaths(from: context)
+
+        // Log reasoning path stats
+        let multiHopCount = reasoningPaths.filter { $0.isMultiHop }.count
+        logger.info("Reasoning paths: \(reasoningPaths.count) total, \(multiHopCount) multi-hop")
 
         return GraphRAGResponse(
             query: question,
             answer: answer,
             relatedNodes: similarNodes,
+            reasoningPaths: reasoningPaths,
             graphPaths: graphPaths,
             sourceArticles: sourceArticles
         )
@@ -585,6 +591,28 @@ final class GraphRAGService: Sendable {
                 sourceNodes: edge.sourceNodes,
                 targetNodes: edge.targetNodes,
                 provenanceText: edge.chunkText
+            )
+        }
+    }
+
+    /// Builds reasoning paths from the context, filtering and deduplicating.
+    private func buildReasoningPaths(from context: GraphRAGContext) -> [GraphRAGResponse.ReasoningPath] {
+        // Convert context reasoning paths to response reasoning paths
+        // Deduplicate by source-target pair (keep first occurrence)
+        var seenPairs: Set<String> = []
+
+        return context.reasoningPaths.compactMap { path in
+            let pairKey = "\(path.sourceConcept)|\(path.targetConcept)"
+
+            // Skip duplicates
+            guard !seenPairs.contains(pairKey) else { return nil }
+            seenPairs.insert(pairKey)
+
+            return GraphRAGResponse.ReasoningPath(
+                sourceConcept: path.sourceConcept,
+                targetConcept: path.targetConcept,
+                intermediateNodes: path.intermediateNodes,
+                edgeCount: path.edgeCount
             )
         }
     }

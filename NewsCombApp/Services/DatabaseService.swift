@@ -210,6 +210,18 @@ public final class Database: Sendable {
             } catch {
                 // Column might already exist, ignore error
             }
+
+            // Add reasoning_paths_json column to query_history if it doesn't exist
+            do {
+                let columnExists = try db.columns(in: "query_history").contains { $0.name == "reasoning_paths_json" }
+                if !columnExists {
+                    try db.execute(sql: """
+                        ALTER TABLE query_history ADD COLUMN reasoning_paths_json TEXT;
+                    """)
+                }
+            } catch {
+                // Column might already exist, ignore error
+            }
         }
     }
 

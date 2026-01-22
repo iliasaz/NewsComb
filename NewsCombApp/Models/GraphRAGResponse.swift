@@ -6,6 +6,7 @@ struct GraphRAGResponse: Identifiable, Sendable {
     let query: String
     let answer: String
     let relatedNodes: [RelatedNode]
+    let reasoningPaths: [ReasoningPath]
     let graphPaths: [GraphPath]
     let sourceArticles: [SourceArticle]
     let generatedAt: Date
@@ -15,6 +16,7 @@ struct GraphRAGResponse: Identifiable, Sendable {
         query: String,
         answer: String,
         relatedNodes: [RelatedNode] = [],
+        reasoningPaths: [ReasoningPath] = [],
         graphPaths: [GraphPath] = [],
         sourceArticles: [SourceArticle] = [],
         generatedAt: Date = Date()
@@ -23,9 +25,48 @@ struct GraphRAGResponse: Identifiable, Sendable {
         self.query = query
         self.answer = answer
         self.relatedNodes = relatedNodes
+        self.reasoningPaths = reasoningPaths
         self.graphPaths = graphPaths
         self.sourceArticles = sourceArticles
         self.generatedAt = generatedAt
+    }
+
+    /// A multi-hop reasoning path showing how concepts connect through the graph.
+    struct ReasoningPath: Identifiable, Sendable {
+        let id: UUID
+        let sourceConcept: String
+        let targetConcept: String
+        let intermediateNodes: [String]
+        let edgeCount: Int
+
+        init(
+            id: UUID = UUID(),
+            sourceConcept: String,
+            targetConcept: String,
+            intermediateNodes: [String] = [],
+            edgeCount: Int
+        ) {
+            self.id = id
+            self.sourceConcept = sourceConcept
+            self.targetConcept = targetConcept
+            self.intermediateNodes = intermediateNodes
+            self.edgeCount = edgeCount
+        }
+
+        /// Natural language description of the path.
+        var description: String {
+            if intermediateNodes.isEmpty {
+                return "\(sourceConcept) connects directly to \(targetConcept)"
+            } else {
+                let intermediates = intermediateNodes.joined(separator: " → ")
+                return "\(sourceConcept) → \(intermediates) → \(targetConcept)"
+            }
+        }
+
+        /// Whether this is a multi-hop path (more than 1 edge).
+        var isMultiHop: Bool {
+            edgeCount > 1
+        }
     }
 
     /// A path/relationship in the knowledge graph used for reasoning.
