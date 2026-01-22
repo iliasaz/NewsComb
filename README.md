@@ -1,5 +1,33 @@
 # NewsComb
-Analyzes, filters, aggregates, summarizes RSS news feeds
+
+A macOS app that transforms RSS news feeds into an interactive knowledge graph, enabling semantic search and multi-hop reasoning across your news sources.
+
+## Overview
+
+NewsComb retrieves articles from your RSS feeds and uses LLM-powered extraction to build a **semantic hypergraph** — a knowledge graph where entities (companies, people, products, technologies) are connected by relationships extracted from the news.
+
+![Semantic Hypergraph Visualization](docs/images/semantic_graph.png)
+
+### Key Features
+
+- **RSS Feed Aggregation**: Subscribe to multiple tech news feeds and automatically fetch new articles
+- **Knowledge Graph Construction**: Extract entities and relationships using configurable LLM prompts
+- **Vector Search with sqlite-vec**: Embeddings are stored locally using [sqlite-vec](https://github.com/asg017/sqlite-vec), enabling fast cosine similarity search without external dependencies
+- **Multi-hop Reasoning Paths**: Answer questions by traversing the hypergraph to find connections between concepts, even when they aren't directly linked
+
+### Reasoning Paths
+
+When you ask a question, NewsComb doesn't just search for keywords — it finds **reasoning paths** through the knowledge graph. For example, asking about AI chip competition might reveal paths like:
+
+`NVIDIA → competes with → AMD → partners with → Microsoft → invests in → OpenAI`
+
+These multi-hop connections surface relationships that wouldn't appear in a simple text search.
+
+![Reasoning Paths in Answer View](docs/images/reasoning_chains.png)
+
+### Deep Analysis
+
+The "Dive Deeper" feature uses a multi-agent workflow to synthesize insights with academic-style citations and generate hypotheses for further investigation.
 
 ## Installation
 
@@ -55,4 +83,24 @@ You can run an LLM locally with Ollama, but this will be significantly slower:
 ollama pull qwen2.5:14b
 ```
 
-Then select Ollama as the provider in Settings and use `qwen2.5:14b` as the model
+Then select Ollama as the provider in Settings and use `qwen2.5:14b` as the model.
+
+## Credits & Acknowledgements
+
+### Research Foundation
+
+This project is inspired by and builds upon the hypergraph reasoning approach described in:
+
+**[HyperGraphRAG: Hypergraph-Driven Reasoning and Affordable LLM-Based Knowledge Construction](https://arxiv.org/pdf/2601.04878)**
+
+> Buehler, M.J. (2025). A novel approach using hypergraphs for knowledge organization and reasoning, enabling multi-hop traversal and affordable construction via small language models.
+
+The original Python implementation is available at: [lamm-mit/HyperGraphReasoning](https://github.com/lamm-mit/HyperGraphReasoning)
+
+### Technical Resources
+
+- **[GRDBCustomSQLiteBuild](https://github.com/SwiftedMind/GRDBCustomSQLiteBuild)** — Invaluable guide for integrating sqlite-vec with GRDB in Swift, enabling local vector search without external services
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
