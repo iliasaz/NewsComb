@@ -273,16 +273,16 @@ final class HypergraphService: Sendable {
 
         switch settings.provider {
         case "ollama":
-            let endpoint = settings.ollamaEndpoint ?? "http://localhost:11434"
-            let model = settings.ollamaModel ?? "llama3.2:3b"
-            let embeddingModel = settings.embeddingOllamaModel ?? "nomic-embed-text:v1.5"
+            let endpoint = settings.ollamaEndpoint ?? AppSettings.defaultOllamaEndpoint
+            let model = settings.ollamaModel ?? AppSettings.defaultOllamaModel
+            let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
             logger.info("Configuring Ollama: endpoint=\(endpoint, privacy: .public), model=\(model, privacy: .public), embedding=\(embeddingModel, privacy: .public)")
 
             if let extractionPrompt = settings.extractionSystemPrompt {
                 logger.info("Using custom extraction prompt (\(extractionPrompt.count) chars)")
             }
 
-            let host = URL(string: endpoint) ?? URL(string: "http://localhost:11434")!
+            let host = URL(string: endpoint) ?? URL(string: AppSettings.defaultOllamaEndpoint)!
             let ollama = OllamaService(
                 host: host,
                 chatModel: model,
@@ -299,7 +299,7 @@ final class HypergraphService: Sendable {
                 logger.error("OpenRouter API key is missing")
                 throw HypergraphServiceError.missingAPIKey
             }
-            let chatModel = settings.openRouterModel ?? "meta-llama/llama-4-maverick"
+            let chatModel = settings.openRouterModel ?? AppSettings.defaultOpenRouterModel
             logger.info("Configuring OpenRouter: model=\(chatModel, privacy: .public)")
 
             if let extractionPrompt = settings.extractionSystemPrompt {
@@ -328,8 +328,8 @@ final class HypergraphService: Sendable {
     /// Creates an OllamaService configured for embeddings based on settings.
     @MainActor
     private func createEmbeddingOllamaService(settings: LLMSettings) -> OllamaService {
-        let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? "http://localhost:11434"
-        let embeddingModel = settings.embeddingOllamaModel ?? "nomic-embed-text:v1.5"
+        let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
+        let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
 
         logger.info("Embedding Ollama: endpoint=\(embeddingEndpoint, privacy: .public), model=\(embeddingModel, privacy: .public)")
 
