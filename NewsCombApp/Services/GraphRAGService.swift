@@ -539,15 +539,16 @@ final class GraphRAGService: Sendable {
             Please answer the question based on the context provided above.
             """
 
-        switch settings.provider {
+        // Use analysis LLM settings (with fallback to main LLM)
+        switch settings.effectiveAnalysisProvider {
         case "ollama":
-            return try await generateWithOllama(
+            return try await generateAnswerWithOllama(
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
                 settings: settings
             )
         case "openrouter":
-            return try await generateWithOpenRouter(
+            return try await generateAnswerWithOpenRouter(
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
                 settings: settings
@@ -580,6 +581,39 @@ final class GraphRAGService: Sendable {
         }
 
         let model = settings.openRouterModel ?? AppSettings.defaultOpenRouterModel
+        let openRouter = try OpenRouterService(apiKey: apiKey, model: model)
+
+        return try await openRouter.chat(
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
+            model: model,
+            temperature: 0.7
+        )
+    }
+
+    @MainActor
+    private func generateAnswerWithOllama(systemPrompt: String, userPrompt: String, settings: LLMSettings) async throws -> String {
+        let endpoint = settings.effectiveAnalysisOllamaEndpoint ?? AppSettings.defaultAnalysisOllamaEndpoint
+        let model = settings.effectiveAnalysisOllamaModel ?? AppSettings.defaultAnalysisOllamaModel
+
+        guard let host = URL(string: endpoint) else {
+            throw GraphRAGError.invalidConfiguration("Invalid Ollama endpoint")
+        }
+
+        let ollama = OllamaService(host: host, chatModel: model)
+        return try await ollama.chat(
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt
+        )
+    }
+
+    @MainActor
+    private func generateAnswerWithOpenRouter(systemPrompt: String, userPrompt: String, settings: LLMSettings) async throws -> String {
+        guard let apiKey = settings.openRouterKey, !apiKey.isEmpty else {
+            throw GraphRAGError.missingAPIKey
+        }
+
+        let model = settings.effectiveAnalysisOpenRouterModel ?? AppSettings.defaultAnalysisOpenRouterModel
         let openRouter = try OpenRouterService(apiKey: apiKey, model: model)
 
         return try await openRouter.chat(
@@ -719,6 +753,31 @@ final class GraphRAGService: Sendable {
                 .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel)
                 .fetchOne(db) {
                 settings.embeddingOllamaModel = model.value
+            }
+
+            // Analysis LLM settings
+            if let provider = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisLLMProvider)
+                .fetchOne(db) {
+                settings.analysisProvider = provider.value
+            }
+
+            if let endpoint = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisOllamaEndpoint)
+                .fetchOne(db) {
+                settings.analysisOllamaEndpoint = endpoint.value
+            }
+
+            if let model = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisOllamaModel)
+                .fetchOne(db) {
+                settings.analysisOllamaModel = model.value
+            }
+
+            if let model = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisOpenRouterModel)
+                .fetchOne(db) {
+                settings.analysisOpenRouterModel = model.value
             }
 
             return settings

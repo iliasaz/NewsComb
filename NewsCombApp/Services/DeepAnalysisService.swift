@@ -173,7 +173,8 @@ final class DeepAnalysisService: Sendable {
     private func generateWithLLM(systemPrompt: String, userPrompt: String) async throws -> String {
         let settings = try loadSettings()
 
-        switch settings.provider {
+        // Use analysis LLM settings (with fallback to main LLM)
+        switch settings.effectiveAnalysisProvider {
         case "ollama":
             return try await generateWithOllama(
                 systemPrompt: systemPrompt,
@@ -197,8 +198,8 @@ final class DeepAnalysisService: Sendable {
         userPrompt: String,
         settings: LLMSettings
     ) async throws -> String {
-        let endpoint = settings.ollamaEndpoint ?? AppSettings.defaultOllamaEndpoint
-        let model = settings.ollamaModel ?? AppSettings.defaultOllamaModel
+        let endpoint = settings.effectiveAnalysisOllamaEndpoint ?? AppSettings.defaultAnalysisOllamaEndpoint
+        let model = settings.effectiveAnalysisOllamaModel ?? AppSettings.defaultAnalysisOllamaModel
 
         guard let host = URL(string: endpoint) else {
             throw DeepAnalysisError.invalidConfiguration("Invalid Ollama endpoint")
@@ -221,7 +222,7 @@ final class DeepAnalysisService: Sendable {
             throw DeepAnalysisError.missingAPIKey
         }
 
-        let model = settings.openRouterModel ?? AppSettings.defaultOpenRouterModel
+        let model = settings.effectiveAnalysisOpenRouterModel ?? AppSettings.defaultAnalysisOpenRouterModel
         let openRouter = try OpenRouterService(apiKey: apiKey, model: model)
 
         return try await openRouter.chat(
@@ -265,6 +266,31 @@ final class DeepAnalysisService: Sendable {
                 .filter(AppSettings.Columns.key == AppSettings.openRouterModel)
                 .fetchOne(db) {
                 settings.openRouterModel = model.value
+            }
+
+            // Analysis LLM settings
+            if let provider = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisLLMProvider)
+                .fetchOne(db) {
+                settings.analysisProvider = provider.value
+            }
+
+            if let endpoint = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisOllamaEndpoint)
+                .fetchOne(db) {
+                settings.analysisOllamaEndpoint = endpoint.value
+            }
+
+            if let model = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisOllamaModel)
+                .fetchOne(db) {
+                settings.analysisOllamaModel = model.value
+            }
+
+            if let model = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisOpenRouterModel)
+                .fetchOne(db) {
+                settings.analysisOpenRouterModel = model.value
             }
 
             return settings

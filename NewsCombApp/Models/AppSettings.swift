@@ -42,6 +42,16 @@ extension AppSettings {
     static let embeddingOpenRouterModel = "embedding_openrouter_model"
     static let defaultEmbeddingOpenRouterModel = "openai/text-embedding-3-small"
 
+    // Analysis LLM Configuration (for answers and deep analysis)
+    static let analysisLLMProvider = "analysis_llm_provider"
+    static let defaultAnalysisLLMProvider = ""  // Empty = Same as Chat LLM
+    static let analysisOllamaEndpoint = "analysis_ollama_endpoint"
+    static let defaultAnalysisOllamaEndpoint = "http://localhost:11434"
+    static let analysisOllamaModel = "analysis_ollama_model"
+    static let defaultAnalysisOllamaModel = "llama3.2:3b"
+    static let analysisOpenRouterModel = "analysis_openrouter_model"
+    static let defaultAnalysisOpenRouterModel = "meta-llama/llama-4-maverick"
+
     // Feed Configuration
     static let articleAgeLimitDays = "article_age_limit_days"
     static let defaultArticleAgeLimitDays = 7

@@ -308,6 +308,12 @@ public final class Database: Sendable {
             (AppSettings.distillationSystemPrompt, AppSettings.defaultDistillationPrompt),
             (AppSettings.engineerAgentPrompt, AppSettings.defaultEngineerAgentPrompt),
             (AppSettings.hypothesizerAgentPrompt, AppSettings.defaultHypothesizerAgentPrompt),
+
+            // Analysis LLM Configuration
+            (AppSettings.analysisLLMProvider, AppSettings.defaultAnalysisLLMProvider),
+            (AppSettings.analysisOllamaEndpoint, AppSettings.defaultAnalysisOllamaEndpoint),
+            (AppSettings.analysisOllamaModel, AppSettings.defaultAnalysisOllamaModel),
+            (AppSettings.analysisOpenRouterModel, AppSettings.defaultAnalysisOpenRouterModel),
         ]
 
         for setting in defaultSettings {

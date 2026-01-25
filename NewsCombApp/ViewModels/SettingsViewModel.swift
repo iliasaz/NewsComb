@@ -34,6 +34,23 @@ enum EmbeddingProviderOption: String, CaseIterable, Identifiable {
     }
 }
 
+/// Analysis LLM provider options (for answers and deep analysis).
+enum AnalysisLLMProviderOption: String, CaseIterable, Identifiable {
+    case sameAsChat = ""
+    case ollama = "ollama"
+    case openrouter = "openrouter"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .sameAsChat: return "Same as Chat LLM"
+        case .ollama: return "Ollama (Local)"
+        case .openrouter: return "OpenRouter (Cloud)"
+        }
+    }
+}
+
 @MainActor
 @Observable
 class SettingsViewModel {
@@ -53,6 +70,12 @@ class SettingsViewModel {
     var embeddingOllamaEndpoint: String = AppSettings.defaultEmbeddingOllamaEndpoint
     var embeddingOllamaModel: String = AppSettings.defaultEmbeddingOllamaModel
     var embeddingOpenRouterModel: String = AppSettings.defaultEmbeddingOpenRouterModel
+
+    // Analysis LLM Configuration (for answers and deep analysis)
+    var analysisLLMProvider: AnalysisLLMProviderOption = .sameAsChat
+    var analysisOllamaEndpoint: String = AppSettings.defaultAnalysisOllamaEndpoint
+    var analysisOllamaModel: String = AppSettings.defaultAnalysisOllamaModel
+    var analysisOpenRouterModel: String = AppSettings.defaultAnalysisOpenRouterModel
 
     // Feed Configuration
     var articleAgeLimitDays: Int = AppSettings.defaultArticleAgeLimitDays
@@ -131,6 +154,23 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel).fetchOne(db) {
                     embeddingOpenRouterModel = setting.value
+                }
+
+                // Load analysis LLM settings
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.analysisLLMProvider).fetchOne(db) {
+                    analysisLLMProvider = AnalysisLLMProviderOption(rawValue: setting.value) ?? .sameAsChat
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.analysisOllamaEndpoint).fetchOne(db) {
+                    analysisOllamaEndpoint = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.analysisOllamaModel).fetchOne(db) {
+                    analysisOllamaModel = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.analysisOpenRouterModel).fetchOne(db) {
+                    analysisOpenRouterModel = setting.value
                 }
 
                 // Load feed configuration
@@ -322,6 +362,24 @@ class SettingsViewModel {
 
     func saveEmbeddingOpenRouterModel() {
         saveAPIKey(key: AppSettings.embeddingOpenRouterModel, value: embeddingOpenRouterModel)
+    }
+
+    // MARK: - Analysis LLM Save Methods
+
+    func saveAnalysisLLMProvider() {
+        saveAPIKey(key: AppSettings.analysisLLMProvider, value: analysisLLMProvider.rawValue)
+    }
+
+    func saveAnalysisOllamaEndpoint() {
+        saveAPIKey(key: AppSettings.analysisOllamaEndpoint, value: analysisOllamaEndpoint)
+    }
+
+    func saveAnalysisOllamaModel() {
+        saveAPIKey(key: AppSettings.analysisOllamaModel, value: analysisOllamaModel)
+    }
+
+    func saveAnalysisOpenRouterModel() {
+        saveAPIKey(key: AppSettings.analysisOpenRouterModel, value: analysisOpenRouterModel)
     }
 
     func saveArticleAgeLimitDays() {
