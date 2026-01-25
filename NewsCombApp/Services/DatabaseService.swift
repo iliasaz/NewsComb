@@ -268,6 +268,15 @@ public final class Database: Sendable {
             } catch {
                 // Column might already exist, ignore error
             }
+
+            // Seed default analysis LLM settings if not present
+            // Empty string means "Same as Chat LLM"
+            try db.execute(sql: """
+                INSERT OR IGNORE INTO app_settings (key, value) VALUES ('\(AppSettings.analysisLLMProvider)', '');
+                INSERT OR IGNORE INTO app_settings (key, value) VALUES ('\(AppSettings.analysisOllamaEndpoint)', 'http://localhost:11434');
+                INSERT OR IGNORE INTO app_settings (key, value) VALUES ('\(AppSettings.analysisOllamaModel)', 'llama3.2:3b');
+                INSERT OR IGNORE INTO app_settings (key, value) VALUES ('\(AppSettings.analysisOpenRouterModel)', 'meta-llama/llama-4-maverick');
+            """)
         }
     }
 
