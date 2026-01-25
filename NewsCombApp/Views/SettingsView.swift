@@ -7,6 +7,7 @@ struct SettingsView: View {
         Form {
             feedSettingsSection
             knowledgeExtractionSection
+            analysisModelSection
             algorithmParametersSection
             extractionPromptsSection
             deepAnalysisPromptsSection
@@ -121,6 +122,43 @@ struct SettingsView: View {
             Text("Knowledge Extraction")
         } footer: {
             Text("Configure LLM for knowledge extraction and embedding model for semantic search.")
+        }
+    }
+
+    private var analysisModelSection: some View {
+        Section {
+            Picker("Analysis LLM Provider", selection: $viewModel.analysisLLMProvider) {
+                ForEach(AnalysisLLMProviderOption.allCases) { option in
+                    Text(option.displayName).tag(option)
+                }
+            }
+            .onChange(of: viewModel.analysisLLMProvider) {
+                viewModel.saveAnalysisLLMProvider()
+            }
+
+            if viewModel.analysisLLMProvider == .ollama {
+                TextField("Ollama Endpoint", text: $viewModel.analysisOllamaEndpoint)
+                    .textContentType(.URL)
+                    .onChange(of: viewModel.analysisOllamaEndpoint) {
+                        viewModel.saveAnalysisOllamaEndpoint()
+                    }
+
+                TextField("Analysis Model", text: $viewModel.analysisOllamaModel)
+                    .onChange(of: viewModel.analysisOllamaModel) {
+                        viewModel.saveAnalysisOllamaModel()
+                    }
+            }
+
+            if viewModel.analysisLLMProvider == .openrouter {
+                TextField("Analysis Model", text: $viewModel.analysisOpenRouterModel)
+                    .onChange(of: viewModel.analysisOpenRouterModel) {
+                        viewModel.saveAnalysisOpenRouterModel()
+                    }
+            }
+        } header: {
+            Text("Analysis Model")
+        } footer: {
+            Text("Configure a separate LLM for generating answers and deep dive analyses. Uses the same API key as the Chat LLM when using OpenRouter.")
         }
     }
 

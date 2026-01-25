@@ -34,6 +34,12 @@ extension AppSettings {
     static let embeddingOllamaModel = "embedding_ollama_model"
     static let embeddingOpenRouterModel = "embedding_openrouter_model"
 
+    // Analysis LLM Configuration (for answers and deep analysis)
+    static let analysisLLMProvider = "analysis_llm_provider"
+    static let analysisOllamaEndpoint = "analysis_ollama_endpoint"
+    static let analysisOllamaModel = "analysis_ollama_model"
+    static let analysisOpenRouterModel = "analysis_openrouter_model"
+
     // Feed Configuration
     static let articleAgeLimitDays = "article_age_limit_days"
     static let defaultArticleAgeLimitDays = 7

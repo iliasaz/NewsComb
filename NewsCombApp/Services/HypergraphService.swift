@@ -1014,12 +1014,44 @@ struct LLMSettings: Sendable {
     var embeddingOllamaModel: String?
     var embeddingOpenRouterModel: String?
 
+    // Analysis LLM configuration (for answers and deep analysis)
+    // Falls back to main LLM settings if not configured
+    var analysisProvider: String?
+    var analysisOllamaEndpoint: String?
+    var analysisOllamaModel: String?
+    var analysisOpenRouterModel: String?
+
     // Processing configuration
     var maxConcurrentProcessing: Int = AppSettings.defaultMaxConcurrentProcessing
 
     // Custom prompts (nil means use defaults)
     var extractionSystemPrompt: String?
     var distillationSystemPrompt: String?
+
+    // MARK: - Analysis LLM Helpers
+
+    /// Returns the effective provider for analysis, falling back to main provider.
+    var effectiveAnalysisProvider: String {
+        if let provider = analysisProvider, !provider.isEmpty {
+            return provider
+        }
+        return provider
+    }
+
+    /// Returns the effective Ollama endpoint for analysis.
+    var effectiveAnalysisOllamaEndpoint: String? {
+        analysisOllamaEndpoint ?? ollamaEndpoint
+    }
+
+    /// Returns the effective Ollama model for analysis.
+    var effectiveAnalysisOllamaModel: String? {
+        analysisOllamaModel ?? ollamaModel
+    }
+
+    /// Returns the effective OpenRouter model for analysis.
+    var effectiveAnalysisOpenRouterModel: String? {
+        analysisOpenRouterModel ?? openRouterModel
+    }
 }
 
 struct HypergraphStatistics: Sendable {
