@@ -269,15 +269,61 @@ public final class Database: Sendable {
                 // Column might already exist, ignore error
             }
 
-            // Seed default analysis LLM settings if not present
-            // Empty string means "Same as Chat LLM"
-            try db.execute(sql: """
-                INSERT OR IGNORE INTO app_settings (key, value) VALUES ('\(AppSettings.analysisLLMProvider)', '');
-                INSERT OR IGNORE INTO app_settings (key, value) VALUES ('\(AppSettings.analysisOllamaEndpoint)', 'http://localhost:11434');
-                INSERT OR IGNORE INTO app_settings (key, value) VALUES ('\(AppSettings.analysisOllamaModel)', 'llama3.2:3b');
-                INSERT OR IGNORE INTO app_settings (key, value) VALUES ('\(AppSettings.analysisOpenRouterModel)', 'meta-llama/llama-4-maverick');
-            """)
+            // Seed default settings if they don't exist
+            try seedDefaultSettings(db)
         }
+    }
+
+    /// Seeds default application settings into the database.
+    /// Uses INSERT OR IGNORE to avoid overwriting existing user settings.
+    private func seedDefaultSettings(_ db: GRDB.Database) throws {
+        let defaultSettings: [(key: String, value: String)] = [
+            // LLM Configuration
+            (AppSettings.llmProvider, AppSettings.defaultLLMProvider),
+            (AppSettings.ollamaEndpoint, AppSettings.defaultOllamaEndpoint),
+            (AppSettings.ollamaModel, AppSettings.defaultOllamaModel),
+            (AppSettings.openRouterModel, AppSettings.defaultOpenRouterModel),
+
+            // Embedding Configuration
+            (AppSettings.embeddingProvider, AppSettings.defaultEmbeddingProvider),
+            (AppSettings.embeddingOllamaEndpoint, AppSettings.defaultEmbeddingOllamaEndpoint),
+            (AppSettings.embeddingOllamaModel, AppSettings.defaultEmbeddingOllamaModel),
+            (AppSettings.embeddingOpenRouterModel, AppSettings.defaultEmbeddingOpenRouterModel),
+
+            // Feed Configuration
+            (AppSettings.articleAgeLimitDays, String(AppSettings.defaultArticleAgeLimitDays)),
+
+            // Algorithm Parameters
+            (AppSettings.chunkSize, String(AppSettings.defaultChunkSize)),
+            (AppSettings.similarityThreshold, String(AppSettings.defaultSimilarityThreshold)),
+            (AppSettings.llmTemperature, String(AppSettings.defaultLLMTemperature)),
+            (AppSettings.llmMaxTokens, String(AppSettings.defaultLLMMaxTokens)),
+            (AppSettings.ragMaxNodes, String(AppSettings.defaultRAGMaxNodes)),
+            (AppSettings.ragMaxChunks, String(AppSettings.defaultRAGMaxChunks)),
+            (AppSettings.maxPathDepth, String(AppSettings.defaultMaxPathDepth)),
+            (AppSettings.maxConcurrentProcessing, String(AppSettings.defaultMaxConcurrentProcessing)),
+
+            // Prompts
+            (AppSettings.extractionSystemPrompt, AppSettings.defaultExtractionPrompt),
+            (AppSettings.distillationSystemPrompt, AppSettings.defaultDistillationPrompt),
+            (AppSettings.engineerAgentPrompt, AppSettings.defaultEngineerAgentPrompt),
+            (AppSettings.hypothesizerAgentPrompt, AppSettings.defaultHypothesizerAgentPrompt),
+
+            // Analysis LLM Configuration
+            (AppSettings.analysisLLMProvider, AppSettings.defaultAnalysisLLMProvider),
+            (AppSettings.analysisOllamaEndpoint, AppSettings.defaultAnalysisOllamaEndpoint),
+            (AppSettings.analysisOllamaModel, AppSettings.defaultAnalysisOllamaModel),
+            (AppSettings.analysisOpenRouterModel, AppSettings.defaultAnalysisOpenRouterModel),
+        ]
+
+        for setting in defaultSettings {
+            try db.execute(
+                sql: "INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)",
+                arguments: [setting.key, setting.value]
+            )
+        }
+
+        Self.logger.info("Default settings seeded successfully")
     }
 
     func read<T>(_ block: (GRDB.Database) throws -> T) throws -> T {

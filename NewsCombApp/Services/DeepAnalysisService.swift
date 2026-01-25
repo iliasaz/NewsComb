@@ -198,8 +198,8 @@ final class DeepAnalysisService: Sendable {
         userPrompt: String,
         settings: LLMSettings
     ) async throws -> String {
-        let endpoint = settings.effectiveAnalysisOllamaEndpoint ?? "http://localhost:11434"
-        let model = settings.effectiveAnalysisOllamaModel ?? "llama3.2:3b"
+        let endpoint = settings.effectiveAnalysisOllamaEndpoint ?? AppSettings.defaultAnalysisOllamaEndpoint
+        let model = settings.effectiveAnalysisOllamaModel ?? AppSettings.defaultAnalysisOllamaModel
 
         guard let host = URL(string: endpoint) else {
             throw DeepAnalysisError.invalidConfiguration("Invalid Ollama endpoint")
@@ -222,7 +222,7 @@ final class DeepAnalysisService: Sendable {
             throw DeepAnalysisError.missingAPIKey
         }
 
-        let model = settings.effectiveAnalysisOpenRouterModel ?? "meta-llama/llama-4-maverick"
+        let model = settings.effectiveAnalysisOpenRouterModel ?? AppSettings.defaultAnalysisOpenRouterModel
         let openRouter = try OpenRouterService(apiKey: apiKey, model: model)
 
         return try await openRouter.chat(
