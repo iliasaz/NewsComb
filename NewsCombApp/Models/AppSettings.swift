@@ -24,15 +24,23 @@ extension AppSettings {
 
     // LLM Configuration for Knowledge Extraction
     static let llmProvider = "llm_provider"
+    static let defaultLLMProvider = ""  // No provider configured by default
     static let ollamaEndpoint = "ollama_endpoint"
+    static let defaultOllamaEndpoint = "http://localhost:11434"
     static let ollamaModel = "ollama_model"
+    static let defaultOllamaModel = "llama3.2:3b"
     static let openRouterModel = "openrouter_model"
+    static let defaultOpenRouterModel = "meta-llama/llama-4-maverick"
 
     // Embedding Configuration
     static let embeddingProvider = "embedding_provider"
+    static let defaultEmbeddingProvider = "ollama"
     static let embeddingOllamaEndpoint = "embedding_ollama_endpoint"
+    static let defaultEmbeddingOllamaEndpoint = "http://localhost:11434"
     static let embeddingOllamaModel = "embedding_ollama_model"
+    static let defaultEmbeddingOllamaModel = "nomic-embed-text:v1.5"
     static let embeddingOpenRouterModel = "embedding_openrouter_model"
+    static let defaultEmbeddingOpenRouterModel = "openai/text-embedding-3-small"
 
     // Feed Configuration
     static let articleAgeLimitDays = "article_age_limit_days"

@@ -44,15 +44,15 @@ class SettingsViewModel {
 
     // LLM Configuration
     var llmProvider: LLMProviderOption = .none
-    var ollamaEndpoint: String = "http://localhost:11434"
-    var ollamaModel: String = "llama3.2:3b"
-    var openRouterModel: String = "meta-llama/llama-4-maverick"
+    var ollamaEndpoint: String = AppSettings.defaultOllamaEndpoint
+    var ollamaModel: String = AppSettings.defaultOllamaModel
+    var openRouterModel: String = AppSettings.defaultOpenRouterModel
 
     // Embedding Configuration
     var embeddingProvider: EmbeddingProviderOption = .ollama
-    var embeddingOllamaEndpoint: String = "http://localhost:11434"
-    var embeddingOllamaModel: String = "nomic-embed-text:v1.5"
-    var embeddingOpenRouterModel: String = "openai/text-embedding-3-small"
+    var embeddingOllamaEndpoint: String = AppSettings.defaultEmbeddingOllamaEndpoint
+    var embeddingOllamaModel: String = AppSettings.defaultEmbeddingOllamaModel
+    var embeddingOpenRouterModel: String = AppSettings.defaultEmbeddingOpenRouterModel
 
     // Feed Configuration
     var articleAgeLimitDays: Int = AppSettings.defaultArticleAgeLimitDays

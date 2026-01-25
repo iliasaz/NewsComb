@@ -559,8 +559,8 @@ final class GraphRAGService: Sendable {
 
     @MainActor
     private func generateWithOllama(systemPrompt: String, userPrompt: String, settings: LLMSettings) async throws -> String {
-        let endpoint = settings.ollamaEndpoint ?? "http://localhost:11434"
-        let model = settings.ollamaModel ?? "llama3.2:3b"
+        let endpoint = settings.ollamaEndpoint ?? AppSettings.defaultOllamaEndpoint
+        let model = settings.ollamaModel ?? AppSettings.defaultOllamaModel
 
         guard let host = URL(string: endpoint) else {
             throw GraphRAGError.invalidConfiguration("Invalid Ollama endpoint")
@@ -579,7 +579,7 @@ final class GraphRAGService: Sendable {
             throw GraphRAGError.missingAPIKey
         }
 
-        let model = settings.openRouterModel ?? "meta-llama/llama-4-maverick"
+        let model = settings.openRouterModel ?? AppSettings.defaultOpenRouterModel
         let openRouter = try OpenRouterService(apiKey: apiKey, model: model)
 
         return try await openRouter.chat(
@@ -727,8 +727,8 @@ final class GraphRAGService: Sendable {
 
     @MainActor
     private func createEmbeddingService(settings: LLMSettings) -> OllamaService {
-        let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? "http://localhost:11434"
-        let embeddingModel = settings.embeddingOllamaModel ?? "nomic-embed-text:v1.5"
+        let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
+        let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
 
         if let host = URL(string: embeddingEndpoint) {
             return OllamaService(host: host, embeddingModel: embeddingModel)
