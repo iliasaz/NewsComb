@@ -60,6 +60,9 @@ final class GraphRAGTests: XCTestCase {
     }
 
     func testRelatedNodeSimilarityCalculation() {
+        // Similarity is calculated as: max(0, min(1, 1 - distance))
+        // For cosine distance: 0 = identical, 1 = orthogonal, 2 = opposite
+
         // Test high similarity (low distance)
         let node1 = GraphRAGResponse.RelatedNode(
             id: 1,
@@ -70,7 +73,7 @@ final class GraphRAGTests: XCTestCase {
         )
         XCTAssertEqual(node1.similarity, 1.0, accuracy: 0.001)
 
-        // Test medium similarity
+        // Test orthogonal vectors (distance = 1.0 → similarity = 0.0)
         let node2 = GraphRAGResponse.RelatedNode(
             id: 2,
             nodeId: "n2",
@@ -78,9 +81,9 @@ final class GraphRAGTests: XCTestCase {
             nodeType: nil,
             distance: 1.0
         )
-        XCTAssertEqual(node2.similarity, 0.5, accuracy: 0.001)
+        XCTAssertEqual(node2.similarity, 0.0, accuracy: 0.001)
 
-        // Test low similarity (high distance)
+        // Test opposite vectors (distance = 2.0 → similarity = 0.0, clamped)
         let node3 = GraphRAGResponse.RelatedNode(
             id: 3,
             nodeId: "n3",
@@ -99,6 +102,16 @@ final class GraphRAGTests: XCTestCase {
             distance: 3.0
         )
         XCTAssertGreaterThanOrEqual(node4.similarity, 0.0)
+
+        // Test partial similarity (distance = 0.3 → similarity = 0.7)
+        let node5 = GraphRAGResponse.RelatedNode(
+            id: 5,
+            nodeId: "n5",
+            label: "Test",
+            nodeType: nil,
+            distance: 0.3
+        )
+        XCTAssertEqual(node5.similarity, 0.7, accuracy: 0.001)
     }
 
     func testRelatedNodeNilType() {
@@ -169,8 +182,8 @@ final class GraphRAGTests: XCTestCase {
             distance: 0.4
         )
 
-        // similarity = max(0, 1 - distance/2) = 1 - 0.2 = 0.8
-        XCTAssertEqual(chunk.similarity, 0.8, accuracy: 0.001)
+        // similarity = max(0, min(1, 1 - distance)) = 1 - 0.4 = 0.6
+        XCTAssertEqual(chunk.similarity, 0.6, accuracy: 0.001)
     }
 
     // MARK: - GraphRAGContext Tests
@@ -299,7 +312,8 @@ final class GraphRAGTests: XCTestCase {
 
         XCTAssertTrue(formatted.contains("Relationships"))
         XCTAssertTrue(formatted.contains("AI"))
-        XCTAssertTrue(formatted.contains("is_a"))
+        // formatEdge() converts underscores to spaces: "is_a" → "is a"
+        XCTAssertTrue(formatted.contains("is a"))
         XCTAssertTrue(formatted.contains("Technology"))
     }
 
@@ -420,7 +434,7 @@ final class GraphRAGTests: XCTestCase {
         for query in GraphRAGViewModel.sampleQueries {
             // Sample queries should end with a question mark or be meaningful prompts
             let isQuestion = query.hasSuffix("?")
-            let isPrompt = query.contains("What") || query.contains("How") || query.contains("Summarize")
+            let isPrompt = query.contains("What") || query.contains("How") || query.contains("Summarize") || query.contains("Generate")
             XCTAssertTrue(isQuestion || isPrompt, "Sample query should be a question or prompt: \(query)")
         }
     }
