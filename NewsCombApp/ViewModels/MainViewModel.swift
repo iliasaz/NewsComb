@@ -445,7 +445,7 @@ class MainViewModel {
         simplifyProgress = "Analyzing node similarity..."
 
         do {
-            let result = try nodeMergingService.simplifyHypergraph()
+            let result = try await nodeMergingService.simplifyHypergraph()
 
             if result.mergedPairs > 0 {
                 simplifyProgress = "Merged \(result.mergedPairs) similar node\(result.mergedPairs == 1 ? "" : "s")"
