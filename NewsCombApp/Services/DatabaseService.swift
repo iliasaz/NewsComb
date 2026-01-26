@@ -271,6 +271,9 @@ public final class Database: Sendable {
 
             // Seed default settings if they don't exist
             try seedDefaultSettings(db)
+
+            // Seed default RSS sources if none exist
+            try seedDefaultRSSSources(db)
         }
     }
 
@@ -324,6 +327,53 @@ public final class Database: Sendable {
         }
 
         Self.logger.info("Default settings seeded successfully")
+    }
+
+    /// Seeds default RSS sources into the database.
+    /// Only seeds if no sources exist yet (first app launch).
+    private func seedDefaultRSSSources(_ db: GRDB.Database) throws {
+        // Check if any sources already exist
+        let sourceCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM rss_source") ?? 0
+        guard sourceCount == 0 else {
+            Self.logger.info("RSS sources already exist, skipping seed")
+            return
+        }
+
+        // Default curated feed sources
+        let defaultSources: [(url: String, title: String)] = [
+            // Cloud Providers
+            ("https://aws.amazon.com/blogs/aws/feed", "AWS Blog"),
+            ("https://aws.amazon.com/about-aws/whats-new/recent/feed", "AWS What's New"),
+            ("https://azure.microsoft.com/en-us/blog/feed", "Azure Blog"),
+            ("https://cloud.google.com/feeds/gcp-release-notes.xml", "GCP Release Notes"),
+            ("https://cloudblog.withgoogle.com/rss", "Google Cloud Blog"),
+            ("https://www.digitalocean.com/blog/rss", "DigitalOcean Blog"),
+            ("https://lambdalabs.com/blog/rss.xml", "Lambda Labs Blog"),
+
+            // AI & ML
+            ("https://openai.com/news/rss.xml", "OpenAI News"),
+            ("https://nvidianews.nvidia.com/releases.xml", "NVIDIA News"),
+            ("https://feeds.feedburner.com/nvidiablog", "NVIDIA Blog"),
+            ("https://developer.nvidia.com/blog/feed", "NVIDIA Developer Blog"),
+
+            // Tech News & Analysis
+            ("https://www.semianalysis.com/feed", "SemiAnalysis"),
+            ("https://www.theregister.com/headlines.atom", "The Register"),
+            ("https://venturebeat.com/category/ai/feed", "VentureBeat AI"),
+            ("https://news.ycombinator.com/rss", "Hacker News"),
+
+            // GitHub Trending
+            ("https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml", "GitHub Trending"),
+        ]
+
+        for source in defaultSources {
+            try db.execute(
+                sql: "INSERT OR IGNORE INTO rss_source (url, title) VALUES (?, ?)",
+                arguments: [source.url, source.title]
+            )
+        }
+
+        Self.logger.info("Default RSS sources seeded: \(defaultSources.count) sources")
     }
 
     func read<T>(_ block: (GRDB.Database) throws -> T) throws -> T {

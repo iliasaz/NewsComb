@@ -133,6 +133,8 @@ extension GraphRAGViewModel {
         "What events happened recently?",
         "What connections exist between different people mentioned?",
         "Summarize the key themes across all articles.",
-        "I'm CEO of a cloud provider. Generate plausible scenarios for how the top news topics may impact my business."
+        """
+        I'm the CEO of a hyperscaler cloud provider focused on large enterprises. What are the new trends in the open source software and how can they impact our cloud business. Generate plausible what-if causal scenarios for how the trending github repos may impact my business. See whether we should double-down on some of these ideas or counter them by investing into developing our own solutions.
+        """,
     ]
 }
