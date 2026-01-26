@@ -79,7 +79,7 @@ Both can be configured independently in Settings, allowing you to use different 
 2. Generate an API key
 3. In NewsComb Settings:
    - **Knowledge Extraction**: Select OpenRouter and use `meta-llama/llama-4-maverick`
-   - **Analysis**: Use the same model or a stronger one (e.g., `openai/gpt-4.1` for more nuanced reasoning)
+   - **Analysis**: Use the same model or a stronger one (e.g., `openai/gpt-5.2` for more nuanced reasoning)
 
 The Llama 4 Maverick model provides an excellent balance of speed and quality for entity extraction. For analysis, you may want a more capable model if you need deeper reasoning, but Maverick works well for most use cases.
 
