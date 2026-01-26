@@ -27,10 +27,11 @@ final class NodeMergingService: Sendable {
     ///   - similarityThreshold: Minimum cosine similarity to consider nodes as candidates for merging (default 0.9)
     ///   - batchSize: Maximum number of nodes to process at once (for memory efficiency)
     /// - Returns: Result containing counts of merged pairs and removed nodes
+    @concurrent
     func simplifyHypergraph(
         similarityThreshold: Float = defaultSimilarityThreshold,
         batchSize: Int = 500
-    ) throws -> MergeResult {
+    ) async throws -> MergeResult {
         logger.info("Starting hypergraph simplification with threshold \(similarityThreshold)")
 
         // 1. Load all nodes with embeddings
