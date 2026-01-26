@@ -61,29 +61,37 @@ NewsComb uses local embeddings for the knowledge graph. You need to install Olla
 1. Install [Ollama](https://ollama.com/download)
 2. Open Terminal and run:
    ```bash
-   ollama pull nomic-embed-text
+   ollama pull nomic-embed-text:v1.5
    ```
 
-### LLM Provider (Required for Q&A)
+### LLM Providers
 
-To use the "Ask Your News" feature, you need to configure an LLM provider in the app's Settings.
+NewsComb uses two separate LLM configurations:
 
-**Recommended: OpenRouter**
+1. **Knowledge Extraction LLM** — Used to extract entities and relationships from articles when building the knowledge graph
+2. **Analysis LLM** — Used for answering questions ("Ask Your News") and deep analysis ("Dive Deeper")
+
+Both can be configured independently in Settings, allowing you to use different models for each task.
+
+#### Recommended: OpenRouter
 
 1. Create an account at [OpenRouter](https://openrouter.ai/)
 2. Generate an API key
-3. In NewsComb Settings, select OpenRouter as the provider and enter your API key
-4. Use `meta-llama/llama-4-maverick` as the model for best results
+3. In NewsComb Settings:
+   - **Knowledge Extraction**: Select OpenRouter and use `meta-llama/llama-4-maverick`
+   - **Analysis**: Use the same model or a stronger one (e.g., `openai/gpt-4.1` for more nuanced reasoning)
 
-**Alternative: Local Ollama**
+The Llama 4 Maverick model provides an excellent balance of speed and quality for entity extraction. For analysis, you may want a more capable model if you need deeper reasoning, but Maverick works well for most use cases.
 
-You can run an LLM locally with Ollama, but this will be significantly slower:
+#### Alternative: Local Ollama
+
+You can run LLMs locally with Ollama, but this will be significantly slower:
 
 ```bash
 ollama pull qwen2.5:14b
 ```
 
-Then select Ollama as the provider in Settings and use `qwen2.5:14b` as the model.
+Then select Ollama as the provider in Settings and use `qwen2.5:14b` as the model for both extraction and analysis.
 
 ## Credits & Acknowledgements
 
