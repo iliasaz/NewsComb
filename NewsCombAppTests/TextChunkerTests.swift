@@ -93,11 +93,12 @@ final class TextChunkerTests: XCTestCase {
         XCTAssertEqual(firstChunk, text)
     }
 
-    // MARK: - Sentence Chunking Tests
+    // MARK: - Sentence Chunking Tests (via chunkText fallback)
 
-    func testChunkBySentencesBasic() {
+    func testChunkTextWithSentencesBasic() {
+        // Text with no paragraph or line breaks falls back to sentence chunking
         let text = "First sentence. Second sentence. Third sentence."
-        let chunks = TextChunker.chunkBySentences(text, targetSize: 100)
+        let chunks = TextChunker.chunkText(text, targetSize: 100)
 
         // All sentences should fit in one chunk
         XCTAssertEqual(chunks.count, 1)
@@ -110,17 +111,17 @@ final class TextChunkerTests: XCTestCase {
         XCTAssertTrue(firstChunk.contains("Third sentence"))
     }
 
-    func testChunkBySentencesSplits() {
+    func testChunkTextWithSentencesSplits() {
         let text = "First sentence here. Second sentence here. Third sentence here."
-        let chunks = TextChunker.chunkBySentences(text, targetSize: 30)
+        let chunks = TextChunker.chunkText(text, targetSize: 30)
 
         // Should split into multiple chunks
         XCTAssertGreaterThan(chunks.count, 1)
     }
 
-    func testChunkBySentencesWithQuestionMark() {
+    func testChunkTextWithQuestionMark() {
         let text = "Is this a question? Yes it is. And another!"
-        let chunks = TextChunker.chunkBySentences(text, targetSize: 100)
+        let chunks = TextChunker.chunkText(text, targetSize: 100)
 
         XCTAssertEqual(chunks.count, 1)
         guard let firstChunk = chunks.first else {
@@ -130,31 +131,70 @@ final class TextChunkerTests: XCTestCase {
         XCTAssertTrue(firstChunk.contains("question"))
     }
 
-    func testChunkBySentencesWithExclamation() {
+    func testChunkTextWithExclamation() {
         let text = "Wow! Amazing! Incredible!"
-        let chunks = TextChunker.chunkBySentences(text, targetSize: 100)
+        let chunks = TextChunker.chunkText(text, targetSize: 100)
 
         XCTAssertEqual(chunks.count, 1)
     }
 
-    func testChunkBySentencesEmptyString() {
-        let chunks = TextChunker.chunkBySentences("", targetSize: 100)
-
-        XCTAssertTrue(chunks.isEmpty)
-    }
-
-    func testChunkBySentencesNoSentenceEndings() {
+    func testChunkTextNoSentenceEndings() {
         let text = "This text has no sentence endings at all"
-        let chunks = TextChunker.chunkBySentences(text, targetSize: 100)
+        let chunks = TextChunker.chunkText(text, targetSize: 100)
 
-        // Should return the whole text as a single chunk (with a period added)
+        // Should return the whole text as a single chunk
         XCTAssertEqual(chunks.count, 1)
         guard let firstChunk = chunks.first else {
             XCTFail("Expected at least one chunk")
             return
         }
-        // The chunker adds "." to each sentence part
         XCTAssertTrue(firstChunk.contains("This text has no sentence endings at all"))
+    }
+
+    // MARK: - Force-Split Tests (new behavior)
+
+    func testChunkTextForceSplitsOversizedChunk() {
+        // A very long text without any paragraph breaks, line breaks, or sentence endings
+        let text = String(repeating: "word ", count: 200) // ~1000 chars of words
+        let chunks = TextChunker.chunkText(text, targetSize: 100)
+
+        // Should force-split at word boundaries
+        XCTAssertGreaterThan(chunks.count, 1)
+
+        // Each chunk should be at or near target size
+        for chunk in chunks {
+            XCTAssertLessThanOrEqual(chunk.count, 110, "Chunk should be near target size")
+        }
+    }
+
+    func testChunkTextForceSplitsLongURL() {
+        // A very long "word" (like a URL) that exceeds target size
+        let longURL = "https://example.com/" + String(repeating: "a", count: 200)
+        let text = "Check this link: \(longURL) for more info."
+        let chunks = TextChunker.chunkText(text, targetSize: 100)
+
+        // Should split the URL itself
+        XCTAssertGreaterThan(chunks.count, 1)
+
+        // All content should be preserved
+        let joined = chunks.joined()
+        XCTAssertTrue(joined.contains("Check this link:"))
+        XCTAssertTrue(joined.contains("for more info."))
+    }
+
+    func testChunkTextWithSingleNewlines() {
+        // Text with single newlines (like a list or code) but no double newlines
+        let text = """
+        Line one here
+        Line two here
+        Line three here
+        Line four here
+        """
+
+        let chunks = TextChunker.chunkText(text, targetSize: 50)
+
+        // Should split on single newlines when no double newlines exist
+        XCTAssertGreaterThan(chunks.count, 1)
     }
 
     // MARK: - Fallback Behavior Tests
