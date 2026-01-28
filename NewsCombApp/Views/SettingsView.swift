@@ -2,10 +2,12 @@ import SwiftUI
 
 struct SettingsView: View {
     @State private var viewModel = SettingsViewModel()
+    @State private var userRoleViewModel = UserRoleViewModel()
 
     var body: some View {
         Form {
             feedSettingsSection
+            userRolesSection
             knowledgeExtractionSection
             analysisModelSection
             algorithmParametersSection
@@ -16,6 +18,7 @@ struct SettingsView: View {
         .frame(minWidth: 550, minHeight: 600)
         .onAppear {
             viewModel.loadData()
+            userRoleViewModel.loadRoles()
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.errorMessage != nil },
@@ -27,6 +30,10 @@ struct SettingsView: View {
                 Text(error)
             }
         }
+    }
+
+    private var userRolesSection: some View {
+        UserRolesSettingsSection(viewModel: userRoleViewModel)
     }
 
     private var feedSettingsSection: some View {

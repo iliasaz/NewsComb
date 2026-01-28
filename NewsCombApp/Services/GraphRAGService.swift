@@ -16,9 +16,10 @@ final class GraphRAGService: Sendable {
     ///   - question: The question to answer
     ///   - maxNodes: Maximum number of similar nodes to retrieve per keyword
     ///   - maxChunks: Maximum number of relevant chunks to retrieve
+    ///   - rolePrompt: Optional user role prompt to prepend to the system prompt
     /// - Returns: A GraphRAGResponse containing the answer and sources
     @MainActor
-    func query(_ question: String, maxNodes: Int = 5, maxChunks: Int = 5) async throws -> GraphRAGResponse {
+    func query(_ question: String, maxNodes: Int = 5, maxChunks: Int = 5, rolePrompt: String? = nil) async throws -> GraphRAGResponse {
         logger.info("GraphRAG query: \(question, privacy: .public)")
 
         // Step 1: Extract keywords from the question using LLM
@@ -56,7 +57,7 @@ final class GraphRAGService: Sendable {
         logger.info("Gathered context: \(context.relevantEdges.count) edges, \(context.relevantChunks.count) chunks")
 
         // Step 5: Generate answer using LLM
-        let answer = try await generateAnswer(question: question, context: context)
+        let answer = try await generateAnswer(question: question, context: context, rolePrompt: rolePrompt)
         logger.info("Answer generated successfully")
 
         // Step 6: Build response with sources, reasoning paths, and supporting edges
@@ -516,16 +517,29 @@ final class GraphRAGService: Sendable {
     // MARK: - Answer Generation
 
     /// Generates an answer using the LLM with the gathered context.
+    /// - Parameters:
+    ///   - question: The user's question
+    ///   - context: The gathered context from the knowledge graph
+    ///   - rolePrompt: Optional user role prompt to prepend to the system prompt
     @MainActor
-    private func generateAnswer(question: String, context: GraphRAGContext) async throws -> String {
+    private func generateAnswer(question: String, context: GraphRAGContext, rolePrompt: String? = nil) async throws -> String {
         let settings = try loadSettings()
 
-        let systemPrompt = """
+        // Build the system prompt, optionally prepending the user's role persona
+        var systemPromptParts: [String] = []
+
+        if let rolePrompt, !rolePrompt.isEmpty {
+            systemPromptParts.append("Your persona and context:\n\(rolePrompt)")
+        }
+
+        systemPromptParts.append("""
             You are a helpful assistant that answers questions based on a knowledge graph extracted from news articles.
             Use the provided context to answer the question accurately and concisely.
             If the context doesn't contain enough information to fully answer the question, acknowledge what you know and what's missing.
             Always cite the source articles when possible.
-            """
+            """)
+
+        let systemPrompt = systemPromptParts.joined(separator: "\n\n")
 
         let contextStr = context.formatForLLM()
 

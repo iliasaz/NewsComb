@@ -181,6 +181,17 @@ public final class Database: Sendable {
                     created_at REAL NOT NULL DEFAULT (unixepoch())
                 );
                 CREATE INDEX IF NOT EXISTS idx_query_history_created ON query_history(created_at DESC);
+
+                -- User roles for persona-based prompts
+                CREATE TABLE IF NOT EXISTS user_role (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    prompt TEXT NOT NULL,
+                    is_active INTEGER NOT NULL DEFAULT 0,
+                    created_at REAL NOT NULL DEFAULT (unixepoch()),
+                    updated_at REAL NOT NULL DEFAULT (unixepoch())
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_user_role_active ON user_role(is_active) WHERE is_active = 1;
             """)
 
             // Add source_chunk_id column to hypergraph_edge if it doesn't exist

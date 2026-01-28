@@ -19,9 +19,25 @@ final class GraphRAGViewModel {
     private let graphRAGService = GraphRAGService()
     private let hypergraphService = HypergraphService()
     private let queryHistoryService = QueryHistoryService()
+    private let userRoleService = UserRoleService()
     private let logger = Logger(subsystem: "com.newscomb", category: "GraphRAGViewModel")
 
+    /// The currently active user role, if any.
+    private(set) var activeRole: UserRole?
+
     // MARK: - Query Execution
+
+    /// Loads the currently active user role.
+    func loadActiveRole() {
+        do {
+            activeRole = try userRoleService.fetchActive()
+            if let role = activeRole {
+                logger.info("Loaded active role: \(role.name, privacy: .public)")
+            }
+        } catch {
+            logger.error("Failed to load active role: \(error.localizedDescription, privacy: .public)")
+        }
+    }
 
     /// Executes a query against the knowledge graph.
     @MainActor
@@ -38,9 +54,13 @@ final class GraphRAGViewModel {
 
         defer { isQuerying = false }
 
+        // Refresh the active role before querying
+        loadActiveRole()
+
         do {
             logger.info("Executing GraphRAG query: \(self.queryText, privacy: .public)")
-            let response = try await graphRAGService.query(queryText)
+            let rolePrompt = activeRole?.prompt
+            let response = try await graphRAGService.query(queryText, rolePrompt: rolePrompt)
 
             // Persist to database
             try queryHistoryService.save(response)

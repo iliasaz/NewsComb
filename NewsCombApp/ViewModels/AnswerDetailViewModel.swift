@@ -23,6 +23,7 @@ final class AnswerDetailViewModel {
     private(set) var analysisError: String?
 
     private let deepAnalysisService = DeepAnalysisService()
+    private let userRoleService = UserRoleService()
     private let database = Database.shared
     private let logger = Logger(subsystem: "com.newscomb", category: "AnswerDetailViewModel")
 
@@ -60,13 +61,20 @@ final class AnswerDetailViewModel {
 
         logger.info("Starting deep analysis for query: \(self.response.query, privacy: .public)")
 
+        // Load the active user role
+        let activeRole = try? userRoleService.fetchActive()
+        if let role = activeRole {
+            logger.info("Using active role for deep analysis: \(role.name, privacy: .public)")
+        }
+
         do {
             let result = try await deepAnalysisService.analyze(
                 question: response.query,
                 initialAnswer: response.answer,
                 relatedNodes: response.relatedNodes,
                 reasoningPaths: response.reasoningPaths,
-                graphPaths: response.graphPaths
+                graphPaths: response.graphPaths,
+                rolePrompt: activeRole?.prompt
             )
 
             deepAnalysisResult = result

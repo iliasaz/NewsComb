@@ -27,6 +27,7 @@ final class DeepAnalysisService: Sendable {
     ///   - relatedNodes: Nodes related to the query
     ///   - reasoningPaths: Multi-hop reasoning paths between concepts
     ///   - graphPaths: Direct graph relationships
+    ///   - rolePrompt: Optional user role prompt to prepend to agent prompts
     /// - Returns: A `DeepAnalysisResult` with synthesized answer and hypotheses
     @MainActor
     func analyze(
@@ -34,7 +35,8 @@ final class DeepAnalysisService: Sendable {
         initialAnswer: String,
         relatedNodes: [GraphRAGResponse.RelatedNode],
         reasoningPaths: [GraphRAGResponse.ReasoningPath],
-        graphPaths: [GraphRAGResponse.GraphPath]
+        graphPaths: [GraphRAGResponse.GraphPath],
+        rolePrompt: String? = nil
     ) async throws -> DeepAnalysisResult {
         logger.info("Starting deep analysis for question: \(question, privacy: .public)")
 
@@ -47,6 +49,10 @@ final class DeepAnalysisService: Sendable {
             reasoningPaths: reasoningPaths,
             graphPaths: graphPaths
         )
+
+        // Build effective system prompts with optional role persona
+        let effectiveEngineerPrompt = buildSystemPrompt(basePrompt: agentPrompts.engineerPrompt, rolePrompt: rolePrompt)
+        let effectiveHypothesizerPrompt = buildSystemPrompt(basePrompt: agentPrompts.hypothesizerPrompt, rolePrompt: rolePrompt)
 
         // Step 1: Engineer Agent - Synthesize with citations
         logger.info("Running Engineer agent...")
@@ -63,7 +69,7 @@ final class DeepAnalysisService: Sendable {
             """
 
         let synthesizedAnswer = try await generateWithLLM(
-            systemPrompt: agentPrompts.engineerPrompt,
+            systemPrompt: effectiveEngineerPrompt,
             userPrompt: engineerPrompt
         )
         logger.info("Engineer agent completed")
@@ -83,7 +89,7 @@ final class DeepAnalysisService: Sendable {
             """
 
         let hypotheses = try await generateWithLLM(
-            systemPrompt: agentPrompts.hypothesizerPrompt,
+            systemPrompt: effectiveHypothesizerPrompt,
             userPrompt: hypothesizerPrompt
         )
         logger.info("Hypothesizer agent completed")
@@ -127,6 +133,20 @@ final class DeepAnalysisService: Sendable {
     }
 
     // MARK: - Private Helpers
+
+    /// Builds an effective system prompt by optionally prepending the user's role persona.
+    private func buildSystemPrompt(basePrompt: String, rolePrompt: String?) -> String {
+        guard let rolePrompt, !rolePrompt.isEmpty else {
+            return basePrompt
+        }
+
+        return """
+            Your persona and context:
+            \(rolePrompt)
+
+            \(basePrompt)
+            """
+    }
 
     /// Formats the graph context for LLM consumption.
     private func formatContext(
