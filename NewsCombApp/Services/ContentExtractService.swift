@@ -95,6 +95,87 @@ struct ContentExtractService {
         }
     }
 
+    /// Fetch raw README.md directly from a GitHub repository.
+    /// This is more efficient than parsing HTML since READMEs are already Markdown.
+    /// - Parameter repoURL: A GitHub repository URL (e.g., "https://github.com/owner/repo")
+    /// - Returns: The raw README content, or nil if fetch failed
+    @concurrent
+    func fetchGitHubReadme(from repoURL: String) async -> String? {
+        // Parse GitHub URL to extract owner and repo
+        guard let url = URL(string: repoURL),
+              url.host == "github.com" || url.host == "www.github.com" else {
+            return nil
+        }
+
+        let pathComponents = url.pathComponents.filter { $0 != "/" }
+        guard pathComponents.count >= 2 else {
+            return nil
+        }
+
+        let owner = pathComponents[0]
+        let repo = pathComponents[1]
+
+        // Try common README filenames in order of likelihood
+        let readmeVariants = [
+            "README.md",
+            "readme.md",
+            "Readme.md",
+            "README.MD",
+            "README.rst",
+            "README.txt",
+            "README"
+        ]
+
+        for filename in readmeVariants {
+            // Use HEAD ref to automatically resolve to default branch
+            let rawURL = "https://raw.githubusercontent.com/\(owner)/\(repo)/HEAD/\(filename)"
+
+            guard let url = URL(string: rawURL) else { continue }
+
+            var request = URLRequest(url: url)
+            request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+            request.timeoutInterval = 10
+
+            do {
+                let (data, response) = try await Self.urlSession.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    continue  // Try next variant
+                }
+
+                guard let content = String(data: data, encoding: .utf8),
+                      !content.isEmpty else {
+                    continue
+                }
+
+                logger.info("Fetched GitHub README from \(rawURL, privacy: .public)")
+                return content
+            } catch {
+                continue  // Try next variant
+            }
+        }
+
+        logger.debug("Could not fetch README for GitHub repo: \(repoURL, privacy: .public)")
+        return nil
+    }
+
+    /// Check if a URL is a GitHub repository URL
+    /// - Parameter url: The URL to check
+    /// - Returns: true if it's a GitHub repo URL (not a file, issue, PR, etc.)
+    static func isGitHubRepoURL(_ url: String) -> Bool {
+        guard let parsed = URL(string: url),
+              parsed.host == "github.com" || parsed.host == "www.github.com" else {
+            return false
+        }
+
+        let pathComponents = parsed.pathComponents.filter { $0 != "/" }
+
+        // A repo URL has exactly 2 path components: owner/repo
+        // URLs like /owner/repo/issues or /owner/repo/blob/... have more
+        return pathComponents.count == 2
+    }
+
     /// Extract content from provided HTML
     /// - Parameters:
     ///   - html: The HTML content to parse

@@ -120,10 +120,12 @@ extension AppSettings {
        - Preserve technical terms exactly as written
 
     3) Avoid:
-       - Vague references like "the company", "the product", "it", "they"
+       - Vague references like "the company", "the product", "it", "they", "these", and etc.
        - Generic terms like "technology", "solution", "platform" without specifics
+       - References to generic "news article", "post"
        - Opinion statements or speculation
        - Author names or journalist bylines as entities
+       - Never make URLs an entity or a relationship
 
     4) Relationship types to capture:
        - Actions: "launches", "announces", "releases", "acquires", "invests in"
@@ -143,9 +145,9 @@ extension AppSettings {
     {
       "events": [
         {"source": ["Apple"], "relation": "announces", "target": ["Vision Pro headset"]},
-        {"source": ["Vision Pro"], "relation": "features", "target": ["M2 chip", "R1 processor"]},
-        {"source": ["Microsoft"], "relation": "partners with", "target": ["OpenAI"]},
-        {"source": ["Tesla"], "relation": "reduces price of", "target": ["Model Y"]},
+        {"source": ["Vision Pro", "iPad Pro"], "relation": "features", "target": ["M2 chip", "R1 processor"]},
+        {"source": ["Microsoft", "Oracle"], "relation": "partners with", "target": ["OpenAI"]},
+        {"source": ["Tesla"], "relation": "reduces price of", "target": ["Model Y", "Model 3"]},
         {"source": ["Google DeepMind"], "relation": "releases", "target": ["Gemini AI model"]},
         {"source": ["Gemini"], "relation": "competes with", "target": ["GPT-4", "Claude"]}
       ]

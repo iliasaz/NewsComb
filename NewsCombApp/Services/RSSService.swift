@@ -189,11 +189,27 @@ struct RSSService {
         var fullContent: String?
         var finalLink = link
 
-        // First, check if the feed provides full content via content:encoded
-        if let contentEncoded = item.content?.contentEncoded, !contentEncoded.isEmpty {
-            // Feed provides full content - use it directly (it's HTML)
-            fullContent = contentEncoded
-        } else if needsFullContent(description: description) && !link.isEmpty {
+        // Special case: GitHub repository URLs - fetch raw README.md directly
+        if ContentExtractService.isGitHubRepoURL(link) {
+            fullContent = await extractService.fetchGitHubReadme(from: link)
+            if fullContent != nil {
+                logger.debug("Fetched raw README.md for GitHub repo: \(title, privacy: .public)")
+            }
+        }
+
+        // If not GitHub or README fetch failed, check for content:encoded
+        if fullContent == nil || fullContent?.isEmpty == true,
+           let contentEncoded = item.content?.contentEncoded, !contentEncoded.isEmpty {
+            // Feed provides full content as HTML - convert to Markdown
+            fullContent = await extractService.extractContent(from: contentEncoded, url: link)
+
+            // If conversion failed, fall through to URL extraction
+            if fullContent == nil || fullContent?.isEmpty == true {
+                logger.debug("content:encoded conversion failed, falling back to URL extraction for: \(title, privacy: .public)")
+            }
+        }
+
+        if (fullContent == nil || fullContent?.isEmpty == true) && needsFullContent(description: description) && !link.isEmpty {
             // No content:encoded, try to extract from the article URL (if allowed)
             let result = await extractService.extractContentWithFinalURL(from: link)
             fullContent = result.content
@@ -206,7 +222,14 @@ struct RSSService {
         // If extraction failed but we have substantial rss_description, use that as full_content
         if fullContent == nil || fullContent?.isEmpty == true {
             if let desc = description, desc.count >= 200, !desc.hasSuffix("..."), !desc.hasSuffix("…") {
-                fullContent = desc
+                // Convert HTML description to Markdown if it contains HTML tags
+                if desc.contains("<") && desc.contains(">") {
+                    fullContent = await extractService.extractContent(from: desc, url: link)
+                }
+                // Fall back to raw description if conversion failed or wasn't needed
+                if fullContent == nil || fullContent?.isEmpty == true {
+                    fullContent = desc
+                }
                 logger.debug("Using RSS description as full content for: \(title, privacy: .public)")
             }
         }
@@ -248,7 +271,14 @@ struct RSSService {
         // If extraction failed but we have substantial description, use that as full_content
         if fullContent == nil || fullContent?.isEmpty == true {
             if let desc = description, desc.count >= 200, !desc.hasSuffix("..."), !desc.hasSuffix("…") {
-                fullContent = desc
+                // Convert HTML description to Markdown if it contains HTML tags
+                if desc.contains("<") && desc.contains(">") {
+                    fullContent = await extractService.extractContent(from: desc, url: link)
+                }
+                // Fall back to raw description if conversion failed or wasn't needed
+                if fullContent == nil || fullContent?.isEmpty == true {
+                    fullContent = desc
+                }
                 logger.debug("Using Atom summary as full content for: \(title, privacy: .public)")
             }
         }
@@ -290,7 +320,14 @@ struct RSSService {
         // If extraction failed but we have substantial description, use that as full_content
         if fullContent == nil || fullContent?.isEmpty == true {
             if let desc = description, desc.count >= 200, !desc.hasSuffix("..."), !desc.hasSuffix("…") {
-                fullContent = desc
+                // Convert HTML description to Markdown if it contains HTML tags
+                if desc.contains("<") && desc.contains(">") {
+                    fullContent = await extractService.extractContent(from: desc, url: link)
+                }
+                // Fall back to raw description if conversion failed or wasn't needed
+                if fullContent == nil || fullContent?.isEmpty == true {
+                    fullContent = desc
+                }
                 logger.debug("Using JSON feed summary as full content for: \(title, privacy: .public)")
             }
         }
