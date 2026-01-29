@@ -9,6 +9,12 @@ final class GraphRAGService: Sendable {
     private let database = Database.shared
     private let logger = Logger(subsystem: "com.newscomb", category: "GraphRAGService")
 
+    /// Callback fired with a human-readable status string at each pipeline phase.
+    typealias QueryStatusCallback = @MainActor @Sendable (String) -> Void
+
+    /// Callback fired with each new token during answer streaming.
+    typealias TokenCallback = @MainActor @Sendable (String) -> Void
+
     // MARK: - Query
 
     /// Queries the knowledge graph with a natural language question.
@@ -17,16 +23,27 @@ final class GraphRAGService: Sendable {
     ///   - maxNodes: Maximum number of similar nodes to retrieve per keyword
     ///   - maxChunks: Maximum number of relevant chunks to retrieve
     ///   - rolePrompt: Optional user role prompt to prepend to the system prompt
+    ///   - statusCallback: Called at each pipeline phase with a status string
+    ///   - tokenCallback: Called with each new token during answer generation
     /// - Returns: A GraphRAGResponse containing the answer and sources
     @MainActor
-    func query(_ question: String, maxNodes: Int = 5, maxChunks: Int = 5, rolePrompt: String? = nil) async throws -> GraphRAGResponse {
+    func query(
+        _ question: String,
+        maxNodes: Int = 5,
+        maxChunks: Int = 5,
+        rolePrompt: String? = nil,
+        statusCallback: QueryStatusCallback? = nil,
+        tokenCallback: TokenCallback? = nil
+    ) async throws -> GraphRAGResponse {
         logger.info("GraphRAG query: \(question, privacy: .public)")
 
         // Step 1: Extract keywords from the question using LLM
+        statusCallback?("Analyzing the question…")
         let keywords = try await extractKeywords(from: question)
         logger.info("Extracted keywords: \(keywords.joined(separator: ", "), privacy: .public)")
 
         // Step 2: Embed each keyword and find similar nodes
+        statusCallback?("Searching the knowledge graph…")
         var allSimilarNodes: [GraphRAGResponse.RelatedNode] = []
         var seenNodeIds: Set<Int64> = []
 
@@ -49,6 +66,7 @@ final class GraphRAGService: Sendable {
         let questionEmbedding = try await embedQuery(question)
 
         // Step 4: Traverse edges from similar nodes to gather context
+        statusCallback?("Finding reasoning paths…")
         let context = try gatherContext(
             fromNodes: similarNodes,
             queryEmbedding: questionEmbedding,
@@ -57,7 +75,8 @@ final class GraphRAGService: Sendable {
         logger.info("Gathered context: \(context.relevantEdges.count) edges, \(context.relevantChunks.count) chunks")
 
         // Step 5: Generate answer using LLM
-        let answer = try await generateAnswer(question: question, context: context, rolePrompt: rolePrompt)
+        statusCallback?("Generating the answer…")
+        let answer = try await generateAnswer(question: question, context: context, rolePrompt: rolePrompt, tokenCallback: tokenCallback)
         logger.info("Answer generated successfully")
 
         // Step 6: Build response with sources, reasoning paths, and supporting edges
@@ -294,8 +313,8 @@ final class GraphRAGService: Sendable {
             maxDepth: maxPathDepth
         )
 
-        // Convert path reports to reasoning paths for context
-        let reasoningPaths = convertToReasoningPaths(pathReports)
+        // Convert path reports to reasoning paths for context (with edge labels)
+        let reasoningPaths = try convertToReasoningPaths(pathReports)
 
         // Convert path reports to context edges with path structure
         let edges = try convertPathReportsToEdges(pathReports)
@@ -323,10 +342,41 @@ final class GraphRAGService: Sendable {
     }
 
     /// Converts hypergraph path reports to reasoning paths for the context.
+    /// Fetches edge relation labels from the database.
     private func convertToReasoningPaths(
         _ reports: [HypergraphPathService.PathReport]
-    ) -> [GraphRAGContext.ReasoningPath] {
-        reports.map { report in
+    ) throws -> [GraphRAGContext.ReasoningPath] {
+        // Collect all unique edge IDs to fetch relations for
+        var allEdgeIds: Set<Int64> = []
+        for report in reports {
+            for edgeId in report.edgePath {
+                allEdgeIds.insert(edgeId)
+            }
+        }
+
+        // Fetch edge labels from database
+        let edgeRelations: [Int64: String] = try database.read { db in
+            guard !allEdgeIds.isEmpty else { return [:] }
+            let placeholders = allEdgeIds.map { _ in "?" }.joined(separator: ", ")
+            let sql = """
+                SELECT id, edge_id, label
+                FROM hypergraph_edge
+                WHERE id IN (\(placeholders))
+            """
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(Array(allEdgeIds)))
+
+            var relations: [Int64: String] = [:]
+            for row in rows {
+                let id: Int64 = row["id"]
+                let edgeIdStr: String = row["edge_id"]
+                // Extract human-readable relation from edge_id, fall back to label column
+                let relation = ContextCollector.extractRelation(from: edgeIdStr) ?? row["label"] ?? "relates to"
+                relations[id] = relation
+            }
+            return relations
+        }
+
+        return reports.map { report in
             // Collect all intermediate nodes from hops
             let intermediateNodes = report.hops.flatMap { $0.intersectionNodes }
             // Remove duplicates while preserving order
@@ -336,11 +386,17 @@ final class GraphRAGService: Sendable {
                 }
             }
 
+            // Get edge labels in order
+            let edgeLabels = report.edgePath.map { edgeId in
+                edgeRelations[edgeId] ?? "relates to"
+            }
+
             return GraphRAGContext.ReasoningPath(
                 sourceConcept: report.pair.0,
                 targetConcept: report.pair.1,
                 intermediateNodes: uniqueIntermediates,
-                edgeCount: report.edgePath.count
+                edgeCount: report.edgePath.count,
+                edgeLabels: edgeLabels
             )
         }
     }
@@ -367,9 +423,9 @@ final class GraphRAGService: Sendable {
         return try database.read { db in
             let placeholders = edgeIds.map { _ in "?" }.joined(separator: ", ")
             // NOTE: We fetch edge_id to extract the human-readable relation using
-            // ContextCollector.extractRelation(). The relation column may have incorrect values.
+            // ContextCollector.extractRelation(). The label column may have incorrect values.
             let sql = """
-                SELECT he.id, he.edge_id, he.relation, aep.chunk_text,
+                SELECT he.id, he.edge_id, he.label, aep.chunk_text,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'source' THEN hn.label END) as sources,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'target' THEN hn.label END) as targets
                 FROM hypergraph_edge he
@@ -392,13 +448,13 @@ final class GraphRAGService: Sendable {
                 guard !sources.isEmpty || !targets.isEmpty else { return nil }
 
                 // Extract human-readable relation from edge_id (format: "relation_chunkXXX_N")
-                // Falls back to the relation column if extraction fails
+                // Falls back to the label column if extraction fails
                 let edgeIdStr: String = row["edge_id"]
-                let relation = ContextCollector.extractRelation(from: edgeIdStr) ?? row["relation"]
+                let label = ContextCollector.extractRelation(from: edgeIdStr) ?? row["label"]
 
                 return GraphRAGContext.ContextEdge(
                     edgeId: row["id"],
-                    relation: relation,
+                    label: label,
                     sourceNodes: sources,
                     targetNodes: targets,
                     chunkText: row["chunk_text"]
@@ -434,9 +490,9 @@ final class GraphRAGService: Sendable {
             let placeholders = nodeIds.map { _ in "?" }.joined(separator: ", ")
             // First find edges connected to searched nodes, then get ALL their incidences
             // NOTE: We fetch edge_id to extract the human-readable relation using
-            // ContextCollector.extractRelation(). The relation column may have incorrect values.
+            // ContextCollector.extractRelation(). The label column may have incorrect values.
             let sql = """
-                SELECT he.id, he.edge_id, he.relation, aep.chunk_text,
+                SELECT he.id, he.edge_id, he.label, aep.chunk_text,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'source' THEN hn.label END) as sources,
                        GROUP_CONCAT(DISTINCT CASE WHEN hi.role = 'target' THEN hn.label END) as targets
                 FROM hypergraph_edge he
@@ -462,13 +518,13 @@ final class GraphRAGService: Sendable {
                 guard !sources.isEmpty || !targets.isEmpty else { return nil }
 
                 // Extract human-readable relation from edge_id (format: "relation_chunkXXX_N")
-                // Falls back to the relation column if extraction fails
+                // Falls back to the label column if extraction fails
                 let edgeIdStr: String = row["edge_id"]
-                let relation = ContextCollector.extractRelation(from: edgeIdStr) ?? row["relation"]
+                let label = ContextCollector.extractRelation(from: edgeIdStr) ?? row["label"]
 
                 return GraphRAGContext.ContextEdge(
                     edgeId: row["id"],
-                    relation: relation,
+                    label: label,
                     sourceNodes: sources,
                     targetNodes: targets,
                     chunkText: row["chunk_text"]
@@ -522,7 +578,12 @@ final class GraphRAGService: Sendable {
     ///   - context: The gathered context from the knowledge graph
     ///   - rolePrompt: Optional user role prompt to prepend to the system prompt
     @MainActor
-    private func generateAnswer(question: String, context: GraphRAGContext, rolePrompt: String? = nil) async throws -> String {
+    private func generateAnswer(
+        question: String,
+        context: GraphRAGContext,
+        rolePrompt: String? = nil,
+        tokenCallback: TokenCallback? = nil
+    ) async throws -> String {
         let settings = try loadSettings()
 
         // Build the system prompt, optionally prepending the user's role persona
@@ -559,7 +620,8 @@ final class GraphRAGService: Sendable {
             return try await generateAnswerWithOllama(
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
-                settings: settings
+                settings: settings,
+                tokenCallback: tokenCallback
             )
         case "openrouter":
             return try await generateAnswerWithOpenRouter(
@@ -584,7 +646,8 @@ final class GraphRAGService: Sendable {
         let ollama = OllamaService(host: host, chatModel: model)
         return try await ollama.chat(
             systemPrompt: systemPrompt,
-            userPrompt: userPrompt
+            userPrompt: userPrompt,
+            temperature: settings.extractionTemperature
         )
     }
 
@@ -601,12 +664,17 @@ final class GraphRAGService: Sendable {
             systemPrompt: systemPrompt,
             userPrompt: userPrompt,
             model: model,
-            temperature: 0.7
+            temperature: settings.extractionTemperature
         )
     }
 
     @MainActor
-    private func generateAnswerWithOllama(systemPrompt: String, userPrompt: String, settings: LLMSettings) async throws -> String {
+    private func generateAnswerWithOllama(
+        systemPrompt: String,
+        userPrompt: String,
+        settings: LLMSettings,
+        tokenCallback: TokenCallback? = nil
+    ) async throws -> String {
         let endpoint = settings.effectiveAnalysisOllamaEndpoint ?? AppSettings.defaultAnalysisOllamaEndpoint
         let model = settings.effectiveAnalysisOllamaModel ?? AppSettings.defaultAnalysisOllamaModel
 
@@ -615,9 +683,23 @@ final class GraphRAGService: Sendable {
         }
 
         let ollama = OllamaService(host: host, chatModel: model)
+
+        // Use streaming when a token callback is provided
+        if let tokenCallback {
+            return try await ollama.chatStream(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                temperature: settings.analysisTemperature,
+                onToken: { token in
+                    tokenCallback(token)
+                }
+            )
+        }
+
         return try await ollama.chat(
             systemPrompt: systemPrompt,
-            userPrompt: userPrompt
+            userPrompt: userPrompt,
+            temperature: settings.analysisTemperature
         )
     }
 
@@ -634,7 +716,7 @@ final class GraphRAGService: Sendable {
             systemPrompt: systemPrompt,
             userPrompt: userPrompt,
             model: model,
-            temperature: 0.7
+            temperature: settings.analysisTemperature
         )
     }
 
@@ -647,7 +729,7 @@ final class GraphRAGService: Sendable {
             guard !edge.sourceNodes.isEmpty || !edge.targetNodes.isEmpty else { return nil }
             return GraphRAGResponse.GraphPath(
                 id: edge.edgeId,
-                relation: edge.relation,
+                label: edge.label,
                 sourceNodes: edge.sourceNodes,
                 targetNodes: edge.targetNodes,
                 provenanceText: edge.chunkText
@@ -672,7 +754,8 @@ final class GraphRAGService: Sendable {
                 sourceConcept: path.sourceConcept,
                 targetConcept: path.targetConcept,
                 intermediateNodes: path.intermediateNodes,
-                edgeCount: path.edgeCount
+                edgeCount: path.edgeCount,
+                edgeLabels: path.edgeLabels
             )
         }
     }
@@ -767,6 +850,21 @@ final class GraphRAGService: Sendable {
                 .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel)
                 .fetchOne(db) {
                 settings.embeddingOllamaModel = model.value
+            }
+
+            // Temperature configuration
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.extractionTemperature)
+                .fetchOne(db),
+               let value = Double(setting.value) {
+                settings.extractionTemperature = value
+            }
+
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisTemperature)
+                .fetchOne(db),
+               let value = Double(setting.value) {
+                settings.analysisTemperature = value
             }
 
             // Analysis LLM settings

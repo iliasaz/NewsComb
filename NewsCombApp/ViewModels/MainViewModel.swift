@@ -43,6 +43,8 @@ class MainViewModel {
     var hypergraphProgress: (processed: Int, total: Int) = (0, 0)
     var hypergraphProcessingStatus: String = ""
     var hypergraphStats: HypergraphStatistics?
+    var currentProcessingArticle: String = ""
+    var recentlyExtractedEntities: [String] = []
 
     // Graph simplification state
     var isSimplifyingGraph = false
@@ -397,12 +399,24 @@ class MainViewModel {
         isProcessingHypergraph = true
         hypergraphProgress = (0, 0)
         hypergraphProcessingStatus = "Starting..."
+        currentProcessingArticle = ""
+        recentlyExtractedEntities = []
 
         do {
-            let processedCount = try await hypergraphService.processUnprocessedArticles { [weak self] processed, total, title in
-                self?.hypergraphProgress = (processed, total)
-                self?.hypergraphProcessingStatus = "Processing: \(title)"
-            }
+            let processedCount = try await hypergraphService.processUnprocessedArticles(
+                progressCallback: { [weak self] processed, total, title in
+                    self?.hypergraphProgress = (processed, total)
+                    self?.hypergraphProcessingStatus = "Processing: \(title)"
+                },
+                detailCallback: { [weak self] detail in
+                    switch detail.kind {
+                    case .articleStarted(let title):
+                        self?.currentProcessingArticle = title
+                    case .entitiesExtracted(_, let entities):
+                        self?.recentlyExtractedEntities = entities
+                    }
+                }
+            )
 
             hypergraphProcessingStatus = "Completed: \(processedCount) articles processed"
 
@@ -417,6 +431,8 @@ class MainViewModel {
             hypergraphProcessingStatus = "Failed"
         }
 
+        currentProcessingArticle = ""
+        recentlyExtractedEntities = []
         isProcessingHypergraph = false
     }
 

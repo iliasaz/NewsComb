@@ -103,8 +103,31 @@ struct GraphRAGView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .controlSize(.large)
-            Text("Searching knowledge graph...")
+
+            Text(viewModel.queryStatus.isEmpty ? "Searching knowledge graph…" : viewModel.queryStatus)
                 .foregroundStyle(.secondary)
+
+            if !viewModel.streamingAnswer.isEmpty {
+                ScrollView {
+                    Text(viewModel.streamingAnswer)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
+                .frame(maxHeight: 200)
+                .mask {
+                    LinearGradient(
+                        stops: [
+                            .init(color: .white, location: 0),
+                            .init(color: .white, location: 0.8),
+                            .init(color: .clear, location: 1.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -4,6 +4,9 @@ import HyperGraphReasoning
 /// Interactive graph visualization view using Canvas.
 struct GraphVisualizationView: View {
 
+    /// Optional node ID to focus on. When set, loads neighborhood instead of full graph.
+    var focusedNodeId: Int64?
+
     @State private var viewModel = GraphViewModel()
 
     // Viewport transformation state
@@ -16,11 +19,22 @@ struct GraphVisualizationView: View {
     @State private var draggedNodeId: Int64?
     @State private var dragStartLocation: CGPoint = .zero
 
+    // Single-tap handling (disambiguate from double-tap)
+    @State private var pendingSingleTap: (location: CGPoint, size: CGSize)?
+    @State private var singleTapTask: Task<Void, Never>?
+
     // Color picker state
     @State private var nodeColor: Color = Color(hex: AppSettings.defaultGraphNodeColor) ?? .green
 
     // Node radius for hit testing
     private let nodeRadius: CGFloat = 20
+
+    // Delay to disambiguate single-tap from double-tap (in seconds)
+    private let singleTapDelay: Duration = .milliseconds(250)
+
+    init(focusedNodeId: Int64? = nil) {
+        self.focusedNodeId = focusedNodeId
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -34,9 +48,24 @@ struct GraphVisualizationView: View {
                     .gesture(canvasGesture(in: geometry.size))
                     .gesture(magnificationGesture)
                     .onTapGesture(count: 2) { location in
+                        // Cancel any pending single-tap when double-tap is detected
+                        singleTapTask?.cancel()
+                        singleTapTask = nil
+                        pendingSingleTap = nil
+
                         let canvasPoint = screenToCanvas(location, in: geometry.size)
                         if let nodeId = hitTestNode(at: canvasPoint) {
                             viewModel.expandNode(nodeId)
+                        }
+                    }
+                    .onTapGesture(count: 1) { location in
+                        // Schedule single-tap with delay to allow double-tap to cancel it
+                        pendingSingleTap = (location, geometry.size)
+                        singleTapTask?.cancel()
+                        singleTapTask = Task {
+                            try? await Task.sleep(for: singleTapDelay)
+                            guard !Task.isCancelled else { return }
+                            await handleSingleTap(at: location, in: geometry.size)
                         }
                     }
                     .onContinuousHover { phase in
@@ -55,6 +84,9 @@ struct GraphVisualizationView: View {
                     edgeTooltipView(for: edge, in: geometry.size)
                 }
 
+                // Search overlay
+                GraphSearchOverlay(viewModel: viewModel)
+
                 // Loading overlay
                 if viewModel.isLoading {
                     loadingOverlay
@@ -67,16 +99,29 @@ struct GraphVisualizationView: View {
             }
             .onAppear {
                 viewModel.updateCanvasSize(geometry.size)
-                viewModel.loadGraph()
+                // Load neighborhood if focused on a specific node, otherwise load full graph
+                if let focusedNodeId {
+                    viewModel.loadNeighborhood(nodeId: focusedNodeId)
+                } else {
+                    viewModel.loadGraph()
+                }
                 nodeColor = Color(hex: viewModel.nodeColorHex) ?? .green
             }
             .onChange(of: geometry.size) { _, newSize in
                 viewModel.updateCanvasSize(newSize)
             }
         }
-        .navigationTitle("Knowledge Graph")
+        .navigationTitle(focusedNodeId != nil ? "Focused View" : "Knowledge Graph")
         .toolbar {
             toolbarContent
+        }
+        .sheet(isPresented: $viewModel.showProvenanceSheet) {
+            ProvenanceSheetView(
+                label: viewModel.provenanceLabel,
+                sources: viewModel.provenanceSources,
+                isNode: viewModel.selectedNodeForProvenance != nil,
+                highlightQuery: viewModel.searchText.isEmpty ? nil : viewModel.searchText
+            )
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.errorMessage != nil },
@@ -175,12 +220,15 @@ struct GraphVisualizationView: View {
         // Determine color based on state
         let isHovered = viewModel.hoveredNodeId == node.id
         let isDragged = draggedNodeId == node.id
+        let isSearchMatch = viewModel.matchedNodeIds.contains(node.id)
 
         let fillColor: Color
         if isDragged {
             fillColor = .orange
         } else if isHovered {
             fillColor = .blue
+        } else if isSearchMatch {
+            fillColor = .yellow
         } else {
             fillColor = nodeTypeColor(node.nodeType)
         }
@@ -189,8 +237,8 @@ struct GraphVisualizationView: View {
         context.fill(path, with: .color(fillColor.opacity(0.85)))
         context.stroke(
             path,
-            with: .color(.white.opacity(0.9)),
-            lineWidth: isDragged ? 3 : 2
+            with: .color(isSearchMatch ? .yellow : .white.opacity(0.9)),
+            lineWidth: isDragged || isSearchMatch ? 3 : 2
         )
 
         // Draw label (truncated)
@@ -199,7 +247,7 @@ struct GraphVisualizationView: View {
             .font(.caption2)
             .foregroundStyle(.white)
 
-        if isHovered || isDragged {
+        if isHovered || isDragged || isSearchMatch {
             text = text.bold()
         }
 
@@ -474,6 +522,29 @@ struct GraphVisualizationView: View {
         return hypot(point.x - projectionX, point.y - projectionY)
     }
 
+    // MARK: - Single-Tap Handling
+
+    /// Handle single-tap to show provenance for nodes or edges.
+    @MainActor
+    private func handleSingleTap(at location: CGPoint, in size: CGSize) {
+        let canvasPoint = screenToCanvas(location, in: size)
+
+        // Check if tapped on a node
+        if let nodeId = hitTestNode(at: canvasPoint) {
+            viewModel.loadNodeProvenance(nodeId: nodeId)
+            return
+        }
+
+        // Check if tapped on an edge
+        if let edgeId = hitTestEdge(at: canvasPoint, threshold: 8) {
+            viewModel.loadEdgeProvenance(edgeId: edgeId)
+            return
+        }
+
+        // Tapped on empty space - clear any selection
+        viewModel.clearProvenanceSelection()
+    }
+
     // MARK: - Hover Handling
 
     private func handleHover(phase: HoverPhase, in size: CGSize) {
@@ -531,7 +602,7 @@ struct GraphVisualizationView: View {
 
         VStack(alignment: .leading, spacing: 6) {
             // Relation/type of connection (extracted from edgeId)
-            Text(formatRelation(ContextCollector.extractRelation(from: edge.edgeId) ?? edge.relation))
+            Text(formatRelation(ContextCollector.extractRelation(from: edge.edgeId) ?? edge.label))
                 .font(.headline)
                 .foregroundStyle(.pink)
 
@@ -670,6 +741,10 @@ struct GraphVisualizationView: View {
                 .help("Reset zoom and pan")
 
                 Button("Center", systemImage: "scope") {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        offset = .zero
+                        lastOffset = .zero
+                    }
                     viewModel.centerGraph()
                 }
                 .help("Center graph in view")

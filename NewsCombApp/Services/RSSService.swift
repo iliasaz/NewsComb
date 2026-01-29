@@ -226,13 +226,16 @@ struct RSSService {
                 if desc.contains("<") && desc.contains(">") {
                     fullContent = await extractService.extractContent(from: desc, url: link)
                 }
-                // Fall back to raw description if conversion failed or wasn't needed
+                // Fall back to HTML-stripped description if conversion failed or wasn't needed
                 if fullContent == nil || fullContent?.isEmpty == true {
-                    fullContent = desc
+                    fullContent = desc.strippingHTMLTags()
                 }
                 logger.debug("Using RSS description as full content for: \(title, privacy: .public)")
             }
         }
+
+        // Strip HTML from rss_description before storage
+        let cleanDescription = description?.strippingHTMLTags()
 
         try upsertFeedItem(
             sourceId: sourceId,
@@ -240,7 +243,7 @@ struct RSSService {
             title: title,
             link: finalLink,
             pubDate: item.pubDate,
-            rssDescription: description,
+            rssDescription: cleanDescription,
             fullContent: fullContent,
             author: item.author
         )
@@ -275,13 +278,16 @@ struct RSSService {
                 if desc.contains("<") && desc.contains(">") {
                     fullContent = await extractService.extractContent(from: desc, url: link)
                 }
-                // Fall back to raw description if conversion failed or wasn't needed
+                // Fall back to HTML-stripped description if conversion failed or wasn't needed
                 if fullContent == nil || fullContent?.isEmpty == true {
-                    fullContent = desc
+                    fullContent = desc.strippingHTMLTags()
                 }
                 logger.debug("Using Atom summary as full content for: \(title, privacy: .public)")
             }
         }
+
+        // Strip HTML from description before storage
+        let cleanDescription = description?.strippingHTMLTags()
 
         try upsertFeedItem(
             sourceId: sourceId,
@@ -289,7 +295,7 @@ struct RSSService {
             title: title,
             link: finalLink,
             pubDate: entry.published ?? entry.updated,
-            rssDescription: description,
+            rssDescription: cleanDescription,
             fullContent: fullContent,
             author: entry.authors?.first?.name
         )
@@ -324,13 +330,16 @@ struct RSSService {
                 if desc.contains("<") && desc.contains(">") {
                     fullContent = await extractService.extractContent(from: desc, url: link)
                 }
-                // Fall back to raw description if conversion failed or wasn't needed
+                // Fall back to HTML-stripped description if conversion failed or wasn't needed
                 if fullContent == nil || fullContent?.isEmpty == true {
-                    fullContent = desc
+                    fullContent = desc.strippingHTMLTags()
                 }
                 logger.debug("Using JSON feed summary as full content for: \(title, privacy: .public)")
             }
         }
+
+        // Strip HTML from description before storage
+        let cleanDescription = description?.strippingHTMLTags()
 
         try upsertFeedItem(
             sourceId: sourceId,
@@ -338,7 +347,7 @@ struct RSSService {
             title: title,
             link: finalLink,
             pubDate: item.datePublished,
-            rssDescription: description,
+            rssDescription: cleanDescription,
             fullContent: fullContent,
             author: item.author?.name
         )
@@ -368,8 +377,13 @@ struct RSSService {
         fullContent: String?,
         author: String?
     ) throws {
+        // Strip any residual HTML from full_content. The PostLight parser
+        // outputs Markdown but can pass through inline HTML tags it doesn't
+        // handle, and fallback paths may produce raw HTML fragments.
+        let cleanFullContent = fullContent?.strippingHTMLTags()
+
         // Determine the best available content
-        let effectiveContent = fullContent ?? rssDescription
+        let effectiveContent = cleanFullContent ?? rssDescription
 
         // Check if content is too short or truncated
         if let content = effectiveContent {
@@ -404,7 +418,7 @@ struct RSSService {
                         author = excluded.author,
                         fetched_at = unixepoch()
                 """,
-                arguments: [sourceId, guid, title, link, pubDate?.timeIntervalSince1970, rssDescription, fullContent, author]
+                arguments: [sourceId, guid, title, link, pubDate?.timeIntervalSince1970, rssDescription, cleanFullContent, author]
             )
         }
     }

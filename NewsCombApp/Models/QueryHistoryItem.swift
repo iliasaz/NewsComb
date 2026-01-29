@@ -120,7 +120,8 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
                 sourceConcept: path.sourceConcept,
                 targetConcept: path.targetConcept,
                 intermediateNodes: path.intermediateNodes,
-                edgeCount: path.edgeCount
+                edgeCount: path.edgeCount,
+                edgeLabels: path.edgeLabels
             )
         }
         guard let data = try? JSONEncoder().encode(encodablePaths) else { return nil }
@@ -131,7 +132,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         let encodablePaths = paths.map { path in
             EncodableGraphPath(
                 id: path.id,
-                relation: path.relation,
+                label: path.label,
                 sourceNodes: path.sourceNodes,
                 targetNodes: path.targetNodes,
                 provenanceText: path.provenanceText
@@ -190,7 +191,8 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
                 sourceConcept: path.sourceConcept,
                 targetConcept: path.targetConcept,
                 intermediateNodes: path.intermediateNodes,
-                edgeCount: path.edgeCount
+                edgeCount: path.edgeCount,
+                edgeLabels: path.edgeLabels ?? []
             )
         }
     }
@@ -204,7 +206,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         return paths.map { path in
             GraphRAGResponse.GraphPath(
                 id: path.id,
-                relation: path.relation,
+                label: path.label,
                 sourceNodes: path.sourceNodes,
                 targetNodes: path.targetNodes,
                 provenanceText: path.provenanceText
@@ -300,10 +302,20 @@ private struct EncodableRelevantChunk: Codable {
 
 private struct EncodableGraphPath: Codable {
     let id: Int64
-    let relation: String
+    let label: String
     let sourceNodes: [String]
     let targetNodes: [String]
     let provenanceText: String?
+
+    /// Maps `label` to the JSON key `"relation"` for backward compatibility
+    /// with previously saved query history items.
+    enum CodingKeys: String, CodingKey {
+        case id
+        case label = "relation"
+        case sourceNodes
+        case targetNodes
+        case provenanceText
+    }
 }
 
 private struct EncodableReasoningPath: Codable {
@@ -311,4 +323,6 @@ private struct EncodableReasoningPath: Codable {
     let targetConcept: String
     let intermediateNodes: [String]
     let edgeCount: Int
+    /// Optional for backward compatibility with previously saved history items.
+    let edgeLabels: [String]?
 }

@@ -14,7 +14,7 @@ struct GraphNode: Identifiable, Equatable {
 struct GraphEdge: Identifiable, Equatable {
     let id: Int64
     let edgeId: String
-    let relation: String
+    let label: String
     let sourceNodeIds: [Int64]
     let targetNodeIds: [Int64]
 }
@@ -152,6 +152,315 @@ final class GraphDataService: Sendable {
         }
     }
 
+    // MARK: - Provenance Loading
+
+    /// Load provenance sources for a node by finding all edges it participates in
+    /// and retrieving the article chunks that generated those edges.
+    ///
+    /// Uses UNION to independently query two provenance paths:
+    /// 1. edge → article_edge_provenance → feed_item (explicit provenance records)
+    /// 2. edge → article_chunk (via source_chunk_id) → feed_item (chunk-level link)
+    ///
+    /// When article_edge_provenance has a NULL chunk_text, we fall back to
+    /// fetching the content from article_chunk using feed_item_id + chunk_index.
+    func loadProvenanceForNode(nodeId: Int64) throws -> [ProvenanceSource] {
+        try database.read { db in
+            let sql = """
+                SELECT feed_item_id, title, link, pub_date, chunk_text, chunk_index
+                FROM (
+                    -- Path 1: via article_edge_provenance
+                    SELECT fi.id as feed_item_id, fi.title, fi.link, fi.pub_date,
+                           COALESCE(aep.chunk_text, ac_fallback.content) as chunk_text,
+                           COALESCE(aep.chunk_index, 0) as chunk_index
+                    FROM hypergraph_incidence hi
+                    JOIN hypergraph_edge he ON hi.edge_id = he.id
+                    JOIN article_edge_provenance aep ON he.id = aep.edge_id
+                    JOIN feed_item fi ON aep.feed_item_id = fi.id
+                    LEFT JOIN article_chunk ac_fallback
+                        ON ac_fallback.feed_item_id = aep.feed_item_id
+                        AND ac_fallback.chunk_index = aep.chunk_index
+                    WHERE hi.node_id = ?
+
+                    UNION
+
+                    -- Path 2: via source_chunk_id on the edge
+                    SELECT fi.id as feed_item_id, fi.title, fi.link, fi.pub_date,
+                           ac.content as chunk_text,
+                           ac.chunk_index as chunk_index
+                    FROM hypergraph_incidence hi
+                    JOIN hypergraph_edge he ON hi.edge_id = he.id
+                    JOIN article_chunk ac ON he.source_chunk_id = ac.id
+                    JOIN feed_item fi ON ac.feed_item_id = fi.id
+                    WHERE hi.node_id = ?
+                )
+                ORDER BY pub_date DESC
+            """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [nodeId, nodeId])
+            return parseProvenanceRows(rows)
+        }
+    }
+
+    /// Load provenance sources for an edge directly.
+    ///
+    /// Uses UNION to independently query two provenance paths:
+    /// 1. edge → article_edge_provenance → feed_item
+    /// 2. edge → article_chunk (via source_chunk_id) → feed_item
+    func loadProvenanceForEdge(edgeId: Int64) throws -> [ProvenanceSource] {
+        try database.read { db in
+            let sql = """
+                SELECT feed_item_id, title, link, pub_date, chunk_text, chunk_index
+                FROM (
+                    -- Path 1: via article_edge_provenance
+                    SELECT fi.id as feed_item_id, fi.title, fi.link, fi.pub_date,
+                           COALESCE(aep.chunk_text, ac_fallback.content) as chunk_text,
+                           COALESCE(aep.chunk_index, 0) as chunk_index
+                    FROM hypergraph_edge he
+                    JOIN article_edge_provenance aep ON he.id = aep.edge_id
+                    JOIN feed_item fi ON aep.feed_item_id = fi.id
+                    LEFT JOIN article_chunk ac_fallback
+                        ON ac_fallback.feed_item_id = aep.feed_item_id
+                        AND ac_fallback.chunk_index = aep.chunk_index
+                    WHERE he.id = ?
+
+                    UNION
+
+                    -- Path 2: via source_chunk_id on the edge
+                    SELECT fi.id as feed_item_id, fi.title, fi.link, fi.pub_date,
+                           ac.content as chunk_text,
+                           ac.chunk_index as chunk_index
+                    FROM hypergraph_edge he
+                    JOIN article_chunk ac ON he.source_chunk_id = ac.id
+                    JOIN feed_item fi ON ac.feed_item_id = fi.id
+                    WHERE he.id = ?
+                )
+                ORDER BY pub_date DESC
+            """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [edgeId, edgeId])
+            return parseProvenanceRows(rows)
+        }
+    }
+
+    /// Parse provenance rows into ProvenanceSource objects.
+    /// Allows NULL/empty chunk_text, providing a fallback message.
+    private func parseProvenanceRows(_ rows: [Row]) -> [ProvenanceSource] {
+        rows.compactMap { row -> ProvenanceSource? in
+            guard let feedItemId: Int64 = row["feed_item_id"],
+                  let title: String = row["title"] else {
+                return nil
+            }
+
+            let chunkText: String = row["chunk_text"] ?? "(Source text not available)"
+
+            return ProvenanceSource(
+                feedItemId: feedItemId,
+                title: title,
+                link: row["link"],
+                pubDate: row["pub_date"],
+                chunkText: chunkText,
+                chunkIndex: row["chunk_index"] ?? 0
+            )
+        }
+    }
+
+    /// Load the label for a node by its ID.
+    func loadNodeLabel(nodeId: Int64) throws -> String? {
+        try database.read { db in
+            try String.fetchOne(
+                db,
+                sql: "SELECT label FROM hypergraph_node WHERE id = ?",
+                arguments: [nodeId]
+            )
+        }
+    }
+
+    /// Load the label for an edge by its ID.
+    func loadEdgeLabel(edgeId: Int64) throws -> String? {
+        try database.read { db in
+            try String.fetchOne(
+                db,
+                sql: "SELECT label FROM hypergraph_edge WHERE id = ?",
+                arguments: [edgeId]
+            )
+        }
+    }
+
+    // MARK: - Full-Text Search
+
+    /// Search node labels using FTS5 full-text search.
+    func searchNodes(query: String, limit: Int = 50) throws -> [FTSNodeMatch] {
+        let ftsQuery = Self.sanitizeFTSQuery(query)
+        guard !ftsQuery.isEmpty else { return [] }
+
+        return try database.read { db in
+            let sql = """
+                SELECT hn.id, hn.label, hn.node_type,
+                       snippet(fts_node, 0, '<b>', '</b>', '...', 32) AS snippet,
+                       bm25(fts_node) AS rank
+                FROM fts_node
+                JOIN hypergraph_node hn ON hn.id = fts_node.rowid
+                WHERE fts_node MATCH ?
+                ORDER BY rank
+                LIMIT ?
+            """
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [ftsQuery, limit])
+            return rows.compactMap { row -> FTSNodeMatch? in
+                guard let id: Int64 = row["id"] else { return nil }
+                return FTSNodeMatch(
+                    id: id,
+                    label: row["label"] ?? "",
+                    nodeType: row["node_type"],
+                    snippet: row["snippet"] ?? "",
+                    rank: row["rank"] ?? 0
+                )
+            }
+        }
+    }
+
+    /// Search article chunk content and resolve matching chunks to their derived nodes.
+    ///
+    /// Uses FTS5 to find chunks whose content matches the query, then resolves
+    /// each chunk to the graph nodes it generated via two provenance paths:
+    /// 1. `hypergraph_edge.source_chunk_id` (direct FK)
+    /// 2. `article_edge_provenance` (feed_item_id + chunk_index match)
+    func searchContentDerivedNodes(query: String, limit: Int = 30) throws -> [FTSNodeMatch] {
+        let ftsQuery = Self.sanitizeFTSQuery(query)
+        guard !ftsQuery.isEmpty else { return [] }
+
+        return try database.read { db in
+            // Step 1: Find matching chunks
+            let chunkSQL = """
+                SELECT ac.id AS chunk_id, ac.feed_item_id, ac.chunk_index,
+                       fi.title AS article_title,
+                       snippet(fts_chunk, 0, '<b>', '</b>', '...', 48) AS snippet,
+                       bm25(fts_chunk) AS rank
+                FROM fts_chunk
+                JOIN article_chunk ac ON ac.id = fts_chunk.rowid
+                JOIN feed_item fi ON ac.feed_item_id = fi.id
+                WHERE fts_chunk MATCH ?
+                ORDER BY rank
+                LIMIT ?
+            """
+            let chunkRows = try Row.fetchAll(db, sql: chunkSQL, arguments: [ftsQuery, limit])
+
+            // Step 2: For each chunk, resolve associated node IDs via both provenance paths
+            let nodeResolutionSQL = """
+                SELECT DISTINCT hi.node_id FROM (
+                    SELECT he.id AS edge_id
+                    FROM hypergraph_edge he
+                    WHERE he.source_chunk_id = ?
+
+                    UNION
+
+                    SELECT aep.edge_id
+                    FROM article_edge_provenance aep
+                    WHERE aep.feed_item_id = ? AND aep.chunk_index = ?
+                ) matched_edges
+                JOIN hypergraph_incidence hi ON matched_edges.edge_id = hi.edge_id
+            """
+
+            // Accumulate the best (rank, snippet, articleTitle) per node
+            var nodeInfo: [Int64: (rank: Double, snippet: String, articleTitle: String)] = [:]
+
+            for row in chunkRows {
+                guard let chunkId: Int64 = row["chunk_id"],
+                      let feedItemId: Int64 = row["feed_item_id"] else { continue }
+                let chunkIndex: Int = row["chunk_index"] ?? 0
+                let snippet: String = row["snippet"] ?? ""
+                let articleTitle: String = row["article_title"] ?? ""
+                let rank: Double = row["rank"] ?? 0
+
+                let nodeIds = try Int64.fetchAll(
+                    db, sql: nodeResolutionSQL,
+                    arguments: [chunkId, feedItemId, chunkIndex]
+                )
+
+                for nodeId in nodeIds {
+                    if let existing = nodeInfo[nodeId] {
+                        // Keep the better-ranked match (lower bm25 = better)
+                        if rank < existing.rank {
+                            nodeInfo[nodeId] = (rank, snippet, articleTitle)
+                        }
+                    } else {
+                        nodeInfo[nodeId] = (rank, snippet, articleTitle)
+                    }
+                }
+            }
+
+            guard !nodeInfo.isEmpty else { return [] }
+
+            // Step 3: Load node details (label, type)
+            let nodeIds = Array(nodeInfo.keys)
+            let placeholders = nodeIds.map { _ in "?" }.joined(separator: ",")
+            let nodeSQL = """
+                SELECT id, label, node_type
+                FROM hypergraph_node
+                WHERE id IN (\(placeholders))
+            """
+            let nodeRows = try Row.fetchAll(db, sql: nodeSQL, arguments: StatementArguments(nodeIds))
+
+            return nodeRows.compactMap { row -> FTSNodeMatch? in
+                guard let id: Int64 = row["id"],
+                      let info = nodeInfo[id] else { return nil }
+                return FTSNodeMatch(
+                    id: id,
+                    label: row["label"] ?? "",
+                    nodeType: row["node_type"],
+                    snippet: info.snippet,
+                    rank: info.rank,
+                    articleTitle: info.articleTitle
+                )
+            }
+            .sorted { $0.rank < $1.rank }
+        }
+    }
+
+    /// Run both node-label and article-content searches, returning combined results.
+    ///
+    /// Nodes found via article content that already appear in direct label matches
+    /// are deduplicated — the direct match takes precedence.
+    func searchAll(query: String) throws -> GraphSearchResults {
+        let nodeMatches = try searchNodes(query: query)
+        let contentDerived = try searchContentDerivedNodes(query: query)
+
+        // Deduplicate: exclude content-derived nodes that already matched by label
+        let directIds = Set(nodeMatches.map(\.id))
+        let uniqueContentDerived = contentDerived.filter { !directIds.contains($0.id) }
+
+        return GraphSearchResults(
+            query: query,
+            nodeMatches: nodeMatches,
+            contentDerivedNodes: uniqueContentDerived
+        )
+    }
+
+    /// Sanitize user input for FTS5 MATCH syntax.
+    ///
+    /// Wraps each word in double quotes (escaping FTS5 special characters)
+    /// and appends `*` to the last token for prefix matching.
+    static func sanitizeFTSQuery(_ input: String) -> String {
+        let words = input
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: " ", omittingEmptySubsequences: true)
+            .map { String($0) }
+
+        guard !words.isEmpty else { return "" }
+
+        var quoted = words.map { word in
+            let escaped = word.replacing("\"", with: "\"\"")
+            return "\"\(escaped)\""
+        }
+
+        // Append prefix match to last token
+        if var last = quoted.last {
+            last = String(last.dropLast()) + "*\""
+            quoted[quoted.count - 1] = last
+        }
+
+        return quoted.joined(separator: " ")
+    }
+
     // MARK: - Private Methods
 
     private func loadAllNodes() throws -> [GraphNode] {
@@ -198,7 +507,7 @@ final class GraphDataService: Sendable {
         try database.read { db in
             // Load all edges
             let edgeSQL = """
-                SELECT id, edge_id, relation
+                SELECT id, edge_id, label
                 FROM hypergraph_edge
                 ORDER BY id
             """
@@ -232,12 +541,12 @@ final class GraphDataService: Sendable {
             return edgeRows.compactMap { row -> GraphEdge? in
                 guard let id: Int64 = row["id"] else { return nil }
                 let edgeId: String = row["edge_id"] ?? ""
-                let relation: String = row["relation"] ?? ""
+                let label: String = row["label"] ?? ""
 
                 return GraphEdge(
                     id: id,
                     edgeId: edgeId,
-                    relation: relation,
+                    label: label,
                     sourceNodeIds: sourcesByEdge[id] ?? [],
                     targetNodeIds: targetsByEdge[id] ?? []
                 )
@@ -264,7 +573,7 @@ final class GraphDataService: Sendable {
             // Load edge details
             let edgePlaceholders = edgeDbIds.map { _ in "?" }.joined(separator: ",")
             let edgeSQL = """
-                SELECT id, edge_id, relation
+                SELECT id, edge_id, label
                 FROM hypergraph_edge
                 WHERE id IN (\(edgePlaceholders))
             """
@@ -299,12 +608,12 @@ final class GraphDataService: Sendable {
             return edgeRows.compactMap { row -> GraphEdge? in
                 guard let id: Int64 = row["id"] else { return nil }
                 let edgeId: String = row["edge_id"] ?? ""
-                let relation: String = row["relation"] ?? ""
+                let label: String = row["label"] ?? ""
 
                 return GraphEdge(
                     id: id,
                     edgeId: edgeId,
-                    relation: relation,
+                    label: label,
                     sourceNodeIds: sourcesByEdge[id] ?? [],
                     targetNodeIds: targetsByEdge[id] ?? []
                 )

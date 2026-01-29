@@ -202,14 +202,25 @@ struct SettingsView: View {
 
             // LLM Parameters
             HStack {
-                Text("LLM Temperature")
+                Text("Extraction Temperature")
                 Spacer()
-                Text("\(viewModel.llmTemperature, format: .number.precision(.fractionLength(1)))")
+                Text("\(viewModel.extractionTemperature, format: .number.precision(.fractionLength(2)))")
                     .foregroundStyle(.secondary)
             }
-            Slider(value: $viewModel.llmTemperature, in: 0...1, step: 0.1)
-                .onChange(of: viewModel.llmTemperature) {
-                    viewModel.saveLLMTemperature()
+            Slider(value: $viewModel.extractionTemperature, in: 0...1, step: 0.05)
+                .onChange(of: viewModel.extractionTemperature) {
+                    viewModel.saveExtractionTemperature()
+                }
+
+            HStack {
+                Text("Analysis Temperature")
+                Spacer()
+                Text("\(viewModel.analysisTemperature, format: .number.precision(.fractionLength(2)))")
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: $viewModel.analysisTemperature, in: 0...1, step: 0.05)
+                .onChange(of: viewModel.analysisTemperature) {
+                    viewModel.saveAnalysisTemperature()
                 }
 
             Stepper(value: $viewModel.llmMaxTokens, in: 256...8192, step: 256) {

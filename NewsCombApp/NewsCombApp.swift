@@ -21,6 +21,11 @@ struct NewsCombApp: App {
             GraphVisualizationView()
         }
         .defaultSize(width: 1200, height: 800)
+
+        WindowGroup("Focused Graph", id: "focused-graph", for: Int64.self) { $nodeId in
+            GraphVisualizationView(focusedNodeId: nodeId)
+        }
+        .defaultSize(width: 1000, height: 700)
         #endif
     }
 }

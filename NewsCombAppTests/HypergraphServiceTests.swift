@@ -46,21 +46,21 @@ final class HypergraphServiceTests: XCTestCase {
         let edge1 = HypergraphEdge(
             id: 1,
             edgeId: "edge_1",
-            relation: "is_a",
+            label:"is_a",
             createdAt: date,
             metadataJson: nil
         )
         let edge2 = HypergraphEdge(
             id: 1,
             edgeId: "edge_1",
-            relation: "is_a",
+            label:"is_a",
             createdAt: date,
             metadataJson: nil
         )
         let edge3 = HypergraphEdge(
             id: 2,
             edgeId: "edge_2",
-            relation: "part_of",
+            label:"part_of",
             createdAt: date,
             metadataJson: nil
         )

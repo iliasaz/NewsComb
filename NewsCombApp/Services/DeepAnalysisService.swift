@@ -228,7 +228,8 @@ final class DeepAnalysisService: Sendable {
         let ollama = OllamaService(host: host, chatModel: model)
         return try await ollama.chat(
             systemPrompt: systemPrompt,
-            userPrompt: userPrompt
+            userPrompt: userPrompt,
+            temperature: settings.analysisTemperature
         )
     }
 
@@ -249,7 +250,7 @@ final class DeepAnalysisService: Sendable {
             systemPrompt: systemPrompt,
             userPrompt: userPrompt,
             model: model,
-            temperature: 0.7
+            temperature: settings.analysisTemperature
         )
     }
 
@@ -286,6 +287,21 @@ final class DeepAnalysisService: Sendable {
                 .filter(AppSettings.Columns.key == AppSettings.openRouterModel)
                 .fetchOne(db) {
                 settings.openRouterModel = model.value
+            }
+
+            // Temperature configuration
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.extractionTemperature)
+                .fetchOne(db),
+               let value = Double(setting.value) {
+                settings.extractionTemperature = value
+            }
+
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisTemperature)
+                .fetchOne(db),
+               let value = Double(setting.value) {
+                settings.analysisTemperature = value
             }
 
             // Analysis LLM settings

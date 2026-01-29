@@ -34,8 +34,16 @@ class GraphViewModel {
     /// Currently hovered edge ID for tooltip
     var hoveredEdgeId: Int64?
 
-    /// Connection threshold for filtering nodes (minimum degree to show)
-    var connectionThreshold: Int = 1
+    /// Connection threshold for filtering nodes (minimum degree to show).
+    /// Changing the threshold clears any manually expanded nodes so the
+    /// filter applies uniformly.
+    var connectionThreshold: Int = 1 {
+        didSet {
+            if connectionThreshold != oldValue {
+                expandedNodeIds.removeAll()
+            }
+        }
+    }
 
     /// Maximum degree across all nodes (for slider range)
     var maxDegree: Int = 1
@@ -45,6 +53,46 @@ class GraphViewModel {
 
     /// Custom node color hex value
     var nodeColorHex: String = AppSettings.defaultGraphNodeColor
+
+    // MARK: - Search State
+
+    /// Current text in the search field.
+    var searchText = ""
+
+    /// Whether a search query is currently executing.
+    var isSearching = false
+
+    /// Results from the most recent search, if any.
+    var searchResults: GraphSearchResults?
+
+    /// Node IDs that matched the current search (directly or via chunks).
+    var matchedNodeIds: Set<Int64> = []
+
+    /// Whether the search results panel is visible.
+    var showSearchResults = false
+
+    @ObservationIgnored
+    private var searchTask: Task<Void, Never>?
+
+    // MARK: - Provenance State
+
+    /// Node selected for provenance display
+    var selectedNodeForProvenance: Int64?
+
+    /// Edge selected for provenance display
+    var selectedEdgeForProvenance: Int64?
+
+    /// Provenance sources to display in the sheet
+    var provenanceSources: [ProvenanceSource] = []
+
+    /// Label of the selected item for provenance display
+    var provenanceLabel: String = ""
+
+    /// Whether provenance data is being loaded
+    var isLoadingProvenance = false
+
+    /// Whether to show the provenance sheet
+    var showProvenanceSheet = false
 
     // MARK: - Private State
 
@@ -65,6 +113,10 @@ class GraphViewModel {
 
     @ObservationIgnored
     private var canvasSize: CGSize = CGSize(width: 1000, height: 800)
+
+    /// The node ID that this graph is focused on (for neighborhood views).
+    @ObservationIgnored
+    private var focusedNodeId: Int64?
 
     /// Dictionary for O(1) node lookup by ID
     @ObservationIgnored
@@ -168,6 +220,7 @@ class GraphViewModel {
     func loadNeighborhood(nodeId: Int64) {
         isLoading = true
         errorMessage = nil
+        focusedNodeId = nodeId
 
         do {
             let data = try graphDataService.loadNeighborhood(nodeId: nodeId)
@@ -179,7 +232,8 @@ class GraphViewModel {
             rebuildNodeIndex()
 
             if !nodes.isEmpty {
-                layout.initialize(nodes: nodes, canvasSize: canvasSize)
+                // Use centered layout: pin the focused node at center, arrange neighbors in a circle
+                layout.initializeWithCenter(nodes: nodes, centeredNodeId: nodeId, canvasSize: canvasSize)
                 updateNodePositionsFromLayout()
                 startLayoutAnimation()
             }
@@ -240,7 +294,14 @@ class GraphViewModel {
     /// Called when auto-pause timer fires.
     private func onAutoPause() {
         stopLayoutAnimation()
-        centerOnTopNodes()
+
+        if let focusedNodeId {
+            // In focused/neighborhood view: unpin the focused node and center on it
+            layout.unpinNode(focusedNodeId)
+            centerOnNode(focusedNodeId)
+        } else {
+            centerOnTopNodes()
+        }
     }
 
     /// Stop the physics simulation animation.
@@ -357,9 +418,14 @@ class GraphViewModel {
     }
 
     /// Center the graph in the current canvas.
+    /// In focused view, centers on the focused node. Otherwise, centers the bounding box.
     func centerGraph() {
-        layout.centerGraph(in: canvasSize)
-        updateNodePositionsFromLayout()
+        if let focusedNodeId {
+            centerOnNode(focusedNodeId)
+        } else {
+            layout.centerGraph(in: canvasSize)
+            updateNodePositionsFromLayout()
+        }
     }
 
     // MARK: - Layout Parameters
@@ -383,6 +449,17 @@ class GraphViewModel {
     }
 
     // MARK: - Centering on Top Nodes
+
+    /// Center the view on a specific node.
+    func centerOnNode(_ nodeId: Int64) {
+        guard let node = node(id: nodeId) else { return }
+
+        let offsetX = canvasSize.width / 2 - node.position.x
+        let offsetY = canvasSize.height / 2 - node.position.y
+
+        layout.applyOffset(dx: offsetX, dy: offsetY)
+        updateNodePositionsFromLayout()
+    }
 
     /// Center the view on the highest-connection nodes.
     func centerOnTopNodes(count: Int = 5) {
@@ -448,65 +525,83 @@ class GraphViewModel {
     // MARK: - Node Expansion
 
     /// Expand a node to show its hidden neighbors.
+    ///
+    /// Handles two cases transparently:
+    /// - **Full graph**: Neighbors are already in `nodes` but hidden by the
+    ///   connection threshold — they're added to `expandedNodeIds` so the
+    ///   visibility filter includes them.
+    /// - **Focused view**: Neighbors aren't loaded at all — their data is
+    ///   fetched from the database, appended to `nodes` and `edges`, and
+    ///   registered with the layout engine.
     func expandNode(_ nodeId: Int64) {
         guard node(id: nodeId) != nil else { return }
 
         do {
-            // Load neighbors that are currently hidden
-            let neighbors = try graphDataService.loadNeighbors(nodeId: nodeId)
+            // Load the full 1-hop neighborhood of the expanded node
+            let neighborhoodData = try graphDataService.loadNeighborhood(nodeId: nodeId)
 
-            // Find which neighbors are below threshold and not already visible
-            var newNodeIds: [Int64] = []
-            for neighbor in neighbors {
-                // Check if this neighbor is below threshold and not expanded
-                if neighbor.degree < connectionThreshold && !expandedNodeIds.contains(neighbor.id) {
-                    // Need to find the node in our nodes array to get its actual degree
-                    if let existingNode = self.node(id: neighbor.id) {
-                        if existingNode.degree < connectionThreshold {
-                            expandedNodeIds.insert(neighbor.id)
-                            newNodeIds.append(neighbor.id)
-                        }
+            let existingIds = Set(nodes.map(\.id))
+            var revealedIds: [Int64] = []
+            var addedNodes: [GraphNode] = []
+
+            for neighbor in neighborhoodData.nodes {
+                guard neighbor.id != nodeId else { continue }
+                guard !expandedNodeIds.contains(neighbor.id) else { continue }
+
+                if existingIds.contains(neighbor.id) {
+                    // Node is loaded but may be hidden by threshold
+                    if let existingNode = self.node(id: neighbor.id),
+                       existingNode.degree < connectionThreshold {
+                        expandedNodeIds.insert(neighbor.id)
+                        revealedIds.append(neighbor.id)
                     }
+                } else {
+                    // Node isn't loaded — add it to the graph
+                    addedNodes.append(neighbor)
+                    expandedNodeIds.insert(neighbor.id)
                 }
             }
 
-            guard !newNodeIds.isEmpty else { return }
+            // Merge new data into the graph
+            if !addedNodes.isEmpty {
+                nodes.append(contentsOf: addedNodes)
 
-            // Position new nodes near the expanded node
-            positionNewNodesNear(nodeId: nodeId, newNodeIds: newNodeIds)
+                let existingEdgeIds = Set(edges.map(\.id))
+                let newEdges = neighborhoodData.edges.filter { !existingEdgeIds.contains($0.id) }
+                edges.append(contentsOf: newEdges)
 
-            // Run partial layout for a short time
-            startPartialLayout(pinExcept: newNodeIds, duration: 1.0)
+                recomputeDegrees()
+                maxDegree = max(nodes.map(\.degree).max() ?? 1, 1)
+                rebuildNodeIndex()
+
+                // Register new nodes with the layout engine near the parent
+                if let parentPos = layout.position(for: nodeId) {
+                    layout.addNodes(addedNodes.map(\.id), near: parentPos)
+                }
+                updateNodePositionsFromLayout()
+            }
+
+            let allNewIds = revealedIds + addedNodes.map(\.id)
+            guard !allNewIds.isEmpty else { return }
+
+            // Run partial layout to settle the new nodes
+            startPartialLayout(pinExcept: allNewIds, duration: 1.0)
 
         } catch {
             // Silently fail - expansion won't work
         }
     }
 
-    /// Position newly expanded nodes near a parent node.
-    private func positionNewNodesNear(nodeId: Int64, newNodeIds: [Int64]) {
-        guard let parentNode = node(id: nodeId) else { return }
-
-        let radius: CGFloat = 100
-        let count = newNodeIds.count
-
-        for (index, newId) in newNodeIds.enumerated() {
-            // Spread new nodes in a circle around parent
-            let angle = (2 * .pi * CGFloat(index)) / CGFloat(max(count, 1))
-            let newPosition = CGPoint(
-                x: parentNode.position.x + radius * cos(angle),
-                y: parentNode.position.y + radius * sin(angle)
-            )
-
-            // Update position in layout
-            if layout.position(for: newId) != nil {
-                layout.moveNode(newId, to: newPosition)
+    /// Recompute node degrees from the current set of edges.
+    private func recomputeDegrees() {
+        var degreeMap: [Int64: Int] = [:]
+        for edge in edges {
+            for nodeId in edge.sourceNodeIds + edge.targetNodeIds {
+                degreeMap[nodeId, default: 0] += 1
             }
-
-            // Update in nodes array
-            if let nodeIndex = nodeIndex[newId] {
-                nodes[nodeIndex].position = newPosition
-            }
+        }
+        for i in nodes.indices {
+            nodes[i].degree = degreeMap[nodes[i].id] ?? 0
         }
     }
 
@@ -532,5 +627,99 @@ class GraphViewModel {
                 }
             }
         }
+    }
+
+    // MARK: - Provenance Loading
+
+    /// Load provenance for a node and show the provenance sheet.
+    func loadNodeProvenance(nodeId: Int64) {
+        selectedNodeForProvenance = nodeId
+        selectedEdgeForProvenance = nil
+        isLoadingProvenance = true
+
+        do {
+            provenanceSources = try graphDataService.loadProvenanceForNode(nodeId: nodeId)
+            provenanceLabel = try graphDataService.loadNodeLabel(nodeId: nodeId) ?? "Unknown"
+            showProvenanceSheet = true
+        } catch {
+            provenanceSources = []
+            provenanceLabel = ""
+        }
+
+        isLoadingProvenance = false
+    }
+
+    /// Load provenance for an edge and show the provenance sheet.
+    func loadEdgeProvenance(edgeId: Int64) {
+        selectedEdgeForProvenance = edgeId
+        selectedNodeForProvenance = nil
+        isLoadingProvenance = true
+
+        do {
+            provenanceSources = try graphDataService.loadProvenanceForEdge(edgeId: edgeId)
+            provenanceLabel = try graphDataService.loadEdgeLabel(edgeId: edgeId) ?? "Unknown"
+            showProvenanceSheet = true
+        } catch {
+            provenanceSources = []
+            provenanceLabel = ""
+        }
+
+        isLoadingProvenance = false
+    }
+
+    /// Clear provenance selection state.
+    func clearProvenanceSelection() {
+        selectedNodeForProvenance = nil
+        selectedEdgeForProvenance = nil
+        provenanceSources = []
+        provenanceLabel = ""
+        showProvenanceSheet = false
+    }
+
+    // MARK: - Full-Text Search
+
+    /// Debounce and execute a search.
+    /// Cancels any in-flight search and waits 300ms before executing.
+    func performSearch() {
+        searchTask?.cancel()
+
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !query.isEmpty else {
+            clearSearch()
+            return
+        }
+
+        searchTask = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            await executeSearch(query: query)
+        }
+    }
+
+    /// Execute the FTS5 search and update results state.
+    private func executeSearch(query: String) async {
+        isSearching = true
+        do {
+            let results = try graphDataService.searchAll(query: query)
+            searchResults = results
+            matchedNodeIds = results.allMatchedNodeIds
+            showSearchResults = !results.isEmpty
+        } catch {
+            searchResults = nil
+            matchedNodeIds = []
+            showSearchResults = false
+        }
+        isSearching = false
+    }
+
+    /// Clear all search state.
+    func clearSearch() {
+        searchTask?.cancel()
+        searchText = ""
+        isSearching = false
+        searchResults = nil
+        matchedNodeIds = []
+        showSearchResults = false
     }
 }

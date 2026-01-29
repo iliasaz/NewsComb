@@ -79,12 +79,11 @@ public final class Database: Sendable {
                 CREATE TABLE IF NOT EXISTS hypergraph_edge (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     edge_id TEXT NOT NULL UNIQUE,
-                    relation TEXT NOT NULL,
+                    label TEXT NOT NULL,
                     created_at REAL NOT NULL DEFAULT (unixepoch()),
                     metadata_json TEXT
                 );
                 CREATE INDEX IF NOT EXISTS idx_hypergraph_edge_id ON hypergraph_edge(edge_id);
-                CREATE INDEX IF NOT EXISTS idx_hypergraph_edge_relation ON hypergraph_edge(relation);
 
                 CREATE TABLE IF NOT EXISTS hypergraph_incidence (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -194,6 +193,32 @@ public final class Database: Sendable {
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_role_active ON user_role(is_active) WHERE is_active = 1;
             """)
 
+            // Rename hypergraph_edge.relation → label and clean existing values.
+            // The label index is created here (not in the schema block) because
+            // CREATE TABLE IF NOT EXISTS is a no-op on existing databases, so the
+            // column may still be called "relation" when the schema block runs.
+            do {
+                let hasRelationColumn = try db.columns(in: "hypergraph_edge").contains { $0.name == "relation" }
+                if hasRelationColumn {
+                    try db.execute(sql: "ALTER TABLE hypergraph_edge RENAME COLUMN relation TO label")
+                    // Clean existing label values: extract prefix before "_chunk" from edge_id
+                    try db.execute(sql: """
+                        UPDATE hypergraph_edge
+                        SET label = REPLACE(
+                            SUBSTR(edge_id, 1, INSTR(edge_id, '_chunk') - 1),
+                            '_', ' '
+                        )
+                        WHERE edge_id LIKE '%_chunk%' AND INSTR(edge_id, '_chunk') > 1
+                    """)
+                    // Drop old index and create new one
+                    try db.execute(sql: "DROP INDEX IF EXISTS idx_hypergraph_edge_relation")
+                }
+                // Ensure label index exists (fresh installs already have `label`, upgrades just renamed it)
+                try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_hypergraph_edge_label ON hypergraph_edge(label)")
+            } catch {
+                // Column may already have been renamed, ignore error
+            }
+
             // Add source_chunk_id column to hypergraph_edge if it doesn't exist
             // SQLite doesn't support IF NOT EXISTS for columns, so we check first
             do {
@@ -280,6 +305,55 @@ public final class Database: Sendable {
                 // Column might already exist, ignore error
             }
 
+            // FTS5 full-text search indexes (external content — no data duplication)
+            try db.execute(sql: """
+                CREATE VIRTUAL TABLE IF NOT EXISTS fts_node USING fts5(
+                    label,
+                    content='hypergraph_node',
+                    content_rowid='id',
+                    tokenize='porter unicode61'
+                );
+
+                CREATE VIRTUAL TABLE IF NOT EXISTS fts_chunk USING fts5(
+                    content,
+                    content='article_chunk',
+                    content_rowid='id',
+                    tokenize='porter unicode61'
+                );
+            """)
+
+            // Sync triggers for FTS node index
+            try db.execute(sql: """
+                CREATE TRIGGER IF NOT EXISTS fts_node_ai AFTER INSERT ON hypergraph_node BEGIN
+                    INSERT INTO fts_node(rowid, label) VALUES (new.id, new.label);
+                END;
+                CREATE TRIGGER IF NOT EXISTS fts_node_ad AFTER DELETE ON hypergraph_node BEGIN
+                    INSERT INTO fts_node(fts_node, rowid, label) VALUES('delete', old.id, old.label);
+                END;
+                CREATE TRIGGER IF NOT EXISTS fts_node_au AFTER UPDATE ON hypergraph_node BEGIN
+                    INSERT INTO fts_node(fts_node, rowid, label) VALUES('delete', old.id, old.label);
+                    INSERT INTO fts_node(rowid, label) VALUES (new.id, new.label);
+                END;
+            """)
+
+            // Sync triggers for FTS chunk index
+            try db.execute(sql: """
+                CREATE TRIGGER IF NOT EXISTS fts_chunk_ai AFTER INSERT ON article_chunk BEGIN
+                    INSERT INTO fts_chunk(rowid, content) VALUES (new.id, new.content);
+                END;
+                CREATE TRIGGER IF NOT EXISTS fts_chunk_ad AFTER DELETE ON article_chunk BEGIN
+                    INSERT INTO fts_chunk(fts_chunk, rowid, content) VALUES('delete', old.id, old.content);
+                END;
+                CREATE TRIGGER IF NOT EXISTS fts_chunk_au AFTER UPDATE ON article_chunk BEGIN
+                    INSERT INTO fts_chunk(fts_chunk, rowid, content) VALUES('delete', old.id, old.content);
+                    INSERT INTO fts_chunk(rowid, content) VALUES (new.id, new.content);
+                END;
+            """)
+
+            // Rebuild FTS indexes from existing data (safe to re-run)
+            try db.execute(sql: "INSERT INTO fts_node(fts_node) VALUES('rebuild')")
+            try db.execute(sql: "INSERT INTO fts_chunk(fts_chunk) VALUES('rebuild')")
+
             // Seed default settings if they don't exist
             try seedDefaultSettings(db)
 
@@ -310,7 +384,8 @@ public final class Database: Sendable {
             // Algorithm Parameters
             (AppSettings.chunkSize, String(AppSettings.defaultChunkSize)),
             (AppSettings.similarityThreshold, String(AppSettings.defaultSimilarityThreshold)),
-            (AppSettings.llmTemperature, String(AppSettings.defaultLLMTemperature)),
+            (AppSettings.extractionTemperature, String(AppSettings.defaultExtractionTemperature)),
+            (AppSettings.analysisTemperature, String(AppSettings.defaultAnalysisTemperature)),
             (AppSettings.llmMaxTokens, String(AppSettings.defaultLLMMaxTokens)),
             (AppSettings.ragMaxNodes, String(AppSettings.defaultRAGMaxNodes)),
             (AppSettings.ragMaxChunks, String(AppSettings.defaultRAGMaxChunks)),
@@ -337,6 +412,11 @@ public final class Database: Sendable {
             )
         }
 
+        // Remove legacy single-temperature key if present
+        try db.execute(
+            sql: "DELETE FROM app_settings WHERE key = 'llm_temperature'"
+        )
+
         Self.logger.info("Default settings seeded successfully")
     }
 
@@ -356,7 +436,6 @@ public final class Database: Sendable {
             ("https://aws.amazon.com/blogs/aws/feed", "AWS Blog"),
             ("https://aws.amazon.com/about-aws/whats-new/recent/feed", "AWS What's New"),
             ("https://azure.microsoft.com/en-us/blog/feed", "Azure Blog"),
-            ("https://cloud.google.com/feeds/gcp-release-notes.xml", "GCP Release Notes"),
             ("https://cloudblog.withgoogle.com/rss", "Google Cloud Blog"),
             ("https://www.digitalocean.com/blog/rss", "DigitalOcean Blog"),
             ("https://lambdalabs.com/blog/rss.xml", "Lambda Labs Blog"),
@@ -374,7 +453,7 @@ public final class Database: Sendable {
             ("https://news.ycombinator.com/rss", "Hacker News"),
 
             // GitHub Trending
-            ("https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml", "GitHub Trending"),
+            ("https://mshibanami.github.io/GitHubTrendingRSS/weekly/all.xml", "GitHub Trending"),
         ]
 
         for source in defaultSources {

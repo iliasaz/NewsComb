@@ -205,6 +205,44 @@ final class ForceDirectedLayout {
         }
     }
 
+    /// Initialize layout with a specific node pinned at the canvas center and others arranged nearby.
+    /// Used for focused/neighborhood views where one node should remain centered.
+    func initializeWithCenter(
+        nodes: [GraphNode],
+        centeredNodeId: Int64,
+        canvasSize: CGSize = CGSize(width: 1000, height: 800)
+    ) {
+        positions.removeAll(keepingCapacity: true)
+        velocities.removeAll(keepingCapacity: true)
+        pinnedNodes.removeAll()
+        adjacency.removeAll()
+        isStable = false
+        temperature = 1.0
+        frameCount = 0
+
+        nodeIds = nodes.map { $0.id }
+
+        let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+        let radius = min(canvasSize.width, canvasSize.height) * 0.2
+        let otherNodes = nodes.filter { $0.id != centeredNodeId }
+
+        for node in nodes {
+            if node.id == centeredNodeId {
+                // Place the focused node at canvas center and pin it
+                positions[node.id] = center
+                pinnedNodes.insert(node.id)
+            } else {
+                // Arrange other nodes in a circle around the center
+                let index = otherNodes.firstIndex(where: { $0.id == node.id }) ?? 0
+                let angle = (2 * .pi * CGFloat(index)) / CGFloat(max(otherNodes.count, 1))
+                let x = center.x + radius * cos(angle)
+                let y = center.y + radius * sin(angle)
+                positions[node.id] = CGPoint(x: x, y: y)
+            }
+            velocities[node.id] = .zero
+        }
+    }
+
     /// Initialize layout with existing positions.
     func initialize(nodePositions: [Int64: CGPoint]) {
         positions = nodePositions
@@ -408,6 +446,29 @@ final class ForceDirectedLayout {
     func moveNode(_ nodeId: Int64, to position: CGPoint) {
         guard pinnedNodes.contains(nodeId) else { return }
         positions[nodeId] = position
+    }
+
+    /// Add new nodes to the layout, positioned in a circle around a reference point.
+    ///
+    /// Used when expanding a node's neighborhood in a focused view — the new
+    /// nodes aren't yet known to the layout engine and need to be registered
+    /// with initial positions and zero velocity. Adjacency is invalidated so
+    /// spring forces pick up the new edges on the next step.
+    func addNodes(_ newNodeIds: [Int64], near position: CGPoint, radius: CGFloat = 100) {
+        let count = newNodeIds.count
+        for (index, nodeId) in newNodeIds.enumerated() {
+            guard positions[nodeId] == nil else { continue }
+            let angle = (2 * .pi * CGFloat(index)) / CGFloat(max(count, 1))
+            positions[nodeId] = CGPoint(
+                x: position.x + radius * cos(angle),
+                y: position.y + radius * sin(angle)
+            )
+            velocities[nodeId] = .zero
+            self.nodeIds.append(nodeId)
+        }
+        adjacency.removeAll()
+        isStable = false
+        temperature = max(temperature, 0.5)
     }
 
     /// Reset the simulation to restart layout computation.

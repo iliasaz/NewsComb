@@ -198,7 +198,7 @@ final class GraphRAGTests: XCTestCase {
         )
         let edge = GraphRAGContext.ContextEdge(
             edgeId: 1,
-            relation: "is_a",
+            label:"is_a",
             sourceNodes: ["AI"],
             targetNodes: ["Technology"],
             chunkText: "AI is a technology"
@@ -226,14 +226,14 @@ final class GraphRAGTests: XCTestCase {
     func testContextEdgeInitialization() {
         let edge = GraphRAGContext.ContextEdge(
             edgeId: 42,
-            relation: "related_to",
+            label:"related_to",
             sourceNodes: ["Source1", "Source2"],
             targetNodes: ["Target1"],
             chunkText: "Source is related to target"
         )
 
         XCTAssertEqual(edge.edgeId, 42)
-        XCTAssertEqual(edge.relation, "related_to")
+        XCTAssertEqual(edge.label, "related_to")
         XCTAssertEqual(edge.sourceNodes, ["Source1", "Source2"])
         XCTAssertEqual(edge.targetNodes, ["Target1"])
         XCTAssertEqual(edge.chunkText, "Source is related to target")
@@ -242,7 +242,7 @@ final class GraphRAGTests: XCTestCase {
     func testContextEdgeNilChunkText() {
         let edge = GraphRAGContext.ContextEdge(
             edgeId: 1,
-            relation: "test",
+            label:"test",
             sourceNodes: [],
             targetNodes: [],
             chunkText: nil
@@ -296,7 +296,7 @@ final class GraphRAGTests: XCTestCase {
     func testFormatForLLMWithEdges() {
         let edge = GraphRAGContext.ContextEdge(
             edgeId: 1,
-            relation: "is_a",
+            label:"is_a",
             sourceNodes: ["AI"],
             targetNodes: ["Technology"],
             chunkText: nil

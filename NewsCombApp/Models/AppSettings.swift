@@ -69,8 +69,10 @@ extension AppSettings {
     static let defaultSimilarityThreshold: Float = 0.9  // 90% similarity
 
     // Algorithm Parameters - LLM
-    static let llmTemperature = "llm_temperature"
-    static let defaultLLMTemperature: Float = 0.7
+    static let extractionTemperature = "extraction_temperature"
+    static let defaultExtractionTemperature: Float = 0.33
+    static let analysisTemperature = "analysis_temperature"
+    static let defaultAnalysisTemperature: Float = 0.7
     static let llmMaxTokens = "llm_max_tokens"
     static let defaultLLMMaxTokens = 2048
 

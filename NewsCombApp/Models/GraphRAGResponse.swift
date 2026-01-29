@@ -57,19 +57,24 @@ struct GraphRAGResponse: Identifiable, Sendable {
         let targetConcept: String
         let intermediateNodes: [String]
         let edgeCount: Int
+        /// Relation labels between consecutive nodes in the path.
+        /// For a path A → B → C, this would contain [relation(A→B), relation(B→C)].
+        let edgeLabels: [String]
 
         init(
             id: UUID = UUID(),
             sourceConcept: String,
             targetConcept: String,
             intermediateNodes: [String] = [],
-            edgeCount: Int
+            edgeCount: Int,
+            edgeLabels: [String] = []
         ) {
             self.id = id
             self.sourceConcept = sourceConcept
             self.targetConcept = targetConcept
             self.intermediateNodes = intermediateNodes
             self.edgeCount = edgeCount
+            self.edgeLabels = edgeLabels
         }
 
         /// Natural language description of the path.
@@ -91,20 +96,20 @@ struct GraphRAGResponse: Identifiable, Sendable {
     /// A path/relationship in the knowledge graph used for reasoning.
     struct GraphPath: Identifiable, Sendable {
         let id: Int64
-        let relation: String
+        let label: String
         let sourceNodes: [String]
         let targetNodes: [String]
         let provenanceText: String?
 
         init(
             id: Int64,
-            relation: String,
+            label: String,
             sourceNodes: [String],
             targetNodes: [String],
             provenanceText: String? = nil
         ) {
             self.id = id
-            self.relation = relation
+            self.label = label
             self.sourceNodes = sourceNodes
             self.targetNodes = targetNodes
             self.provenanceText = provenanceText
@@ -114,7 +119,7 @@ struct GraphRAGResponse: Identifiable, Sendable {
         var naturalLanguageSentence: String {
             let sources = sourceNodes.joined(separator: ", ")
             let targets = targetNodes.joined(separator: ", ")
-            let verb = formatRelationAsVerb(relation)
+            let verb = formatRelationAsVerb(label)
 
             if targets.isEmpty {
                 return "\(sources) \(verb)."
@@ -126,20 +131,20 @@ struct GraphRAGResponse: Identifiable, Sendable {
         var displayText: String {
             let sources = sourceNodes.joined(separator: ", ")
             let targets = targetNodes.joined(separator: ", ")
-            let formattedRelation = formatRelationAsTitle(relation)
+            let formattedRelation = formatRelationAsTitle(label)
             return "\(sources) → \(formattedRelation) → \(targets)"
         }
 
         /// Formats a relation string as a verb phrase (e.g., "partnered_with" → "partnered with").
-        private func formatRelationAsVerb(_ relation: String) -> String {
-            relation
+        private func formatRelationAsVerb(_ label: String) -> String {
+            label
                 .replacing("_", with: " ")
                 .lowercased()
         }
 
         /// Formats a relation string as a title (e.g., "partnered_with" → "Partnered With").
-        private func formatRelationAsTitle(_ relation: String) -> String {
-            relation
+        private func formatRelationAsTitle(_ label: String) -> String {
+            label
                 .replacing("_", with: " ")
                 .split(separator: " ")
                 .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
@@ -210,12 +215,28 @@ struct GraphRAGContext: Sendable {
         let targetConcept: String
         let intermediateNodes: [String]
         let edgeCount: Int
+        /// Relation labels between consecutive nodes in the path.
+        let edgeLabels: [String]
+
+        init(
+            sourceConcept: String,
+            targetConcept: String,
+            intermediateNodes: [String] = [],
+            edgeCount: Int,
+            edgeLabels: [String] = []
+        ) {
+            self.sourceConcept = sourceConcept
+            self.targetConcept = targetConcept
+            self.intermediateNodes = intermediateNodes
+            self.edgeCount = edgeCount
+            self.edgeLabels = edgeLabels
+        }
     }
 
     /// An edge with its connected nodes for context.
     struct ContextEdge: Sendable {
         let edgeId: Int64
-        let relation: String
+        let label: String
         let sourceNodes: [String]
         let targetNodes: [String]
         let chunkText: String?
@@ -290,13 +311,13 @@ struct GraphRAGContext: Sendable {
     private func formatEdge(_ edge: ContextEdge) -> String {
         let sources = edge.sourceNodes.joined(separator: ", ")
         let targets = edge.targetNodes.joined(separator: ", ")
-        let relation = edge.relation
+        let label = edge.label
             .replacing("_", with: " ")
             .replacing("path edge", with: "relates to")
 
         if targets.isEmpty {
-            return "- \(sources) (\(relation))"
+            return "- \(sources) (\(label))"
         }
-        return "- \(sources) \(relation) \(targets)"
+        return "- \(sources) \(label) \(targets)"
     }
 }

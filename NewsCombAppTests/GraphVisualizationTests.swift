@@ -47,7 +47,7 @@ final class GraphVisualizationTests: XCTestCase {
             GraphNode(id: 2, label: "B", nodeType: nil)
         ]
         let edges = [
-            GraphEdge(id: 1, edgeId: "e1", relation: "relates_to", sourceNodeIds: [1], targetNodeIds: [2])
+            GraphEdge(id: 1, edgeId: "e1", label: "relates_to", sourceNodeIds: [1], targetNodeIds: [2])
         ]
 
         layout.initialize(nodes: nodes, canvasSize: CGSize(width: 500, height: 500))
@@ -148,7 +148,7 @@ final class GraphVisualizationTests: XCTestCase {
             GraphNode(id: 2, label: "B", nodeType: nil)
         ]
         let edges = [
-            GraphEdge(id: 1, edgeId: "e1", relation: "rel", sourceNodeIds: [1], targetNodeIds: [2])
+            GraphEdge(id: 1, edgeId: "e1", label: "rel", sourceNodeIds: [1], targetNodeIds: [2])
         ]
 
         layout.initialize(nodes: nodes, canvasSize: CGSize(width: 500, height: 500))
@@ -191,9 +191,9 @@ final class GraphVisualizationTests: XCTestCase {
     // MARK: - GraphEdge Tests
 
     func testGraphEdgeEquality() {
-        let edge1 = GraphEdge(id: 1, edgeId: "e1", relation: "knows", sourceNodeIds: [1], targetNodeIds: [2])
-        let edge2 = GraphEdge(id: 1, edgeId: "e1", relation: "knows", sourceNodeIds: [1], targetNodeIds: [2])
-        let edge3 = GraphEdge(id: 2, edgeId: "e2", relation: "knows", sourceNodeIds: [1], targetNodeIds: [3])
+        let edge1 = GraphEdge(id: 1, edgeId: "e1", label: "knows", sourceNodeIds: [1], targetNodeIds: [2])
+        let edge2 = GraphEdge(id: 1, edgeId: "e1", label: "knows", sourceNodeIds: [1], targetNodeIds: [2])
+        let edge3 = GraphEdge(id: 2, edgeId: "e2", label: "knows", sourceNodeIds: [1], targetNodeIds: [3])
 
         XCTAssertEqual(edge1, edge2)
         XCTAssertNotEqual(edge1, edge3)
@@ -203,7 +203,7 @@ final class GraphVisualizationTests: XCTestCase {
         let edge = GraphEdge(
             id: 1,
             edgeId: "hyperedge",
-            relation: "involved_in",
+            label: "involved_in",
             sourceNodeIds: [1, 2, 3],
             targetNodeIds: [4, 5]
         )
@@ -226,7 +226,7 @@ final class GraphVisualizationTests: XCTestCase {
             GraphNode(id: 2, label: "B", nodeType: nil)
         ]
         let edges = [
-            GraphEdge(id: 1, edgeId: "e1", relation: "rel", sourceNodeIds: [1], targetNodeIds: [2])
+            GraphEdge(id: 1, edgeId: "e1", label: "rel", sourceNodeIds: [1], targetNodeIds: [2])
         ]
 
         let data = GraphData(nodes: nodes, edges: edges)
@@ -248,7 +248,7 @@ final class GraphVisualizationTests: XCTestCase {
             edges.append(GraphEdge(
                 id: Int64(i),
                 edgeId: "e\(i)",
-                relation: "connected",
+                label: "connected",
                 sourceNodeIds: [Int64(i)],
                 targetNodeIds: [Int64(i + 1)]
             ))

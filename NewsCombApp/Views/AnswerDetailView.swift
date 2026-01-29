@@ -3,6 +3,9 @@ import SwiftUI
 /// View for displaying a saved question/answer from history.
 struct AnswerDetailView: View {
     @State private var viewModel: AnswerDetailViewModel
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     /// Creates the view with a query history item.
     init(historyItem: QueryHistoryItem) {
@@ -97,16 +100,31 @@ struct AnswerDetailView: View {
 
     private var relatedNodesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Related Concepts", systemImage: "brain.head.profile")
-                .font(.headline)
+            HStack {
+                Label("Related Concepts", systemImage: "brain.head.profile")
+                    .font(.headline)
+                Spacer()
+                #if os(macOS)
+                Text("Click to open graph")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                #endif
+            }
 
             FlowLayout(spacing: 8) {
                 ForEach(response.relatedNodes.prefix(15)) { node in
-                    NodeChip(
-                        label: node.label,
-                        type: node.nodeType,
-                        similarity: node.similarity
-                    )
+                    Button {
+                        #if os(macOS)
+                        openWindow(id: "focused-graph", value: node.id)
+                        #endif
+                    } label: {
+                        NodeChip(
+                            label: node.label,
+                            type: node.nodeType,
+                            similarity: node.similarity
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -122,7 +140,7 @@ struct AnswerDetailView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(sortedPaths.prefix(15)) { path in
-                    ReasoningPathRow(path: path)
+                    EnhancedReasoningPathRow(path: path)
                 }
             }
         }
@@ -337,68 +355,6 @@ private struct NodeChip: View {
         } else {
             return .secondary
         }
-    }
-}
-
-private struct ReasoningPathRow: View {
-    let path: GraphRAGResponse.ReasoningPath
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Path description with hop count indicator
-            HStack(alignment: .top, spacing: 8) {
-                // Icon indicates path length
-                Image(systemName: path.isMultiHop ? "arrow.triangle.2.circlepath" : "arrow.right")
-                    .foregroundStyle(path.isMultiHop ? .purple : .secondary)
-                    .frame(width: 16)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    // Path description
-                    Text(path.description)
-                        .font(.subheadline)
-
-                    // Edge count badge
-                    Text("\(path.edgeCount) hop\(path.edgeCount == 1 ? "" : "s")")
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(path.isMultiHop ? Color.purple.opacity(0.15) : Color.secondary.opacity(0.15))
-                        .foregroundStyle(path.isMultiHop ? .purple : .secondary)
-                        .clipShape(.capsule)
-                }
-            }
-
-            // Visual chip representation for multi-hop paths
-            if path.isMultiHop {
-                HStack(spacing: 4) {
-                    conceptChip(path.sourceConcept, color: .blue)
-
-                    ForEach(path.intermediateNodes, id: \.self) { node in
-                        Image(systemName: "arrow.right")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        conceptChip(node, color: .orange)
-                    }
-
-                    Image(systemName: "arrow.right")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    conceptChip(path.targetConcept, color: .green)
-                }
-                .padding(.leading, 24)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
-    private func conceptChip(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.caption)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.15))
-            .foregroundStyle(color)
-            .clipShape(.capsule)
     }
 }
 

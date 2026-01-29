@@ -83,7 +83,8 @@ class SettingsViewModel {
     // Algorithm Parameters
     var chunkSize: Int = AppSettings.defaultChunkSize
     var similarityThreshold: Float = AppSettings.defaultSimilarityThreshold
-    var llmTemperature: Float = AppSettings.defaultLLMTemperature
+    var extractionTemperature: Float = AppSettings.defaultExtractionTemperature
+    var analysisTemperature: Float = AppSettings.defaultAnalysisTemperature
     var llmMaxTokens: Int = AppSettings.defaultLLMMaxTokens
     var ragMaxNodes: Int = AppSettings.defaultRAGMaxNodes
     var ragMaxChunks: Int = AppSettings.defaultRAGMaxChunks
@@ -190,9 +191,14 @@ class SettingsViewModel {
                     similarityThreshold = value
                 }
 
-                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.llmTemperature).fetchOne(db),
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.extractionTemperature).fetchOne(db),
                    let value = Float(setting.value) {
-                    llmTemperature = value
+                    extractionTemperature = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.analysisTemperature).fetchOne(db),
+                   let value = Float(setting.value) {
+                    analysisTemperature = value
                 }
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.llmMaxTokens).fetchOne(db),
@@ -396,8 +402,12 @@ class SettingsViewModel {
         saveAPIKey(key: AppSettings.similarityThreshold, value: String(similarityThreshold))
     }
 
-    func saveLLMTemperature() {
-        saveAPIKey(key: AppSettings.llmTemperature, value: String(llmTemperature))
+    func saveExtractionTemperature() {
+        saveAPIKey(key: AppSettings.extractionTemperature, value: String(extractionTemperature))
+    }
+
+    func saveAnalysisTemperature() {
+        saveAPIKey(key: AppSettings.analysisTemperature, value: String(analysisTemperature))
     }
 
     func saveLLMMaxTokens() {

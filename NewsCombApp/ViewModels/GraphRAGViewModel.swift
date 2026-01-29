@@ -10,6 +10,8 @@ final class GraphRAGViewModel {
     var isQuerying: Bool = false
     var persistedHistory: [QueryHistoryItem] = []
     var errorMessage: String?
+    var queryStatus: String = ""
+    var streamingAnswer: String = ""
 
     /// Set after executing a query to trigger navigation to the answer view.
     var pendingNavigationItem: QueryHistoryItem?
@@ -51,8 +53,14 @@ final class GraphRAGViewModel {
 
         isQuerying = true
         errorMessage = nil
+        queryStatus = ""
+        streamingAnswer = ""
 
-        defer { isQuerying = false }
+        defer {
+            isQuerying = false
+            queryStatus = ""
+            streamingAnswer = ""
+        }
 
         // Refresh the active role before querying
         loadActiveRole()
@@ -60,7 +68,16 @@ final class GraphRAGViewModel {
         do {
             logger.info("Executing GraphRAG query: \(self.queryText, privacy: .public)")
             let rolePrompt = activeRole?.prompt
-            let response = try await graphRAGService.query(queryText, rolePrompt: rolePrompt)
+            let response = try await graphRAGService.query(
+                queryText,
+                rolePrompt: rolePrompt,
+                statusCallback: { [weak self] status in
+                    self?.queryStatus = status
+                },
+                tokenCallback: { [weak self] token in
+                    self?.streamingAnswer += token
+                }
+            )
 
             // Persist to database
             try queryHistoryService.save(response)

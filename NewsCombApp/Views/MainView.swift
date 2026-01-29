@@ -441,6 +441,26 @@ struct MainView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+
+                        if !viewModel.currentProcessingArticle.isEmpty {
+                            Text(viewModel.currentProcessingArticle)
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+
+                        if !viewModel.recentlyExtractedEntities.isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "sparkle")
+                                    .font(.caption2)
+                                    .foregroundStyle(.purple)
+                                Text(viewModel.recentlyExtractedEntities.joined(separator: ", "))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
                     }
                     .padding(.vertical, 4)
                 }

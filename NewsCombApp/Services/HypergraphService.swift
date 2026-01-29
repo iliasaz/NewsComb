@@ -28,6 +28,18 @@ final class HypergraphService: Sendable {
     /// Progress callback during batch processing.
     typealias ProgressCallback = @MainActor @Sendable (Int, Int, String) -> Void
 
+    /// Fine-grained processing detail for per-article feedback.
+    struct ProcessingDetail: Sendable {
+        enum Kind: Sendable {
+            case articleStarted(title: String)
+            case entitiesExtracted(articleTitle: String, entities: [String])
+        }
+        let kind: Kind
+    }
+
+    /// Callback for per-article processing details.
+    typealias DetailCallback = @MainActor @Sendable (ProcessingDetail) -> Void
+
     // MARK: - Configuration
 
     /// Checks if the service is configured with an LLM provider.
@@ -97,7 +109,7 @@ final class HypergraphService: Sendable {
 
     /// Processes a single article to extract hypergraph.
     @MainActor
-    func processArticle(feedItemId: Int64) async throws {
+    func processArticle(feedItemId: Int64, detailCallback: DetailCallback? = nil) async throws {
         logger.info("Starting to process article \(feedItemId)")
 
         // Get the feed item
@@ -109,6 +121,9 @@ final class HypergraphService: Sendable {
         }
 
         logger.info("Found article: \(feedItem.title, privacy: .public)")
+
+        // Notify that this article has started processing
+        detailCallback?(.init(kind: .articleStarted(title: feedItem.title)))
 
         guard let content = feedItem.fullContent, !content.isEmpty else {
             logger.warning("Article \(feedItemId) has no content")
@@ -145,6 +160,13 @@ final class HypergraphService: Sendable {
             let chunkCount = result.metadata.allChunkIDs.count
             logger.info("Extracted hypergraph: \(nodeCount) nodes, \(edgeCount) edges, \(embeddingCount) embeddings, \(chunkCount) chunks")
 
+            // Notify about extracted entities (up to 8 representative nodes)
+            let extractedEntities = Array(result.hypergraph.nodes.prefix(8))
+            detailCallback?(.init(kind: .entitiesExtracted(
+                articleTitle: feedItem.title,
+                entities: extractedEntities
+            )))
+
             // Log some sample nodes
             let sampleNodes = result.hypergraph.nodes.prefix(5)
             logger.debug("Sample nodes: \(sampleNodes.joined(separator: ", "), privacy: .public)")
@@ -177,7 +199,7 @@ final class HypergraphService: Sendable {
     /// Articles are processed in parallel with a configurable concurrency limit.
     /// Processing can be cancelled by calling `cancelProcessing()`.
     @MainActor
-    func processUnprocessedArticles(progressCallback: ProgressCallback?) async throws -> Int {
+    func processUnprocessedArticles(progressCallback: ProgressCallback?, detailCallback: DetailCallback? = nil) async throws -> Int {
         resetCancellation()
 
         let articles = try getUnprocessedArticles()
@@ -218,7 +240,7 @@ final class HypergraphService: Sendable {
 
                     group.addTask {
                         do {
-                            try await self.processArticle(feedItemId: articleId)
+                            try await self.processArticle(feedItemId: articleId, detailCallback: detailCallback)
                             return (articleId, title, true)
                         } catch {
                             return (articleId, title, false)
@@ -286,7 +308,8 @@ final class HypergraphService: Sendable {
             let ollama = OllamaService(
                 host: host,
                 chatModel: model,
-                embeddingModel: embeddingModel
+                embeddingModel: embeddingModel,
+                temperature: settings.extractionTemperature
             )
             return DocumentProcessor(
                 ollamaService: ollama,
@@ -308,7 +331,8 @@ final class HypergraphService: Sendable {
 
             let openRouter = try OpenRouterService(
                 apiKey: apiKey,
-                model: chatModel
+                model: chatModel,
+                temperature: settings.extractionTemperature
             )
 
             return DocumentProcessor(
@@ -398,6 +422,21 @@ final class HypergraphService: Sendable {
                 .filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel)
                 .fetchOne(db) {
                 settings.embeddingOpenRouterModel = model.value
+            }
+
+            // Temperature configuration
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.extractionTemperature)
+                .fetchOne(db),
+               let value = Double(setting.value) {
+                settings.extractionTemperature = value
+            }
+
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.analysisTemperature)
+                .fetchOne(db),
+               let value = Double(setting.value) {
+                settings.analysisTemperature = value
             }
 
             // Processing configuration
@@ -573,8 +612,13 @@ final class HypergraphService: Sendable {
     }
 
     private func extractRelation(from metadata: ChunkMetadata) -> String {
-        // Extract a relation string from metadata
-        // The edge ID often contains the relation
+        // Extract a human-readable relation from the edge ID.
+        // Use ContextCollector's logic which splits at "_chunk" and takes
+        // the prefix, avoiding incorrect suffixes like "works_for_chunk_0".
+        if let extracted = ContextCollector.extractRelation(from: metadata.edge) {
+            return extracted
+        }
+        // Fallback: strip leading index component
         let parts = metadata.edge.components(separatedBy: "_")
         if parts.count > 1 {
             return parts.dropFirst().joined(separator: "_")
@@ -604,10 +648,10 @@ final class HypergraphService: Sendable {
         if let chunkId = sourceChunkId {
             try db.execute(
                 sql: """
-                    INSERT INTO hypergraph_edge (edge_id, relation, source_chunk_id, created_at)
+                    INSERT INTO hypergraph_edge (edge_id, label, source_chunk_id, created_at)
                     VALUES (?, ?, ?, unixepoch())
                     ON CONFLICT(edge_id) DO UPDATE SET
-                        relation = excluded.relation,
+                        label = excluded.label,
                         source_chunk_id = COALESCE(excluded.source_chunk_id, source_chunk_id)
                 """,
                 arguments: [edgeId, relation, chunkId]
@@ -615,10 +659,10 @@ final class HypergraphService: Sendable {
         } else {
             try db.execute(
                 sql: """
-                    INSERT INTO hypergraph_edge (edge_id, relation, created_at)
+                    INSERT INTO hypergraph_edge (edge_id, label, created_at)
                     VALUES (?, ?, unixepoch())
                     ON CONFLICT(edge_id) DO UPDATE SET
-                        relation = excluded.relation
+                        label = excluded.label
                 """,
                 arguments: [edgeId, relation]
             )
@@ -1020,6 +1064,10 @@ struct LLMSettings: Sendable {
     var analysisOllamaEndpoint: String?
     var analysisOllamaModel: String?
     var analysisOpenRouterModel: String?
+
+    // Temperature configuration
+    var extractionTemperature: Double = Double(AppSettings.defaultExtractionTemperature)
+    var analysisTemperature: Double = Double(AppSettings.defaultAnalysisTemperature)
 
     // Processing configuration
     var maxConcurrentProcessing: Int = AppSettings.defaultMaxConcurrentProcessing
