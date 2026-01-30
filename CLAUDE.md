@@ -99,6 +99,7 @@ This project uses [GRDB.swift](https://github.com/groue/GRDB.swift) for SQLite p
 
 ## Project structure
 
+- See [HYPERGRAPH_SERVICE.md](HYPERGRAPH_SERVICE.md) for a detailed description of the knowledge extraction, storage, and retrieval architecture.
 - Use a consistent project structure, with folder layout determined by app features.
 - Follow strict naming conventions for types, properties, methods, and database models.
 - Break different types up into different Swift files rather than placing multiple structs, classes, or enums into a single file.
@@ -107,6 +108,10 @@ This project uses [GRDB.swift](https://github.com/groue/GRDB.swift) for SQLite p
 - Add code comments and documentation comments as needed.
 - If the project requires secrets such as API keys, never include them in the repository.
 
+
+## Git workflow
+
+- When creating releases, always use `gh release list` to determine the latest version number. Never use `git tag` for this purpose, as tags from dependency packages or other conventions may produce incorrect results.
 
 ## PR instructions
 
