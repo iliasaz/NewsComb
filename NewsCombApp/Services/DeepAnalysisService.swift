@@ -17,6 +17,14 @@ final class DeepAnalysisService: Sendable {
     private let database = Database.shared
     private let logger = Logger(subsystem: "com.newscomb", category: "DeepAnalysisService")
 
+    // MARK: - Callbacks
+
+    /// Callback fired with a human-readable status string at each pipeline phase.
+    typealias StatusCallback = @MainActor @Sendable (String) -> Void
+
+    /// Callback fired with each new token during answer streaming.
+    typealias TokenCallback = @MainActor @Sendable (String) -> Void
+
     // MARK: - Public API
 
     /// Performs deep analysis on an existing GraphRAG response using simulated multi-agent workflow.
@@ -28,6 +36,9 @@ final class DeepAnalysisService: Sendable {
     ///   - reasoningPaths: Multi-hop reasoning paths between concepts
     ///   - graphPaths: Direct graph relationships
     ///   - rolePrompt: Optional user role prompt to prepend to agent prompts
+    ///   - statusCallback: Called at each agent phase with a status string
+    ///   - synthesisTokenCallback: Called with each token during synthesis generation
+    ///   - hypothesesTokenCallback: Called with each token during hypotheses generation
     /// - Returns: A `DeepAnalysisResult` with synthesized answer and hypotheses
     @MainActor
     func analyze(
@@ -36,7 +47,10 @@ final class DeepAnalysisService: Sendable {
         relatedNodes: [GraphRAGResponse.RelatedNode],
         reasoningPaths: [GraphRAGResponse.ReasoningPath],
         graphPaths: [GraphRAGResponse.GraphPath],
-        rolePrompt: String? = nil
+        rolePrompt: String? = nil,
+        statusCallback: StatusCallback? = nil,
+        synthesisTokenCallback: TokenCallback? = nil,
+        hypothesesTokenCallback: TokenCallback? = nil
     ) async throws -> DeepAnalysisResult {
         logger.info("Starting deep analysis for question: \(question, privacy: .public)")
 
@@ -55,6 +69,7 @@ final class DeepAnalysisService: Sendable {
         let effectiveHypothesizerPrompt = buildSystemPrompt(basePrompt: agentPrompts.hypothesizerPrompt, rolePrompt: rolePrompt)
 
         // Step 1: Engineer Agent - Synthesize with citations
+        statusCallback?("Running Engineer agent\u{2026}")
         logger.info("Running Engineer agent...")
         let engineerPrompt = """
             Question: \(question)
@@ -70,11 +85,13 @@ final class DeepAnalysisService: Sendable {
 
         let synthesizedAnswer = try await generateWithLLM(
             systemPrompt: effectiveEngineerPrompt,
-            userPrompt: engineerPrompt
+            userPrompt: engineerPrompt,
+            tokenCallback: synthesisTokenCallback
         )
         logger.info("Engineer agent completed")
 
         // Step 2: Hypothesizer Agent - Generate hypotheses
+        statusCallback?("Running Hypothesizer agent\u{2026}")
         logger.info("Running Hypothesizer agent...")
         let hypothesizerPrompt = """
             Original Question: \(question)
@@ -90,7 +107,8 @@ final class DeepAnalysisService: Sendable {
 
         let hypotheses = try await generateWithLLM(
             systemPrompt: effectiveHypothesizerPrompt,
-            userPrompt: hypothesizerPrompt
+            userPrompt: hypothesizerPrompt,
+            tokenCallback: hypothesesTokenCallback
         )
         logger.info("Hypothesizer agent completed")
 
@@ -190,7 +208,11 @@ final class DeepAnalysisService: Sendable {
 
     /// Generates a response using the configured LLM provider.
     @MainActor
-    private func generateWithLLM(systemPrompt: String, userPrompt: String) async throws -> String {
+    private func generateWithLLM(
+        systemPrompt: String,
+        userPrompt: String,
+        tokenCallback: TokenCallback? = nil
+    ) async throws -> String {
         let settings = try loadSettings()
 
         // Use analysis LLM settings (with fallback to main LLM)
@@ -199,13 +221,15 @@ final class DeepAnalysisService: Sendable {
             return try await generateWithOllama(
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
-                settings: settings
+                settings: settings,
+                tokenCallback: tokenCallback
             )
         case "openrouter":
             return try await generateWithOpenRouter(
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
-                settings: settings
+                settings: settings,
+                tokenCallback: tokenCallback
             )
         default:
             throw DeepAnalysisError.noProviderConfigured
@@ -216,7 +240,8 @@ final class DeepAnalysisService: Sendable {
     private func generateWithOllama(
         systemPrompt: String,
         userPrompt: String,
-        settings: LLMSettings
+        settings: LLMSettings,
+        tokenCallback: TokenCallback? = nil
     ) async throws -> String {
         let endpoint = settings.effectiveAnalysisOllamaEndpoint ?? AppSettings.defaultAnalysisOllamaEndpoint
         let model = settings.effectiveAnalysisOllamaModel ?? AppSettings.defaultAnalysisOllamaModel
@@ -226,6 +251,18 @@ final class DeepAnalysisService: Sendable {
         }
 
         let ollama = OllamaService(host: host, chatModel: model)
+
+        if let tokenCallback {
+            return try await ollama.chatStream(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                temperature: settings.analysisTemperature,
+                onToken: { token in
+                    tokenCallback(token)
+                }
+            )
+        }
+
         return try await ollama.chat(
             systemPrompt: systemPrompt,
             userPrompt: userPrompt,
@@ -237,7 +274,8 @@ final class DeepAnalysisService: Sendable {
     private func generateWithOpenRouter(
         systemPrompt: String,
         userPrompt: String,
-        settings: LLMSettings
+        settings: LLMSettings,
+        tokenCallback: TokenCallback? = nil
     ) async throws -> String {
         guard let apiKey = settings.openRouterKey, !apiKey.isEmpty else {
             throw DeepAnalysisError.missingAPIKey
@@ -245,6 +283,22 @@ final class DeepAnalysisService: Sendable {
 
         let model = settings.effectiveAnalysisOpenRouterModel ?? AppSettings.defaultAnalysisOpenRouterModel
         let openRouter = try OpenRouterService(apiKey: apiKey, model: model)
+
+        // Use streaming when a token callback is provided.
+        // OpenRouterService is an actor, so we bridge back to main actor via Task.
+        if let tokenCallback {
+            return try await openRouter.chatStream(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                model: model,
+                temperature: settings.analysisTemperature,
+                onToken: { token in
+                    Task { @MainActor in
+                        tokenCallback(token)
+                    }
+                }
+            )
+        }
 
         return try await openRouter.chat(
             systemPrompt: systemPrompt,

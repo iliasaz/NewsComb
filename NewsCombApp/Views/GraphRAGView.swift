@@ -11,21 +11,23 @@ struct GraphRAGView: View {
 
             Divider()
 
-            if viewModel.isQuerying {
-                loadingSection
-            } else {
-                emptyStateSection
-            }
+            emptyStateSection
         }
         .navigationTitle("Ask Your News")
-        .navigationDestination(item: Binding<QueryHistoryItem?>(
-            get: { viewModel.pendingNavigationItem },
-            set: { viewModel.pendingNavigationItem = $0 }
-        )) { item in
-            AnswerDetailView(historyItem: item)
+        .navigationDestination(item: Binding<LiveQueryNavigation?>(
+            get: { viewModel.pendingLiveQuery },
+            set: { viewModel.pendingLiveQuery = $0 }
+        )) { liveQuery in
+            AnswerDetailView(liveQuery: liveQuery)
         }
         .onAppear {
             viewModel.loadHistory()
+        }
+        .onChange(of: viewModel.pendingLiveQuery) { _, newValue in
+            if newValue == nil {
+                // Returning from answer view — refresh history to include newly saved items
+                viewModel.loadHistory()
+            }
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.errorMessage != nil },
@@ -52,9 +54,7 @@ struct GraphRAGView: View {
                     .lineLimit(1...4)
                     .focused($isQueryFieldFocused)
                     .onSubmit {
-                        Task {
-                            await viewModel.executeQuery()
-                        }
+                        viewModel.submitQuery()
                     }
 
                 if !viewModel.queryText.isEmpty {
@@ -71,19 +71,12 @@ struct GraphRAGView: View {
 
             HStack {
                 Button {
-                    Task {
-                        await viewModel.executeQuery()
-                    }
+                    viewModel.submitQuery()
                 } label: {
-                    if viewModel.isQuerying {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Text("Ask")
-                    }
+                    Text("Ask")
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(viewModel.queryText.isEmpty || viewModel.isQuerying)
+                .disabled(viewModel.queryText.isEmpty)
 
                 Spacer()
 
@@ -95,41 +88,6 @@ struct GraphRAGView: View {
             }
         }
         .padding()
-    }
-
-    // MARK: - Loading
-
-    private var loadingSection: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .controlSize(.large)
-
-            Text(viewModel.queryStatus.isEmpty ? "Searching knowledge graph…" : viewModel.queryStatus)
-                .foregroundStyle(.secondary)
-
-            if !viewModel.streamingAnswer.isEmpty {
-                ScrollView {
-                    Text(viewModel.streamingAnswer)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                }
-                .frame(maxHeight: 200)
-                .mask {
-                    LinearGradient(
-                        stops: [
-                            .init(color: .white, location: 0),
-                            .init(color: .white, location: 0.8),
-                            .init(color: .clear, location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Empty State
