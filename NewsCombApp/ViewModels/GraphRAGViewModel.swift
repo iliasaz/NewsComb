@@ -7,18 +7,14 @@ final class GraphRAGViewModel {
     // MARK: - Published State
 
     var queryText: String = ""
-    var isQuerying: Bool = false
     var persistedHistory: [QueryHistoryItem] = []
     var errorMessage: String?
-    var queryStatus: String = ""
-    var streamingAnswer: String = ""
 
-    /// Set after executing a query to trigger navigation to the answer view.
-    var pendingNavigationItem: QueryHistoryItem?
+    /// Set after submitting a query to trigger immediate navigation to the answer view.
+    var pendingLiveQuery: LiveQueryNavigation?
 
     // MARK: - Services
 
-    private let graphRAGService = GraphRAGService()
     private let hypergraphService = HypergraphService()
     private let queryHistoryService = QueryHistoryService()
     private let userRoleService = UserRoleService()
@@ -27,7 +23,7 @@ final class GraphRAGViewModel {
     /// The currently active user role, if any.
     private(set) var activeRole: UserRole?
 
-    // MARK: - Query Execution
+    // MARK: - Query Submission
 
     /// Loads the currently active user role.
     func loadActiveRole() {
@@ -41,59 +37,25 @@ final class GraphRAGViewModel {
         }
     }
 
-    /// Executes a query against the knowledge graph.
-    @MainActor
-    func executeQuery() async {
-        guard !queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+    /// Submits a query by navigating immediately to the answer view.
+    ///
+    /// The actual pipeline execution happens in `AnswerDetailViewModel.startPipeline()`,
+    /// which is triggered by the `.task` modifier when `AnswerDetailView` appears.
+    func submitQuery() {
+        let trimmed = queryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
             errorMessage = "Please enter a question."
             return
-        }
-
-        guard !isQuerying else { return }
-
-        isQuerying = true
-        errorMessage = nil
-        queryStatus = ""
-        streamingAnswer = ""
-
-        defer {
-            isQuerying = false
-            queryStatus = ""
-            streamingAnswer = ""
         }
 
         // Refresh the active role before querying
         loadActiveRole()
 
-        do {
-            logger.info("Executing GraphRAG query: \(self.queryText, privacy: .public)")
-            let rolePrompt = activeRole?.prompt
-            let response = try await graphRAGService.query(
-                queryText,
-                rolePrompt: rolePrompt,
-                statusCallback: { [weak self] status in
-                    self?.queryStatus = status
-                },
-                tokenCallback: { [weak self] token in
-                    self?.streamingAnswer += token
-                }
-            )
-
-            // Persist to database
-            try queryHistoryService.save(response)
-            loadHistory()
-
-            // Set the pending navigation item to trigger navigation to the answer view.
-            // The most recently saved item will be first in the history.
-            if let savedItem = persistedHistory.first, savedItem.query == queryText {
-                pendingNavigationItem = savedItem
-            }
-
-            logger.info("Query completed successfully")
-        } catch {
-            logger.error("Query failed: \(error.localizedDescription, privacy: .public)")
-            errorMessage = error.localizedDescription
-        }
+        pendingLiveQuery = LiveQueryNavigation(
+            query: trimmed,
+            rolePrompt: activeRole?.prompt
+        )
+        logger.info("Submitted query for immediate navigation: \(trimmed.prefix(50), privacy: .public)")
     }
 
     /// Clears the current query.

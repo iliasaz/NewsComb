@@ -98,6 +98,128 @@ final class GraphRAGService: Sendable {
         )
     }
 
+    // MARK: - Streaming Query
+
+    /// Queries the knowledge graph with a natural language question,
+    /// yielding incremental results as each pipeline phase completes.
+    ///
+    /// The returned `AsyncStream` yields `QueryPhaseUpdate` values that the
+    /// consumer can use to progressively update the UI. The stream finishes
+    /// after `.completed` or `.failed` is yielded.
+    ///
+    /// Cancellation is supported: when the consumer stops iterating (e.g. the
+    /// view disappears), the inner task is cancelled via `onTermination`.
+    ///
+    /// - Parameters:
+    ///   - question: The question to answer
+    ///   - maxNodes: Maximum number of similar nodes to retrieve per keyword
+    ///   - maxChunks: Maximum number of relevant chunks to retrieve
+    ///   - rolePrompt: Optional user role prompt to prepend to the system prompt
+    /// - Returns: An `AsyncStream` of pipeline phase updates
+    func queryStream(
+        _ question: String,
+        maxNodes: Int = 5,
+        maxChunks: Int = 5,
+        rolePrompt: String? = nil
+    ) -> AsyncStream<QueryPhaseUpdate> {
+        AsyncStream { continuation in
+            let task = Task { @MainActor in
+                do {
+                    // Phase 1: Extract keywords
+                    continuation.yield(.status("Analyzing the question\u{2026}"))
+                    let keywords = try await extractKeywords(from: question)
+                    continuation.yield(.keywords(keywords))
+                    logger.info("Stream: extracted \(keywords.count) keywords")
+
+                    // Phase 2: Embed keywords and find similar nodes
+                    continuation.yield(.status("Searching the knowledge graph\u{2026}"))
+                    var allNodes: [GraphRAGResponse.RelatedNode] = []
+                    var seenNodeIds: Set<Int64> = []
+
+                    for keyword in keywords {
+                        try Task.checkCancellation()
+                        let embedding = try await embedQuery(keyword)
+                        let nodes = try findSimilarNodes(queryEmbedding: embedding, limit: maxNodes)
+                        for node in nodes where !seenNodeIds.contains(node.id) {
+                            seenNodeIds.insert(node.id)
+                            allNodes.append(node)
+                        }
+                    }
+
+                    let similarNodes = allNodes.sorted { $0.distance < $1.distance }
+                    continuation.yield(.relatedNodes(similarNodes))
+                    logger.info("Stream: found \(similarNodes.count) similar nodes")
+
+                    // Phase 3: Gather context (reasoning paths, graph paths)
+                    try Task.checkCancellation()
+                    continuation.yield(.status("Finding reasoning paths\u{2026}"))
+                    let questionEmbedding = try await embedQuery(question)
+                    let context = try gatherContext(
+                        fromNodes: similarNodes,
+                        queryEmbedding: questionEmbedding,
+                        maxChunks: maxChunks
+                    )
+
+                    let reasoningPaths = buildReasoningPaths(from: context)
+                    continuation.yield(.reasoningPaths(reasoningPaths))
+
+                    let graphPaths = buildGraphPaths(from: context)
+                    continuation.yield(.graphPaths(graphPaths))
+                    logger.info("Stream: \(reasoningPaths.count) reasoning paths, \(graphPaths.count) graph paths")
+
+                    // Phase 4: Generate answer with token streaming
+                    try Task.checkCancellation()
+                    continuation.yield(.status("Generating the answer\u{2026}"))
+                    var didStreamTokens = false
+                    let answer = try await generateAnswer(
+                        question: question,
+                        context: context,
+                        rolePrompt: rolePrompt,
+                        tokenCallback: { token in
+                            didStreamTokens = true
+                            continuation.yield(.answerToken(token))
+                        }
+                    )
+
+                    // For non-streaming providers (e.g. OpenRouter), yield the
+                    // complete answer as a single update so the UI shows it
+                    // before waiting for source-article construction.
+                    if !didStreamTokens {
+                        continuation.yield(.answerToken(answer))
+                    }
+                    logger.info("Stream: answer generated (streamed: \(didStreamTokens))")
+
+                    // Phase 5: Build sources
+                    try Task.checkCancellation()
+                    let sourceArticles = try buildSourceArticles(from: context)
+                    continuation.yield(.sourceArticles(sourceArticles))
+                    logger.info("Stream: \(sourceArticles.count) source articles")
+
+                    // Complete with the full assembled response
+                    let response = GraphRAGResponse(
+                        query: question,
+                        answer: answer,
+                        relatedNodes: similarNodes,
+                        reasoningPaths: reasoningPaths,
+                        graphPaths: graphPaths,
+                        sourceArticles: sourceArticles
+                    )
+                    continuation.yield(.completed(response))
+                } catch is CancellationError {
+                    logger.info("Stream: cancelled")
+                } catch {
+                    logger.error("Stream: failed - \(error.localizedDescription, privacy: .public)")
+                    continuation.yield(.failed(error))
+                }
+                continuation.finish()
+            }
+
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+
     // MARK: - Keyword Extraction
 
     /// System prompt for keyword extraction.
@@ -627,7 +749,8 @@ final class GraphRAGService: Sendable {
             return try await generateAnswerWithOpenRouter(
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
-                settings: settings
+                settings: settings,
+                tokenCallback: tokenCallback
             )
         default:
             throw GraphRAGError.noProviderConfigured
@@ -704,13 +827,35 @@ final class GraphRAGService: Sendable {
     }
 
     @MainActor
-    private func generateAnswerWithOpenRouter(systemPrompt: String, userPrompt: String, settings: LLMSettings) async throws -> String {
+    private func generateAnswerWithOpenRouter(
+        systemPrompt: String,
+        userPrompt: String,
+        settings: LLMSettings,
+        tokenCallback: TokenCallback? = nil
+    ) async throws -> String {
         guard let apiKey = settings.openRouterKey, !apiKey.isEmpty else {
             throw GraphRAGError.missingAPIKey
         }
 
         let model = settings.effectiveAnalysisOpenRouterModel ?? AppSettings.defaultAnalysisOpenRouterModel
         let openRouter = try OpenRouterService(apiKey: apiKey, model: model)
+
+        // Use streaming when a token callback is provided.
+        // OpenRouterService is an actor (not @MainActor), so its onToken
+        // closure runs off the main actor. We bridge back via Task.
+        if let tokenCallback {
+            return try await openRouter.chatStream(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                model: model,
+                temperature: settings.analysisTemperature,
+                onToken: { token in
+                    Task { @MainActor in
+                        tokenCallback(token)
+                    }
+                }
+            )
+        }
 
         return try await openRouter.chat(
             systemPrompt: systemPrompt,

@@ -1,49 +1,105 @@
 import SwiftUI
 
-/// View for displaying a saved question/answer from history.
+/// View for displaying a question/answer, either from history or from a live progressive query.
 struct AnswerDetailView: View {
     @State private var viewModel: AnswerDetailViewModel
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
 
-    /// Creates the view with a query history item.
+    // MARK: - Initializers
+
+    /// Creates the view from a persisted query history item (static display).
     init(historyItem: QueryHistoryItem) {
         _viewModel = State(initialValue: AnswerDetailViewModel(historyItem: historyItem))
     }
 
-    private var response: GraphRAGResponse {
-        viewModel.response
+    /// Creates the view for a live query that will progressively populate.
+    init(liveQuery: LiveQueryNavigation) {
+        _viewModel = State(initialValue: AnswerDetailViewModel(liveQuery: liveQuery))
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 questionSection
-                answerSection
 
-                // Deep Analysis section
-                deepAnalysisSection
+                if viewModel.isLiveQuery {
+                    pipelineStatusSection
+                }
 
-                if !response.relatedNodes.isEmpty {
+                if !viewModel.answerText.isEmpty {
+                    answerSection
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
+                if let error = viewModel.pipelineError {
+                    pipelineErrorSection(error)
+                }
+
+                if viewModel.isCompleted {
+                    deepAnalysisSection
+                        .transition(.opacity)
+                }
+
+                if !viewModel.relatedNodes.isEmpty {
                     relatedNodesSection
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                if !response.reasoningPaths.isEmpty {
+                if !viewModel.reasoningPaths.isEmpty {
                     reasoningPathsSection
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                if !response.graphPaths.isEmpty {
+                if !viewModel.graphPaths.isEmpty {
                     graphPathsSection
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                if !response.sourceArticles.isEmpty {
+                if !viewModel.sourceArticles.isEmpty {
                     sourcesSection
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
             .padding()
+            .animation(.easeInOut(duration: 0.3), value: viewModel.relatedNodes.count)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.reasoningPaths.count)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.sourceArticles.count)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.isCompleted)
         }
         .navigationTitle("Answer")
+        .task {
+            await viewModel.startPipeline()
+        }
+    }
+
+    // MARK: - Pipeline Status
+
+    private var pipelineStatusSection: some View {
+        HStack(spacing: 12) {
+            ProgressView()
+                .controlSize(.small)
+            Text(viewModel.pipelineStatus.isEmpty ? "Starting\u{2026}" : viewModel.pipelineStatus)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background.secondary)
+        .clipShape(.rect(cornerRadius: 12))
+    }
+
+    private func pipelineErrorSection(_ error: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+            Text(error)
+                .foregroundStyle(.red)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.red.opacity(0.1))
+        .clipShape(.rect(cornerRadius: 12))
     }
 
     // MARK: - Sections
@@ -53,7 +109,7 @@ struct AnswerDetailView: View {
             Label("Question", systemImage: "questionmark.circle")
                 .font(.headline)
 
-            Text(response.query)
+            Text(viewModel.question)
                 .font(.body)
                 .textSelection(.enabled)
         }
@@ -69,7 +125,7 @@ struct AnswerDetailView: View {
                 .font(.headline)
 
             let markdown = try? AttributedString(
-                markdown: response.answer,
+                markdown: viewModel.answerText,
                 options: .init(
                     allowsExtendedAttributes: true,
                     interpretedSyntax: .inlineOnly,
@@ -80,17 +136,19 @@ struct AnswerDetailView: View {
                 Text(markdown)
                     .textSelection(.enabled)
             } else {
-                Text(response.answer)
+                Text(viewModel.answerText)
                     .textSelection(.enabled)
             }
 
-            HStack {
-                Text("Generated")
-                Text(response.generatedAt, style: .relative)
-                Text("ago")
+            if let generatedAt = viewModel.generatedAt {
+                HStack {
+                    Text("Generated")
+                    Text(generatedAt, style: .relative)
+                    Text("ago")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -112,7 +170,7 @@ struct AnswerDetailView: View {
             }
 
             FlowLayout(spacing: 8) {
-                ForEach(response.relatedNodes.prefix(15)) { node in
+                ForEach(viewModel.relatedNodes.prefix(15)) { node in
                     Button {
                         #if os(macOS)
                         openWindow(id: "focused-graph", value: node.id)
@@ -136,7 +194,7 @@ struct AnswerDetailView: View {
                 .font(.headline)
 
             // Show multi-hop paths first, then single-hop
-            let sortedPaths = response.reasoningPaths.sorted { $0.edgeCount > $1.edgeCount }
+            let sortedPaths = viewModel.reasoningPaths.sorted { $0.edgeCount > $1.edgeCount }
 
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(sortedPaths.prefix(15)) { path in
@@ -152,7 +210,7 @@ struct AnswerDetailView: View {
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(response.graphPaths.prefix(10)) { path in
+                ForEach(viewModel.graphPaths.prefix(10)) { path in
                     GraphPathRow(path: path)
                 }
             }
@@ -164,7 +222,7 @@ struct AnswerDetailView: View {
             Label("Sources", systemImage: "doc.text")
                 .font(.headline)
 
-            ForEach(response.sourceArticles) { article in
+            ForEach(viewModel.sourceArticles) { article in
                 SourceArticleRow(article: article)
             }
         }
@@ -178,17 +236,44 @@ struct AnswerDetailView: View {
                 .font(.headline)
 
             if viewModel.isAnalyzing {
-                // Loading state
-                HStack(spacing: 12) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("Running multi-agent analysis...")
-                        .foregroundStyle(.secondary)
+                // Streaming analysis state
+                VStack(alignment: .leading, spacing: 12) {
+                    // Agent status
+                    HStack(spacing: 12) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text(viewModel.analysisStatus.isEmpty ? "Starting analysis\u{2026}" : viewModel.analysisStatus)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background.secondary)
+                    .clipShape(.rect(cornerRadius: 12))
+
+                    // Streaming synthesis text
+                    if !viewModel.streamingSynthesis.isEmpty {
+                        StreamingAnalysisSection(
+                            title: "Synthesized Analysis",
+                            systemImage: "text.quote",
+                            text: viewModel.streamingSynthesis,
+                            tint: .blue
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+
+                    // Streaming hypotheses text
+                    if !viewModel.streamingHypotheses.isEmpty {
+                        StreamingAnalysisSection(
+                            title: "Hypotheses & Experiments",
+                            systemImage: "lightbulb",
+                            text: viewModel.streamingHypotheses,
+                            tint: .purple
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                 }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.background.secondary)
-                .clipShape(.rect(cornerRadius: 12))
+                .animation(.easeInOut(duration: 0.3), value: viewModel.streamingSynthesis.isEmpty)
+                .animation(.easeInOut(duration: 0.3), value: viewModel.streamingHypotheses.isEmpty)
 
             } else if !viewModel.isDeepAnalysisAvailable {
                 // No LLM configured
@@ -200,8 +285,18 @@ struct AnswerDetailView: View {
                     .background(.background.secondary)
                     .clipShape(.rect(cornerRadius: 12))
 
+            } else if viewModel.historyItem == nil {
+                // Pipeline completed but not yet persisted — disable deep analysis
+                Text("Save to history to enable deep analysis.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background.secondary)
+                    .clipShape(.rect(cornerRadius: 12))
+
             } else {
-                // LLM is available - show results and/or button
+                // LLM is available and history item exists
                 VStack(alignment: .leading, spacing: 16) {
                     // Show existing results if available
                     if let result = viewModel.deepAnalysisResult {
@@ -254,6 +349,44 @@ struct AnswerDetailView: View {
                 .clipShape(.rect(cornerRadius: 8))
             }
         }
+    }
+}
+
+// MARK: - Streaming Analysis Section
+
+/// Displays a single agent's streaming output with a labeled header.
+private struct StreamingAnalysisSection: View {
+    let title: String
+    let systemImage: String
+    let text: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: systemImage)
+                .font(.subheadline)
+                .bold()
+
+            let markdown = try? AttributedString(
+                markdown: text,
+                options: .init(
+                    allowsExtendedAttributes: true,
+                    interpretedSyntax: .inlineOnlyPreservingWhitespace,
+                    failurePolicy: .returnPartiallyParsedIfPossible
+                )
+            )
+            if let markdown {
+                Text(markdown)
+                    .textSelection(.enabled)
+            } else {
+                Text(text)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.05))
+        .clipShape(.rect(cornerRadius: 12))
     }
 }
 
