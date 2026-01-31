@@ -325,11 +325,37 @@ final class GraphRAGService: Sendable {
     @MainActor
     private func embedQuery(_ text: String) async throws -> Data {
         let settings = try loadSettings()
-        let ollama = createEmbeddingService(settings: settings)
-
-        let embedding = try await ollama.embed(text)
+        let embedding = try await embedText(text, settings: settings)
         return embedding.withUnsafeBufferPointer { buffer in
             Data(buffer: buffer)
+        }
+    }
+
+    /// Generates an embedding using the configured provider (Ollama or OpenRouter).
+    @MainActor
+    private func embedText(_ text: String, settings: LLMSettings) async throws -> [Float] {
+        if settings.embeddingProvider == "openrouter" {
+            guard let apiKey = settings.openRouterKey, !apiKey.isEmpty else {
+                throw GraphRAGError.missingAPIKey
+            }
+            let model = settings.embeddingOpenRouterModel ?? AppSettings.defaultEmbeddingOpenRouterModel
+            let service = OpenRouterEmbeddingService(
+                apiKey: apiKey,
+                model: model,
+                dimensions: settings.embeddingDimension
+            )
+            return try await service.embed(text)
+        } else {
+            let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
+            let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
+
+            let ollama: OllamaService
+            if let host = URL(string: embeddingEndpoint) {
+                ollama = OllamaService(host: host, embeddingModel: embeddingModel)
+            } else {
+                ollama = OllamaService(embeddingModel: embeddingModel)
+            }
+            return try await ollama.embed(text)
         }
     }
 
@@ -985,6 +1011,12 @@ final class GraphRAGService: Sendable {
             }
 
             // Embedding settings
+            if let provider = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.embeddingProvider)
+                .fetchOne(db) {
+                settings.embeddingProvider = provider.value
+            }
+
             if let endpoint = try AppSettings
                 .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaEndpoint)
                 .fetchOne(db) {
@@ -995,6 +1027,19 @@ final class GraphRAGService: Sendable {
                 .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel)
                 .fetchOne(db) {
                 settings.embeddingOllamaModel = model.value
+            }
+
+            if let model = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel)
+                .fetchOne(db) {
+                settings.embeddingOpenRouterModel = model.value
+            }
+
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
+                .fetchOne(db),
+               let value = Int(setting.value) {
+                settings.embeddingDimension = min(value, AppSettings.maxEmbeddingDimension)
             }
 
             // Temperature configuration
@@ -1041,17 +1086,6 @@ final class GraphRAGService: Sendable {
         }
     }
 
-    @MainActor
-    private func createEmbeddingService(settings: LLMSettings) -> OllamaService {
-        let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
-        let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
-
-        if let host = URL(string: embeddingEndpoint) {
-            return OllamaService(host: host, embeddingModel: embeddingModel)
-        } else {
-            return OllamaService(embeddingModel: embeddingModel)
-        }
-    }
 }
 
 // MARK: - Errors

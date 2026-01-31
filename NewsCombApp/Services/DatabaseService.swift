@@ -119,11 +119,7 @@ public final class Database: Sendable {
                 CREATE INDEX IF NOT EXISTS idx_article_edge_provenance_edge ON article_edge_provenance(edge_id);
                 CREATE INDEX IF NOT EXISTS idx_article_edge_provenance_feed ON article_edge_provenance(feed_item_id);
 
-                -- Node embeddings virtual table using sqlite-vec (768-dim vectors)
-                CREATE VIRTUAL TABLE IF NOT EXISTS node_embedding USING vec0(
-                    node_id INTEGER PRIMARY KEY,
-                    embedding float[768]
-                );
+                -- Node embeddings virtual table created dynamically (see createVec0Tables)
 
                 -- Metadata for tracking computed embeddings (companion to virtual table)
                 CREATE TABLE IF NOT EXISTS node_embedding_metadata (
@@ -155,11 +151,7 @@ public final class Database: Sendable {
                 );
                 CREATE INDEX IF NOT EXISTS idx_article_chunk_feed ON article_chunk(feed_item_id);
 
-                -- Chunk embeddings virtual table using sqlite-vec (768-dim vectors)
-                CREATE VIRTUAL TABLE IF NOT EXISTS chunk_embedding USING vec0(
-                    chunk_id INTEGER PRIMARY KEY,
-                    embedding float[768]
-                );
+                -- Chunk embeddings virtual table created dynamically (see createVec0Tables)
 
                 -- Metadata for tracking computed chunk embeddings
                 CREATE TABLE IF NOT EXISTS chunk_embedding_metadata (
@@ -305,6 +297,75 @@ public final class Database: Sendable {
                 // Column might already exist, ignore error
             }
 
+            // Add df and idf columns to hypergraph_node for TF-IDF weighting
+            do {
+                let dfExists = try db.columns(in: "hypergraph_node").contains { $0.name == "df" }
+                if !dfExists {
+                    try db.execute(sql: "ALTER TABLE hypergraph_node ADD COLUMN df INTEGER DEFAULT 0")
+                    try db.execute(sql: "ALTER TABLE hypergraph_node ADD COLUMN idf REAL DEFAULT 0.0")
+                }
+            } catch {
+                // Columns might already exist, ignore error
+            }
+
+            // Story theme clustering tables
+            // Event vectors virtual table created dynamically (see createVec0Tables)
+
+            // Cluster definitions with metadata
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS clusters (
+                    cluster_id INTEGER PRIMARY KEY,
+                    build_id TEXT NOT NULL,
+                    label TEXT,
+                    size INTEGER NOT NULL DEFAULT 0,
+                    centroid_vec BLOB,
+                    top_entities_json TEXT,
+                    top_rel_families_json TEXT,
+                    created_at REAL NOT NULL DEFAULT (unixepoch())
+                );
+                CREATE INDEX IF NOT EXISTS idx_clusters_build ON clusters(build_id);
+            """)
+
+            // Maps every event to its cluster assignment for a given build
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS event_cluster (
+                    event_id INTEGER PRIMARY KEY,
+                    build_id TEXT NOT NULL,
+                    cluster_id INTEGER NOT NULL,
+                    membership REAL NOT NULL DEFAULT 1.0
+                );
+                CREATE INDEX IF NOT EXISTS idx_event_cluster_build ON event_cluster(build_id);
+                CREATE INDEX IF NOT EXISTS idx_event_cluster_cluster ON event_cluster(cluster_id);
+            """)
+
+            // Cluster membership (non-noise members only, for quick lookups)
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS cluster_members (
+                    cluster_id INTEGER NOT NULL REFERENCES clusters(cluster_id) ON DELETE CASCADE,
+                    event_id INTEGER NOT NULL,
+                    membership REAL NOT NULL DEFAULT 1.0,
+                    PRIMARY KEY (cluster_id, event_id)
+                );
+            """)
+
+            // Exemplar events for each cluster (top-N by proximity to centroid)
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS cluster_exemplars (
+                    cluster_id INTEGER NOT NULL REFERENCES clusters(cluster_id) ON DELETE CASCADE,
+                    event_id INTEGER NOT NULL,
+                    rank INTEGER NOT NULL,
+                    PRIMARY KEY (cluster_id, rank)
+                );
+            """)
+
+            // Add summary column to clusters table for LLM-generated summaries
+            do {
+                let summaryExists = try db.columns(in: "clusters").contains { $0.name == "summary" }
+                if !summaryExists {
+                    try db.execute(sql: "ALTER TABLE clusters ADD COLUMN summary TEXT")
+                }
+            } catch { }
+
             // FTS5 full-text search indexes (external content — no data duplication)
             try db.execute(sql: """
                 CREATE VIRTUAL TABLE IF NOT EXISTS fts_node USING fts5(
@@ -357,9 +418,98 @@ public final class Database: Sendable {
             // Seed default settings if they don't exist
             try seedDefaultSettings(db)
 
+            // Create or recreate vec0 virtual tables with the configured embedding dimension
+            try createVec0Tables(db)
+
             // Seed default RSS sources if none exist
             try seedDefaultRSSSources(db)
         }
+    }
+
+    /// Creates (or recreates if the dimension changed) the vec0 virtual tables.
+    ///
+    /// Compares `active_embedding_dimension` with `embedding_dimension`.
+    /// When they differ the old tables are dropped and recreated with the new size.
+    private func createVec0Tables(_ db: GRDB.Database) throws {
+        // Read the desired dimension from settings, clamped to the sqlite-vec maximum
+        let rawDim: Int
+        if let setting = try AppSettings
+            .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
+            .fetchOne(db),
+           let value = Int(setting.value) {
+            rawDim = value
+        } else {
+            rawDim = AppSettings.defaultEmbeddingDimension
+        }
+        let desiredDim = min(rawDim, AppSettings.maxEmbeddingDimension)
+
+        // If the stored value exceeds the cap, correct it so Settings UI stays in sync
+        if rawDim > AppSettings.maxEmbeddingDimension {
+            Self.logger.warning("Stored embedding_dimension (\(rawDim)) exceeds max (\(AppSettings.maxEmbeddingDimension)). Clamping.")
+            try db.execute(
+                sql: """
+                    INSERT INTO app_settings (key, value) VALUES (?, ?)
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                """,
+                arguments: [AppSettings.embeddingDimension, String(desiredDim)]
+            )
+        }
+
+        // Read the active dimension (what the tables were last created with)
+        let activeDim: Int
+        if let setting = try AppSettings
+            .filter(AppSettings.Columns.key == AppSettings.activeEmbeddingDimension)
+            .fetchOne(db),
+           let value = Int(setting.value) {
+            activeDim = value
+        } else {
+            // First run or upgrade from before this setting existed.
+            // Check if node_embedding already exists (upgrade path).
+            let tableExists = try db.tableExists("node_embedding")
+            activeDim = tableExists ? 768 : 0  // legacy tables were 768
+        }
+
+        let eventVecDim = 3 * desiredDim + 12  // 12 = RelationFamily.count
+
+        if activeDim != desiredDim {
+            Self.logger.info("Embedding dimension changed (\(activeDim) → \(desiredDim)). Recreating vec0 tables.")
+
+            // Drop old tables (safe even if they don't exist)
+            try db.execute(sql: "DROP TABLE IF EXISTS event_vectors")
+            try db.execute(sql: "DROP TABLE IF EXISTS chunk_embedding")
+            try db.execute(sql: "DROP TABLE IF EXISTS node_embedding")
+        }
+
+        // Create tables if they don't exist (idempotent)
+        try db.execute(sql: """
+            CREATE VIRTUAL TABLE IF NOT EXISTS node_embedding USING vec0(
+                node_id INTEGER PRIMARY KEY,
+                embedding float[\(desiredDim)]
+            );
+        """)
+
+        try db.execute(sql: """
+            CREATE VIRTUAL TABLE IF NOT EXISTS chunk_embedding USING vec0(
+                chunk_id INTEGER PRIMARY KEY,
+                embedding float[\(desiredDim)]
+            );
+        """)
+
+        try db.execute(sql: """
+            CREATE VIRTUAL TABLE IF NOT EXISTS event_vectors USING vec0(
+                event_id INTEGER PRIMARY KEY,
+                vec float[\(eventVecDim)]
+            );
+        """)
+
+        // Persist the active dimension
+        try db.execute(
+            sql: """
+                INSERT INTO app_settings (key, value) VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            arguments: [AppSettings.activeEmbeddingDimension, String(desiredDim)]
+        )
     }
 
     /// Seeds default application settings into the database.
@@ -377,6 +527,7 @@ public final class Database: Sendable {
             (AppSettings.embeddingOllamaEndpoint, AppSettings.defaultEmbeddingOllamaEndpoint),
             (AppSettings.embeddingOllamaModel, AppSettings.defaultEmbeddingOllamaModel),
             (AppSettings.embeddingOpenRouterModel, AppSettings.defaultEmbeddingOpenRouterModel),
+            (AppSettings.embeddingDimension, String(AppSettings.defaultEmbeddingDimension)),
 
             // Feed Configuration
             (AppSettings.articleAgeLimitDays, String(AppSettings.defaultArticleAgeLimitDays)),

@@ -9,11 +9,15 @@ struct HypergraphNode: Identifiable, Equatable, Codable, FetchableRecord, Persis
     var nodeType: String?
     var firstSeenAt: Date
     var metadataJson: String?
+    /// Document frequency: number of events this node appears in.
+    var df: Int?
+    /// Inverse document frequency weight for TF-IDF based clustering.
+    var idf: Double?
 
     static let databaseTableName = "hypergraph_node"
 
     enum CodingKeys: String, CodingKey {
-        case id, label
+        case id, label, df, idf
         case nodeId = "node_id"
         case nodeType = "node_type"
         case firstSeenAt = "first_seen_at"
@@ -27,6 +31,8 @@ struct HypergraphNode: Identifiable, Equatable, Codable, FetchableRecord, Persis
         case nodeType = "node_type"
         case firstSeenAt = "first_seen_at"
         case metadataJson = "metadata_json"
+        case df
+        case idf
     }
 
     init(
@@ -35,7 +41,9 @@ struct HypergraphNode: Identifiable, Equatable, Codable, FetchableRecord, Persis
         label: String,
         nodeType: String? = nil,
         firstSeenAt: Date = Date(),
-        metadataJson: String? = nil
+        metadataJson: String? = nil,
+        df: Int? = nil,
+        idf: Double? = nil
     ) {
         self.id = id
         self.nodeId = nodeId
@@ -43,5 +51,7 @@ struct HypergraphNode: Identifiable, Equatable, Codable, FetchableRecord, Persis
         self.nodeType = nodeType
         self.firstSeenAt = firstSeenAt
         self.metadataJson = metadataJson
+        self.df = df
+        self.idf = idf
     }
 }

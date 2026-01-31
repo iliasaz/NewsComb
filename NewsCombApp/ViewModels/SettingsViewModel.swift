@@ -70,6 +70,7 @@ class SettingsViewModel {
     var embeddingOllamaEndpoint: String = AppSettings.defaultEmbeddingOllamaEndpoint
     var embeddingOllamaModel: String = AppSettings.defaultEmbeddingOllamaModel
     var embeddingOpenRouterModel: String = AppSettings.defaultEmbeddingOpenRouterModel
+    var embeddingDimension: Int = AppSettings.defaultEmbeddingDimension
 
     // Analysis LLM Configuration (for answers and deep analysis)
     var analysisLLMProvider: AnalysisLLMProviderOption = .sameAsChat
@@ -155,6 +156,11 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel).fetchOne(db) {
                     embeddingOpenRouterModel = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingDimension).fetchOne(db),
+                   let value = Int(setting.value) {
+                    embeddingDimension = min(value, AppSettings.maxEmbeddingDimension)
                 }
 
                 // Load analysis LLM settings
@@ -368,6 +374,10 @@ class SettingsViewModel {
 
     func saveEmbeddingOpenRouterModel() {
         saveAPIKey(key: AppSettings.embeddingOpenRouterModel, value: embeddingOpenRouterModel)
+    }
+
+    func saveEmbeddingDimension() {
+        saveAPIKey(key: AppSettings.embeddingDimension, value: String(embeddingDimension))
     }
 
     // MARK: - Analysis LLM Save Methods

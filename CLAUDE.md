@@ -100,13 +100,25 @@ This project uses [GRDB.swift](https://github.com/groue/GRDB.swift) for SQLite p
 ## Project structure
 
 - See [HYPERGRAPH_SERVICE.md](HYPERGRAPH_SERVICE.md) for a detailed description of the knowledge extraction, storage, and retrieval architecture.
+- See [HYPERGRAPH_DATABASE_SCHEMA.md](HYPERGRAPH_DATABASE_SCHEMA.md) for the complete database schema reference — all tables, columns, indexes, virtual tables, embedding dimensions, and foreign key deletion order.
+- See [STORY_THEME_CLUSTERING.md](STORY_THEME_CLUSTERING.md) for the HDBSCAN clustering pipeline, LLM-powered theme labeling, and clustering database tables.
 - Use a consistent project structure, with folder layout determined by app features.
 - Follow strict naming conventions for types, properties, methods, and database models.
 - Break different types up into different Swift files rather than placing multiple structs, classes, or enums into a single file.
-- Write unit tests for core application logic.
-- Only write UI tests if unit tests are not possible.
 - Add code comments and documentation comments as needed.
 - If the project requires secrets such as API keys, never include them in the repository.
+
+
+## Testing instructions
+
+- **Always** write unit tests for logic changes (services, view models, algorithms, models).
+- **Always** write UI tests when unit tests are not possible for UI-specific behavior.
+- **Always** run the full test suite after a successful build to verify correctness.
+- Run tests with: `xcodebuild test -scheme NewsCombApp -destination 'platform=macOS'`
+- Place test files in the `NewsCombAppTests/` directory, matching the source file structure.
+- Use `XCTest` for all tests. Do not use third-party test frameworks without asking first.
+- Test pure logic in isolation — avoid depending on the live database or network in unit tests.
+- SQLite functions differ from other databases. Always verify SQL compatibility (e.g., SQLite lacks `LOG()`, `POWER()`, and many aggregate functions). Prefer computing in Swift when in doubt.
 
 
 ## Git workflow
