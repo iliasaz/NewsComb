@@ -125,10 +125,22 @@ struct SettingsView: View {
                         viewModel.saveEmbeddingOpenRouterModel()
                     }
             }
+
+            Stepper(value: $viewModel.embeddingDimension, in: 256...AppSettings.maxEmbeddingDimension, step: 256) {
+                HStack {
+                    Text("Embedding Dimensions")
+                    Spacer()
+                    Text("\(viewModel.embeddingDimension)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.embeddingDimension) {
+                viewModel.saveEmbeddingDimension()
+            }
         } header: {
             Text("Knowledge Extraction")
         } footer: {
-            Text("Configure LLM for knowledge extraction and embedding model for semantic search.")
+            Text("Configure LLM for knowledge extraction and embedding model for semantic search. Changing the embedding dimension requires a knowledge graph reset.")
         }
     }
 

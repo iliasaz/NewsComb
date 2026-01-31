@@ -46,9 +46,11 @@ class MainViewModel {
     var currentProcessingArticle: String = ""
     var recentlyExtractedEntities: [String] = []
 
-    // Graph simplification state
+    // Graph reset state
+    var isResettingGraph = false
+
+    // Graph simplification state (set during auto-simplify at end of processing)
     var isSimplifyingGraph = false
-    var simplifyProgress: String = ""
 
     private let database = Database.shared
 
@@ -250,34 +252,48 @@ class MainViewModel {
     func clearAllArticles() {
         do {
             try database.write { db in
-                // Clear hypergraph-related tables first (respect foreign key constraints)
+                // Clear all dependent tables first (respect foreign key constraints)
                 // Order matters: delete from dependent tables first
 
-                // 1. Clear provenance (references edges and feed items)
+                // 1. Clustering / themes (reference edges as event IDs)
+                try db.execute(sql: "DELETE FROM cluster_exemplars")
+                try db.execute(sql: "DELETE FROM cluster_members")
+                try db.execute(sql: "DELETE FROM event_cluster")
+                try db.execute(sql: "DELETE FROM clusters")
+
+                // 2. Event vectors (reference edges as event IDs)
+                try db.execute(sql: "DELETE FROM event_vectors")
+
+                // 3. Clear provenance (references edges and feed items)
                 try db.execute(sql: "DELETE FROM article_edge_provenance")
 
-                // 2. Clear article processing status (references feed items)
+                // 4. Clear article processing status (references feed items)
                 try db.execute(sql: "DELETE FROM article_hypergraph")
 
-                // 3. Clear merge history (references nodes)
+                // 5. Clear merge history (references nodes)
                 try db.execute(sql: "DELETE FROM node_merge_history")
 
-                // 4. Clear embedding metadata (references nodes)
+                // 6. Clear embedding metadata (references nodes and chunks)
+                try db.execute(sql: "DELETE FROM chunk_embedding_metadata")
                 try db.execute(sql: "DELETE FROM node_embedding_metadata")
 
-                // 5. Clear embeddings (virtual table)
+                // 7. Clear embeddings (virtual tables)
+                try db.execute(sql: "DELETE FROM chunk_embedding")
                 try db.execute(sql: "DELETE FROM node_embedding")
 
-                // 6. Clear incidences (references edges and nodes)
+                // 8. Clear incidences (references edges and nodes)
                 try db.execute(sql: "DELETE FROM hypergraph_incidence")
 
-                // 7. Clear edges
+                // 9. Clear edges
                 try db.execute(sql: "DELETE FROM hypergraph_edge")
 
-                // 8. Clear nodes
+                // 10. Clear nodes
                 try db.execute(sql: "DELETE FROM hypergraph_node")
 
-                // 9. Finally, clear feed items
+                // 11. Clear article chunks
+                try db.execute(sql: "DELETE FROM article_chunk")
+
+                // 12. Finally, clear feed items
                 try FeedItem.deleteAll(db)
             }
 
@@ -291,6 +307,139 @@ class MainViewModel {
             errorMessage = nil
         } catch {
             errorMessage = "Failed to clear all data: \(error.localizedDescription)"
+        }
+    }
+
+    /// Reset the knowledge graph, removing all extracted data while preserving articles and feeds.
+    func resetKnowledgeGraph() {
+        guard !isResettingGraph else { return }
+        isResettingGraph = true
+
+        Task.detached { [database] in
+            do {
+                try database.write { db in
+                    // Drop FTS triggers first — they fire on DELETE from content
+                    // tables and corrupt the index if it has already been cleared.
+                    try db.execute(sql: "DROP TRIGGER IF EXISTS fts_node_ai")
+                    try db.execute(sql: "DROP TRIGGER IF EXISTS fts_node_ad")
+                    try db.execute(sql: "DROP TRIGGER IF EXISTS fts_node_au")
+                    try db.execute(sql: "DROP TRIGGER IF EXISTS fts_chunk_ai")
+                    try db.execute(sql: "DROP TRIGGER IF EXISTS fts_chunk_ad")
+                    try db.execute(sql: "DROP TRIGGER IF EXISTS fts_chunk_au")
+
+                    // Clustering / themes
+                    try db.execute(sql: "DELETE FROM cluster_exemplars")
+                    try db.execute(sql: "DELETE FROM cluster_members")
+                    try db.execute(sql: "DELETE FROM event_cluster")
+                    try db.execute(sql: "DELETE FROM clusters")
+
+                    // Provenance
+                    try db.execute(sql: "DELETE FROM article_edge_provenance")
+
+                    // Merge history
+                    try db.execute(sql: "DELETE FROM node_merge_history")
+
+                    // Embedding metadata
+                    try db.execute(sql: "DELETE FROM chunk_embedding_metadata")
+                    try db.execute(sql: "DELETE FROM node_embedding_metadata")
+
+                    // Drop and recreate vec0 tables with current dimension (clamped to max)
+                    let rawDim: Int
+                    if let setting = try AppSettings
+                        .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
+                        .fetchOne(db),
+                       let value = Int(setting.value) {
+                        rawDim = value
+                    } else {
+                        rawDim = AppSettings.defaultEmbeddingDimension
+                    }
+                    let embDim = min(rawDim, AppSettings.maxEmbeddingDimension)
+                    let eventVecDim = 3 * embDim + 12  // 12 = RelationFamily.count
+
+                    try db.execute(sql: "DROP TABLE IF EXISTS event_vectors")
+                    try db.execute(sql: "DROP TABLE IF EXISTS chunk_embedding")
+                    try db.execute(sql: "DROP TABLE IF EXISTS node_embedding")
+
+                    try db.execute(sql: """
+                        CREATE VIRTUAL TABLE node_embedding USING vec0(
+                            node_id INTEGER PRIMARY KEY,
+                            embedding float[\(embDim)]
+                        )
+                    """)
+                    try db.execute(sql: """
+                        CREATE VIRTUAL TABLE chunk_embedding USING vec0(
+                            chunk_id INTEGER PRIMARY KEY,
+                            embedding float[\(embDim)]
+                        )
+                    """)
+                    try db.execute(sql: """
+                        CREATE VIRTUAL TABLE event_vectors USING vec0(
+                            event_id INTEGER PRIMARY KEY,
+                            vec float[\(eventVecDim)]
+                        )
+                    """)
+
+                    // Update active dimension to match
+                    try db.execute(
+                        sql: """
+                            INSERT INTO app_settings (key, value) VALUES (?, ?)
+                            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                        """,
+                        arguments: [AppSettings.activeEmbeddingDimension, String(embDim)]
+                    )
+
+                    // Hypergraph structure
+                    try db.execute(sql: "DELETE FROM hypergraph_incidence")
+                    try db.execute(sql: "DELETE FROM hypergraph_edge")
+                    try db.execute(sql: "DELETE FROM hypergraph_node")
+
+                    // Article chunks (intermediate processing artifacts)
+                    try db.execute(sql: "DELETE FROM article_chunk")
+
+                    // Reset processing status so articles can be re-processed
+                    try db.execute(sql: "DELETE FROM article_hypergraph")
+
+                    // Query history (answers reference graph data)
+                    try db.execute(sql: "DELETE FROM query_history")
+
+                    // Rebuild FTS indexes (now empty) and recreate sync triggers
+                    try db.execute(sql: "INSERT INTO fts_node(fts_node) VALUES('rebuild')")
+                    try db.execute(sql: "INSERT INTO fts_chunk(fts_chunk) VALUES('rebuild')")
+
+                    try db.execute(sql: """
+                        CREATE TRIGGER fts_node_ai AFTER INSERT ON hypergraph_node BEGIN
+                            INSERT INTO fts_node(rowid, label) VALUES (new.id, new.label);
+                        END;
+                        CREATE TRIGGER fts_node_ad AFTER DELETE ON hypergraph_node BEGIN
+                            INSERT INTO fts_node(fts_node, rowid, label) VALUES('delete', old.id, old.label);
+                        END;
+                        CREATE TRIGGER fts_node_au AFTER UPDATE ON hypergraph_node BEGIN
+                            INSERT INTO fts_node(fts_node, rowid, label) VALUES('delete', old.id, old.label);
+                            INSERT INTO fts_node(rowid, label) VALUES (new.id, new.label);
+                        END;
+                        CREATE TRIGGER fts_chunk_ai AFTER INSERT ON article_chunk BEGIN
+                            INSERT INTO fts_chunk(rowid, content) VALUES (new.id, new.content);
+                        END;
+                        CREATE TRIGGER fts_chunk_ad AFTER DELETE ON article_chunk BEGIN
+                            INSERT INTO fts_chunk(fts_chunk, rowid, content) VALUES('delete', old.id, old.content);
+                        END;
+                        CREATE TRIGGER fts_chunk_au AFTER UPDATE ON article_chunk BEGIN
+                            INSERT INTO fts_chunk(fts_chunk, rowid, content) VALUES('delete', old.id, old.content);
+                            INSERT INTO fts_chunk(rowid, content) VALUES (new.id, new.content);
+                        END;
+                    """)
+                }
+
+                await MainActor.run { [weak self] in
+                    self?.hypergraphStats = nil
+                    self?.isResettingGraph = false
+                }
+            } catch {
+                await MainActor.run { [weak self] in
+                    self?.errorMessage = "Failed to reset knowledge graph: \(error.localizedDescription)"
+                    self?.isResettingGraph = false
+                }
+            }
         }
     }
 
@@ -418,10 +567,30 @@ class MainViewModel {
                 }
             )
 
-            hypergraphProcessingStatus = "Completed: \(processedCount) articles processed"
-
-            // Update stats
+            // Update stats before simplification
             loadHypergraphStats()
+
+            // Auto-simplify: merge similar nodes after extraction
+            currentProcessingArticle = ""
+            recentlyExtractedEntities = []
+            var simplifyMessage = ""
+            if canSimplifyGraph() {
+                hypergraphProcessingStatus = "Simplifying graph…"
+                isSimplifyingGraph = true
+                do {
+                    let result = try await nodeMergingService.simplifyHypergraph()
+                    if result.mergedPairs > 0 {
+                        simplifyMessage = ", merged \(result.mergedPairs) similar node\(result.mergedPairs == 1 ? "" : "s")"
+                    }
+                    loadHypergraphStats()
+                } catch {
+                    // Simplification failure is non-fatal — log but don't block
+                    simplifyMessage = " (simplification failed)"
+                }
+                isSimplifyingGraph = false
+            }
+
+            hypergraphProcessingStatus = "Completed: \(processedCount) articles processed\(simplifyMessage)"
         } catch HypergraphServiceError.cancelled {
             hypergraphProcessingStatus = "Cancelled at \(hypergraphProgress.processed)/\(hypergraphProgress.total)"
             // Update stats even on cancel - some articles may have been processed
@@ -453,37 +622,8 @@ class MainViewModel {
 
     // MARK: - Graph Simplification
 
-    /// Simplifies the hypergraph by merging similar nodes based on embedding similarity.
-    func simplifyGraph() async {
-        guard !isSimplifyingGraph else { return }
-
-        isSimplifyingGraph = true
-        simplifyProgress = "Analyzing node similarity..."
-
-        do {
-            let result = try await nodeMergingService.simplifyHypergraph()
-
-            if result.mergedPairs > 0 {
-                simplifyProgress = "Merged \(result.mergedPairs) similar node\(result.mergedPairs == 1 ? "" : "s")"
-            } else {
-                simplifyProgress = "No similar nodes found to merge"
-            }
-
-            // Update stats to reflect changes
-            loadHypergraphStats()
-        } catch {
-            errorMessage = "Simplification failed: \(error.localizedDescription)"
-            simplifyProgress = "Failed"
-        }
-
-        // Keep progress visible briefly before clearing
-        try? await Task.sleep(for: .seconds(2))
-        isSimplifyingGraph = false
-        simplifyProgress = ""
-    }
-
     /// Checks if the hypergraph has enough data for simplification.
-    func canSimplifyGraph() -> Bool {
+    private func canSimplifyGraph() -> Bool {
         guard let stats = hypergraphStats else { return false }
         return stats.nodeCount > 1
     }

@@ -173,7 +173,8 @@ final class HypergraphService: Sendable {
 
             // Persist the hypergraph
             logger.info("Persisting hypergraph to database...")
-            try persistHypergraph(result: result, feedItemId: feedItemId, content: content)
+            let settings = try loadSettings()
+            try await persistHypergraph(result: result, feedItemId: feedItemId, content: content, settings: settings)
             logger.info("Hypergraph persisted successfully")
 
             // Mark as completed
@@ -201,6 +202,11 @@ final class HypergraphService: Sendable {
     @MainActor
     func processUnprocessedArticles(progressCallback: ProgressCallback?, detailCallback: DetailCallback? = nil) async throws -> Int {
         resetCancellation()
+
+        // If the graph is empty, ensure vec0 tables match the current dimension setting.
+        // This handles the case where the user changed the dimension in Settings
+        // and then starts processing without doing a manual graph reset.
+        try ensureVec0TablesMatchDimension()
 
         let articles = try getUnprocessedArticles()
         logger.info("Found \(articles.count) unprocessed articles")
@@ -290,14 +296,19 @@ final class HypergraphService: Sendable {
         logger.info("LLM Provider: \(settings.provider, privacy: .public)")
         logger.info("Embedding Provider: \(settings.embeddingProvider, privacy: .public)")
 
-        // Create the Ollama service for embeddings (always needed, may also be used for LLM)
-        let embeddingOllama = createEmbeddingOllamaService(settings: settings)
+        // DocumentProcessor requires an OllamaService for its internal embedding pipeline.
+        // When embedding provider is OpenRouter, we still create an Ollama service as a
+        // placeholder — the embeddings it produces are discarded in persistHypergraph
+        // and re-generated via the configured provider.
+        let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
+        let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
+        let embeddingHost = URL(string: embeddingEndpoint) ?? URL(string: AppSettings.defaultEmbeddingOllamaEndpoint)!
+        let embeddingOllama = OllamaService(host: embeddingHost, embeddingModel: embeddingModel)
 
         switch settings.provider {
         case "ollama":
             let endpoint = settings.ollamaEndpoint ?? AppSettings.defaultOllamaEndpoint
             let model = settings.ollamaModel ?? AppSettings.defaultOllamaModel
-            let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
             logger.info("Configuring Ollama: endpoint=\(endpoint, privacy: .public), model=\(model, privacy: .public), embedding=\(embeddingModel, privacy: .public)")
 
             if let extractionPrompt = settings.extractionSystemPrompt {
@@ -349,18 +360,62 @@ final class HypergraphService: Sendable {
         }
     }
 
-    /// Creates an OllamaService configured for embeddings based on settings.
+    /// Generates an embedding for the given text using the configured provider.
     @MainActor
-    private func createEmbeddingOllamaService(settings: LLMSettings) -> OllamaService {
-        let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
-        let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
-
-        logger.info("Embedding Ollama: endpoint=\(embeddingEndpoint, privacy: .public), model=\(embeddingModel, privacy: .public)")
-
-        if let host = URL(string: embeddingEndpoint) {
-            return OllamaService(host: host, embeddingModel: embeddingModel)
+    private func embedText(_ text: String, settings: LLMSettings) async throws -> [Float] {
+        if settings.embeddingProvider == "openrouter" {
+            guard let apiKey = settings.openRouterKey, !apiKey.isEmpty else {
+                throw HypergraphServiceError.noProviderConfigured
+            }
+            let model = settings.embeddingOpenRouterModel ?? AppSettings.defaultEmbeddingOpenRouterModel
+            let service = OpenRouterEmbeddingService(
+                apiKey: apiKey,
+                model: model,
+                dimensions: settings.embeddingDimension
+            )
+            logger.info("Embedding via OpenRouter: model=\(model, privacy: .public), dim=\(settings.embeddingDimension)")
+            return try await service.embed(text)
         } else {
-            return OllamaService(embeddingModel: embeddingModel)
+            let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
+            let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
+
+            logger.info("Embedding via Ollama: endpoint=\(embeddingEndpoint, privacy: .public), model=\(embeddingModel, privacy: .public)")
+
+            let ollama: OllamaService
+            if let host = URL(string: embeddingEndpoint) {
+                ollama = OllamaService(host: host, embeddingModel: embeddingModel)
+            } else {
+                ollama = OllamaService(embeddingModel: embeddingModel)
+            }
+            return try await ollama.embed(text)
+        }
+    }
+
+    /// Generates embeddings for multiple texts using the configured provider.
+    @MainActor
+    private func embedTexts(_ texts: [String], settings: LLMSettings) async throws -> [[Float]] {
+        if settings.embeddingProvider == "openrouter" {
+            guard let apiKey = settings.openRouterKey, !apiKey.isEmpty else {
+                throw HypergraphServiceError.noProviderConfigured
+            }
+            let model = settings.embeddingOpenRouterModel ?? AppSettings.defaultEmbeddingOpenRouterModel
+            let service = OpenRouterEmbeddingService(
+                apiKey: apiKey,
+                model: model,
+                dimensions: settings.embeddingDimension
+            )
+            return try await service.embed(texts)
+        } else {
+            let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
+            let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
+
+            let ollama: OllamaService
+            if let host = URL(string: embeddingEndpoint) {
+                ollama = OllamaService(host: host, embeddingModel: embeddingModel)
+            } else {
+                ollama = OllamaService(embeddingModel: embeddingModel)
+            }
+            return try await ollama.embed(texts)
         }
     }
 
@@ -424,6 +479,13 @@ final class HypergraphService: Sendable {
                 settings.embeddingOpenRouterModel = model.value
             }
 
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
+                .fetchOne(db),
+               let value = Int(setting.value) {
+                settings.embeddingDimension = min(value, AppSettings.maxEmbeddingDimension)
+            }
+
             // Temperature configuration
             if let setting = try AppSettings
                 .filter(AppSettings.Columns.key == AppSettings.extractionTemperature)
@@ -469,18 +531,25 @@ final class HypergraphService: Sendable {
     /// Gets the configured embedding model name for tracking.
     private func getEmbeddingModelName() throws -> String? {
         try database.read { db in
-            if let setting = try AppSettings
-                .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel)
-                .fetchOne(db) {
-                return setting.value
+            let provider = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.embeddingProvider)
+                .fetchOne(db)?.value ?? AppSettings.defaultEmbeddingProvider
+
+            if provider == "openrouter" {
+                return try AppSettings
+                    .filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel)
+                    .fetchOne(db)?.value ?? AppSettings.defaultEmbeddingOpenRouterModel
+            } else {
+                return try AppSettings
+                    .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel)
+                    .fetchOne(db)?.value ?? AppSettings.defaultEmbeddingOllamaModel
             }
-            return nil
         }
     }
 
     // MARK: - Hypergraph Persistence
 
-    private func persistHypergraph(result: ProcessingResult, feedItemId: Int64, content: String) throws {
+    private func persistHypergraph(result: ProcessingResult, feedItemId: Int64, content: String, settings: LLMSettings) async throws {
         logger.debug("Beginning hypergraph persistence for article \(feedItemId)")
         var nodesInserted = 0
         var edgesInserted = 0
@@ -489,6 +558,10 @@ final class HypergraphService: Sendable {
 
         // Get embedding model name BEFORE the write transaction to avoid reentrancy
         let embeddingModel = try getEmbeddingModelName()
+        let useOpenRouterEmbeddings = settings.embeddingProvider == "openrouter"
+
+        // Track nodes that need embeddings (populated inside write, used after for OpenRouter)
+        var nodesNeedingEmbeddings: [(nodeLabel: String, nodeRowId: Int64)] = []
 
         // Chunk the content for provenance tracking
         let chunks = TextChunker.chunkText(content)
@@ -580,34 +653,55 @@ final class HypergraphService: Sendable {
 
             self.logger.debug("Persisted \(edgesInserted) edges, \(nodesInserted) node references, \(chunksStored) chunks")
 
-            // Store embeddings only for nodes that don't already have them (incremental)
+            // Collect nodes that need embeddings
             var skippedEmbeddings = 0
-            for (nodeLabel, embedding) in result.embeddings.embeddings {
-                // Get the node's row ID
+
+            for nodeLabel in result.embeddings.embeddings.keys {
                 if let node = try HypergraphNode
                     .filter(HypergraphNode.Columns.nodeId == nodeLabel)
                     .fetchOne(db),
                    let nodeRowId = node.id {
-
-                    // Check if this node already has an embedding
                     if try NodeEmbeddingMetadata.hasEmbedding(db, nodeId: nodeRowId) {
                         skippedEmbeddings += 1
-                        continue
+                    } else {
+                        nodesNeedingEmbeddings.append((nodeLabel: nodeLabel, nodeRowId: nodeRowId))
                     }
+                }
+            }
 
-                    // Store the embedding and track in metadata
-                    try self.storeEmbedding(db: db, nodeId: nodeRowId, embedding: embedding)
-                    try NodeEmbeddingMetadata.markEmbeddingComputed(db, nodeId: nodeRowId, modelName: embeddingModel)
-                    embeddingsStored += 1
+            if !useOpenRouterEmbeddings {
+                // Use Ollama embeddings from the DocumentProcessor
+                for (nodeLabel, nodeRowId) in nodesNeedingEmbeddings {
+                    if let embedding = result.embeddings.embeddings[nodeLabel] {
+                        try self.storeEmbedding(db: db, nodeId: nodeRowId, embedding: embedding)
+                        try NodeEmbeddingMetadata.markEmbeddingComputed(db, nodeId: nodeRowId, modelName: embeddingModel)
+                        embeddingsStored += 1
+                    }
                 }
             }
 
             if skippedEmbeddings > 0 {
                 self.logger.debug("Skipped \(skippedEmbeddings) embeddings (already exist)")
             }
-            self.logger.debug("Stored \(embeddingsStored) new embeddings")
         }
 
+        // When using OpenRouter embeddings, generate them outside the write transaction
+        if useOpenRouterEmbeddings && !nodesNeedingEmbeddings.isEmpty {
+            let labels = nodesNeedingEmbeddings.map(\.nodeLabel)
+            logger.info("Generating \(labels.count) embeddings via OpenRouter")
+
+            let embeddings = try await embedTexts(labels, settings: settings)
+
+            try database.write { db in
+                for (index, (_, nodeRowId)) in nodesNeedingEmbeddings.enumerated() where index < embeddings.count {
+                    try self.storeEmbedding(db: db, nodeId: nodeRowId, embedding: embeddings[index])
+                    try NodeEmbeddingMetadata.markEmbeddingComputed(db, nodeId: nodeRowId, modelName: embeddingModel)
+                    embeddingsStored += 1
+                }
+            }
+        }
+
+        self.logger.debug("Stored \(embeddingsStored) new embeddings")
         logger.info("Persistence complete: \(edgesInserted) edges, \(nodesInserted) node refs, \(embeddingsStored) embeddings, \(chunksStored) chunks")
     }
 
@@ -806,9 +900,7 @@ final class HypergraphService: Sendable {
     func searchSimilarConcepts(query: String, limit: Int = 20) async throws -> [(nodeId: Int64, label: String, distance: Double)] {
         // Generate embedding for the query using configured embedding service
         let settings = try loadSettings()
-        let ollama = createEmbeddingOllamaService(settings: settings)
-
-        let queryEmbedding = try await ollama.embed(query)
+        let queryEmbedding = try await embedText(query, settings: settings)
         let embeddingData = queryEmbedding.withUnsafeBufferPointer { buffer in
             Data(buffer: buffer)
         }
@@ -831,6 +923,79 @@ final class HypergraphService: Sendable {
                     distance: row["distance"] as Double
                 )
             }
+        }
+    }
+
+    // MARK: - Vec0 Table Management
+
+    /// Recreates vec0 virtual tables if the active dimension doesn't match the desired
+    /// dimension AND the graph tables are empty. This allows a dimension change to take
+    /// effect without requiring a manual graph reset when no data exists yet.
+    private func ensureVec0TablesMatchDimension() throws {
+        try database.write { db in
+            let rawDim: Int
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
+                .fetchOne(db),
+               let value = Int(setting.value) {
+                rawDim = value
+            } else {
+                rawDim = AppSettings.defaultEmbeddingDimension
+            }
+            let desiredDim = min(rawDim, AppSettings.maxEmbeddingDimension)
+
+            let activeDim: Int
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.activeEmbeddingDimension)
+                .fetchOne(db),
+               let value = Int(setting.value) {
+                activeDim = value
+            } else {
+                activeDim = 0
+            }
+
+            guard activeDim != desiredDim else { return }
+
+            // Only recreate if there's no existing graph data
+            let nodeCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM hypergraph_node") ?? 0
+            guard nodeCount == 0 else {
+                logger.warning("Dimension mismatch (\(activeDim) vs \(desiredDim)) but graph has \(nodeCount) nodes — reset the graph first")
+                return
+            }
+
+            let eventVecDim = 3 * desiredDim + 12  // 12 = RelationFamily.count
+            logger.info("Graph is empty — recreating vec0 tables with dimension \(desiredDim)")
+
+            try db.execute(sql: "DROP TABLE IF EXISTS event_vectors")
+            try db.execute(sql: "DROP TABLE IF EXISTS chunk_embedding")
+            try db.execute(sql: "DROP TABLE IF EXISTS node_embedding")
+
+            try db.execute(sql: """
+                CREATE VIRTUAL TABLE node_embedding USING vec0(
+                    node_id INTEGER PRIMARY KEY,
+                    embedding float[\(desiredDim)]
+                )
+            """)
+            try db.execute(sql: """
+                CREATE VIRTUAL TABLE chunk_embedding USING vec0(
+                    chunk_id INTEGER PRIMARY KEY,
+                    embedding float[\(desiredDim)]
+                )
+            """)
+            try db.execute(sql: """
+                CREATE VIRTUAL TABLE event_vectors USING vec0(
+                    event_id INTEGER PRIMARY KEY,
+                    vec float[\(eventVecDim)]
+                )
+            """)
+
+            try db.execute(
+                sql: """
+                    INSERT INTO app_settings (key, value) VALUES (?, ?)
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                """,
+                arguments: [AppSettings.activeEmbeddingDimension, String(desiredDim)]
+            )
         }
     }
 
@@ -1057,6 +1222,7 @@ struct LLMSettings: Sendable {
     var embeddingOllamaEndpoint: String?
     var embeddingOllamaModel: String?
     var embeddingOpenRouterModel: String?
+    var embeddingDimension: Int = AppSettings.defaultEmbeddingDimension
 
     // Analysis LLM configuration (for answers and deep analysis)
     // Falls back to main LLM settings if not configured

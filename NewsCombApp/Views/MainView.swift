@@ -6,6 +6,7 @@ import AppKit
 struct MainView: View {
     @State private var viewModel = MainViewModel()
     @State private var showingClearAllConfirmation = false
+    @State private var showingResetGraphConfirmation = false
     @State private var showingStatistics = false
     @State private var isExporting = false
     @State private var exportError: String?
@@ -20,6 +21,7 @@ struct MainView: View {
             List {
                 allArticlesSection
                 graphRAGSection
+                storyThemesSection
                 hypergraphSection
                 addFeedSection
                 sourcesSection
@@ -34,12 +36,17 @@ struct MainView: View {
                     FeedItemsView()
                 case "graphrag":
                     GraphRAGView()
+                case "themes":
+                    ThemesView()
                 default:
                     EmptyView()
                 }
             }
             .navigationDestination(for: QueryHistoryItem.self) { item in
                 AnswerDetailView(historyItem: item)
+            }
+            .navigationDestination(for: StoryCluster.self) { cluster in
+                ThemeDetailView(cluster: cluster)
             }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -86,26 +93,6 @@ struct MainView: View {
                     }
                 }
 
-                ToolbarItem(placement: .primaryAction) {
-                    if viewModel.isSimplifyingGraph {
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text(viewModel.simplifyProgress)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    } else {
-                        Button("Simplify Graph", systemImage: "arrow.triangle.merge") {
-                            Task {
-                                await viewModel.simplifyGraph()
-                            }
-                        }
-                        .disabled(!viewModel.canSimplifyGraph() || viewModel.isRefreshing)
-                        .help("Merge similar nodes in the knowledge graph")
-                    }
-                }
-
                 #if os(macOS)
                 ToolbarItem(placement: .primaryAction) {
                     Button("View Graph", systemImage: "chart.dots.scatter") {
@@ -141,6 +128,18 @@ struct MainView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This will delete all fetched articles from all feeds. Feed sources will be kept.")
+            }
+            .confirmationDialog(
+                "Reset Knowledge Graph",
+                isPresented: $showingResetGraphConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Reset Knowledge Graph", role: .destructive) {
+                    viewModel.resetKnowledgeGraph()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently delete all extracted concepts, relationships, embeddings, themes, and query history. Articles will be preserved and can be re-processed.")
             }
             .onAppear {
                 viewModel.loadSources()
@@ -408,6 +407,30 @@ struct MainView: View {
     }
 
     @ViewBuilder
+    private var storyThemesSection: some View {
+        if viewModel.hypergraphStats != nil && (viewModel.hypergraphStats?.edgeCount ?? 0) > 0 {
+            Section {
+                NavigationLink(value: "themes") {
+                    Label {
+                        VStack(alignment: .leading) {
+                            Text("Story Themes")
+                                .font(.headline)
+                            Text("HDBSCAN-clustered event themes")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "rectangle.3.group.fill")
+                            .foregroundStyle(.orange)
+                    }
+                }
+            } header: {
+                Text("Theme Analysis")
+            }
+        }
+    }
+
+    @ViewBuilder
     private var hypergraphSection: some View {
         if viewModel.isProcessingHypergraph || viewModel.hypergraphStats != nil {
             Section {
@@ -477,6 +500,22 @@ struct MainView: View {
                     } icon: {
                         Image(systemName: "brain.head.profile")
                             .foregroundStyle(.purple)
+                    }
+
+                    if !viewModel.isProcessingHypergraph && !viewModel.isSimplifyingGraph {
+                        if viewModel.isResettingGraph {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Resetting knowledge graph…")
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            Button("Reset Knowledge Graph", systemImage: "arrow.counterclockwise", role: .destructive) {
+                                showingResetGraphConfirmation = true
+                            }
+                            .font(.caption)
+                        }
                     }
                 }
             } header: {
