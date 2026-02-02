@@ -22,8 +22,17 @@ private typealias VectorOps = HyperGraphReasoning.AccelerateVectorOps
 /// processing.
 ///
 /// **Requires:** Ollama running locally with `nomic-embed-text:v1.5` pulled.
+///
+/// **Disabled** by default — these are manual integration tests that require a
+/// running Ollama instance. Remove the `defaultTestSuite` override to re-enable.
 @MainActor
 final class OllamaEmbeddingReproTests: XCTestCase {
+
+    /// Return an empty suite so xcodebuild never runs these tests automatically.
+    /// To run manually: comment out this override and run the specific test class.
+    override class var defaultTestSuite: XCTestSuite {
+        XCTestSuite(name: "OllamaEmbeddingReproTests (disabled)")
+    }
 
     /// Same batch size used by `EmbeddingService` in the app pipeline.
     static let batchSize = 100
