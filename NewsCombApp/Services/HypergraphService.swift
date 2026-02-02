@@ -142,13 +142,14 @@ final class HypergraphService: Sendable {
             let processor = try await createDocumentProcessor()
             logger.info("Document processor created successfully")
 
-            // Process the text
+            // Extract the hypergraph structure only — embedding generation is
+            // handled by persistHypergraph() using the configured provider.
             logger.info("Processing text with HyperGraphReasoning...")
             let startTime = Date()
             let result = try await processor.processText(
                 content,
                 documentID: "\(feedItemId)",
-                generateEmbeddings: true
+                generateEmbeddings: false
             )
             let processingTime = Date().timeIntervalSince(startTime)
             logger.info("Text processing completed in \(String(format: "%.2f", processingTime))s")
@@ -171,7 +172,7 @@ final class HypergraphService: Sendable {
             let sampleNodes = result.hypergraph.nodes.prefix(5)
             logger.debug("Sample nodes: \(sampleNodes.joined(separator: ", "), privacy: .public)")
 
-            // Persist the hypergraph
+            // Persist the hypergraph and generate embeddings
             logger.info("Persisting hypergraph to database...")
             let settings = try loadSettings()
             try await persistHypergraph(result: result, feedItemId: feedItemId, content: content, settings: settings)
@@ -558,9 +559,8 @@ final class HypergraphService: Sendable {
 
         // Get embedding model name BEFORE the write transaction to avoid reentrancy
         let embeddingModel = try getEmbeddingModelName()
-        let useOpenRouterEmbeddings = settings.embeddingProvider == "openrouter"
 
-        // Track nodes that need embeddings (populated inside write, used after for OpenRouter)
+        // Track nodes that need embeddings (populated inside write, generated after)
         var nodesNeedingEmbeddings: [(nodeLabel: String, nodeRowId: Int64)] = []
 
         // Chunk the content for provenance tracking
@@ -653,10 +653,10 @@ final class HypergraphService: Sendable {
 
             self.logger.debug("Persisted \(edgesInserted) edges, \(nodesInserted) node references, \(chunksStored) chunks")
 
-            // Collect nodes that need embeddings
+            // Collect nodes that need embeddings from the hypergraph
             var skippedEmbeddings = 0
 
-            for nodeLabel in result.embeddings.embeddings.keys {
+            for nodeLabel in result.hypergraph.nodes {
                 if let node = try HypergraphNode
                     .filter(HypergraphNode.Columns.nodeId == nodeLabel)
                     .fetchOne(db),
@@ -669,26 +669,15 @@ final class HypergraphService: Sendable {
                 }
             }
 
-            if !useOpenRouterEmbeddings {
-                // Use Ollama embeddings from the DocumentProcessor
-                for (nodeLabel, nodeRowId) in nodesNeedingEmbeddings {
-                    if let embedding = result.embeddings.embeddings[nodeLabel] {
-                        try self.storeEmbedding(db: db, nodeId: nodeRowId, embedding: embedding)
-                        try NodeEmbeddingMetadata.markEmbeddingComputed(db, nodeId: nodeRowId, modelName: embeddingModel)
-                        embeddingsStored += 1
-                    }
-                }
-            }
-
             if skippedEmbeddings > 0 {
                 self.logger.debug("Skipped \(skippedEmbeddings) embeddings (already exist)")
             }
         }
 
-        // When using OpenRouter embeddings, generate them outside the write transaction
-        if useOpenRouterEmbeddings && !nodesNeedingEmbeddings.isEmpty {
+        // Generate embeddings using the configured provider
+        if !nodesNeedingEmbeddings.isEmpty {
             let labels = nodesNeedingEmbeddings.map(\.nodeLabel)
-            logger.info("Generating \(labels.count) embeddings via OpenRouter")
+            logger.info("Generating \(labels.count) embeddings via \(settings.embeddingProvider)")
 
             let embeddings = try await embedTexts(labels, settings: settings)
 
