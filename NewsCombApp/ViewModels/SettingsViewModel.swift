@@ -21,14 +21,14 @@ enum LLMProviderOption: String, CaseIterable, Identifiable {
 
 /// Embedding provider options.
 enum EmbeddingProviderOption: String, CaseIterable, Identifiable {
-    case ollama = "ollama"
+    case nomic = "nomic"
     case openrouter = "openrouter"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .ollama: return "Ollama (Local)"
+        case .nomic: return "Nomic (On-Device)"
         case .openrouter: return "OpenRouter (Cloud)"
         }
     }
@@ -66,9 +66,7 @@ class SettingsViewModel {
     var openRouterModel: String = AppSettings.defaultOpenRouterModel
 
     // Embedding Configuration
-    var embeddingProvider: EmbeddingProviderOption = .ollama
-    var embeddingOllamaEndpoint: String = AppSettings.defaultEmbeddingOllamaEndpoint
-    var embeddingOllamaModel: String = AppSettings.defaultEmbeddingOllamaModel
+    var embeddingProvider: EmbeddingProviderOption = .nomic
     var embeddingOpenRouterModel: String = AppSettings.defaultEmbeddingOpenRouterModel
     var embeddingDimension: Int = AppSettings.defaultEmbeddingDimension
 
@@ -143,15 +141,9 @@ class SettingsViewModel {
 
                 // Load embedding settings
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingProvider).fetchOne(db) {
-                    embeddingProvider = EmbeddingProviderOption(rawValue: setting.value) ?? .ollama
-                }
-
-                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingOllamaEndpoint).fetchOne(db) {
-                    embeddingOllamaEndpoint = setting.value
-                }
-
-                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel).fetchOne(db) {
-                    embeddingOllamaModel = setting.value
+                    // Migrate legacy "ollama" provider to "nomic"
+                    let raw = setting.value == "ollama" ? "nomic" : setting.value
+                    embeddingProvider = EmbeddingProviderOption(rawValue: raw) ?? .nomic
                 }
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel).fetchOne(db) {
@@ -362,14 +354,6 @@ class SettingsViewModel {
 
     func saveEmbeddingProvider() {
         saveAPIKey(key: AppSettings.embeddingProvider, value: embeddingProvider.rawValue)
-    }
-
-    func saveEmbeddingOllamaEndpoint() {
-        saveAPIKey(key: AppSettings.embeddingOllamaEndpoint, value: embeddingOllamaEndpoint)
-    }
-
-    func saveEmbeddingOllamaModel() {
-        saveAPIKey(key: AppSettings.embeddingOllamaModel, value: embeddingOllamaModel)
     }
 
     func saveEmbeddingOpenRouterModel() {

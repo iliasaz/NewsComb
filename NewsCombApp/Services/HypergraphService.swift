@@ -298,19 +298,17 @@ final class HypergraphService: Sendable {
         logger.info("Embedding Provider: \(settings.embeddingProvider, privacy: .public)")
 
         // DocumentProcessor requires an OllamaService for its internal embedding pipeline.
-        // When embedding provider is OpenRouter, we still create an Ollama service as a
-        // placeholder — the embeddings it produces are discarded in persistHypergraph
-        // and re-generated via the configured provider.
-        let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
-        let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
-        let embeddingHost = URL(string: embeddingEndpoint) ?? URL(string: AppSettings.defaultEmbeddingOllamaEndpoint)!
-        let embeddingOllama = OllamaService(host: embeddingHost, embeddingModel: embeddingModel)
+        // The embeddings it produces are discarded in persistHypergraph and re-generated
+        // via the configured embedding provider (Nomic on-device or OpenRouter).
+        let placeholderEndpoint = settings.ollamaEndpoint ?? AppSettings.defaultOllamaEndpoint
+        let placeholderHost = URL(string: placeholderEndpoint) ?? URL(string: AppSettings.defaultOllamaEndpoint)!
+        let embeddingOllama = OllamaService(host: placeholderHost)
 
         switch settings.provider {
         case "ollama":
             let endpoint = settings.ollamaEndpoint ?? AppSettings.defaultOllamaEndpoint
             let model = settings.ollamaModel ?? AppSettings.defaultOllamaModel
-            logger.info("Configuring Ollama: endpoint=\(endpoint, privacy: .public), model=\(model, privacy: .public), embedding=\(embeddingModel, privacy: .public)")
+            logger.info("Configuring Ollama: endpoint=\(endpoint, privacy: .public), model=\(model, privacy: .public)")
 
             if let extractionPrompt = settings.extractionSystemPrompt {
                 logger.info("Using custom extraction prompt (\(extractionPrompt.count) chars)")
@@ -320,7 +318,6 @@ final class HypergraphService: Sendable {
             let ollama = OllamaService(
                 host: host,
                 chatModel: model,
-                embeddingModel: embeddingModel,
                 temperature: settings.extractionTemperature
             )
             return DocumentProcessor(
@@ -377,18 +374,8 @@ final class HypergraphService: Sendable {
             logger.info("Embedding via OpenRouter: model=\(model, privacy: .public), dim=\(settings.embeddingDimension)")
             return try await service.embed(text)
         } else {
-            let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
-            let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
-
-            logger.info("Embedding via Ollama: endpoint=\(embeddingEndpoint, privacy: .public), model=\(embeddingModel, privacy: .public)")
-
-            let ollama: OllamaService
-            if let host = URL(string: embeddingEndpoint) {
-                ollama = OllamaService(host: host, embeddingModel: embeddingModel)
-            } else {
-                ollama = OllamaService(embeddingModel: embeddingModel)
-            }
-            return try await ollama.embed(text)
+            logger.info("Embedding via on-device Nomic: \(NomicEmbeddingService.modelName, privacy: .public)")
+            return try await NomicEmbeddingService.shared.embed(text)
         }
     }
 
@@ -407,16 +394,7 @@ final class HypergraphService: Sendable {
             )
             return try await service.embed(texts)
         } else {
-            let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
-            let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
-
-            let ollama: OllamaService
-            if let host = URL(string: embeddingEndpoint) {
-                ollama = OllamaService(host: host, embeddingModel: embeddingModel)
-            } else {
-                ollama = OllamaService(embeddingModel: embeddingModel)
-            }
-            return try await ollama.embed(texts)
+            return try await NomicEmbeddingService.shared.embed(texts)
         }
     }
 
@@ -459,19 +437,8 @@ final class HypergraphService: Sendable {
             if let provider = try AppSettings
                 .filter(AppSettings.Columns.key == AppSettings.embeddingProvider)
                 .fetchOne(db) {
-                settings.embeddingProvider = provider.value
-            }
-
-            if let endpoint = try AppSettings
-                .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaEndpoint)
-                .fetchOne(db) {
-                settings.embeddingOllamaEndpoint = endpoint.value
-            }
-
-            if let model = try AppSettings
-                .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel)
-                .fetchOne(db) {
-                settings.embeddingOllamaModel = model.value
+                // Migrate legacy "ollama" provider to "nomic"
+                settings.embeddingProvider = provider.value == "ollama" ? "nomic" : provider.value
             }
 
             if let model = try AppSettings
@@ -541,9 +508,7 @@ final class HypergraphService: Sendable {
                     .filter(AppSettings.Columns.key == AppSettings.embeddingOpenRouterModel)
                     .fetchOne(db)?.value ?? AppSettings.defaultEmbeddingOpenRouterModel
             } else {
-                return try AppSettings
-                    .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel)
-                    .fetchOne(db)?.value ?? AppSettings.defaultEmbeddingOllamaModel
+                return NomicEmbeddingService.modelName
             }
         }
     }
@@ -1207,9 +1172,7 @@ struct LLMSettings: Sendable {
     var openRouterModel: String?
 
     // Embedding configuration
-    var embeddingProvider: String = "ollama"
-    var embeddingOllamaEndpoint: String?
-    var embeddingOllamaModel: String?
+    var embeddingProvider: String = "nomic"
     var embeddingOpenRouterModel: String?
     var embeddingDimension: Int = AppSettings.defaultEmbeddingDimension
 

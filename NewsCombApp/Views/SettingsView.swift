@@ -106,17 +106,11 @@ struct SettingsView: View {
                 viewModel.saveEmbeddingProvider()
             }
 
-            if viewModel.embeddingProvider == .ollama {
-                TextField("Embedding Endpoint", text: $viewModel.embeddingOllamaEndpoint)
-                    .textContentType(.URL)
-                    .onChange(of: viewModel.embeddingOllamaEndpoint) {
-                        viewModel.saveEmbeddingOllamaEndpoint()
-                    }
-
-                TextField("Embedding Model", text: $viewModel.embeddingOllamaModel)
-                    .onChange(of: viewModel.embeddingOllamaModel) {
-                        viewModel.saveEmbeddingOllamaModel()
-                    }
+            if viewModel.embeddingProvider == .nomic {
+                LabeledContent("Embedding Model", value: NomicEmbeddingService.modelName)
+                    .foregroundStyle(.secondary)
+                LabeledContent("Embedding Dimensions", value: "\(NomicEmbeddingService.embeddingDimension)")
+                    .foregroundStyle(.secondary)
             }
 
             if viewModel.embeddingProvider == .openrouter {
@@ -124,23 +118,27 @@ struct SettingsView: View {
                     .onChange(of: viewModel.embeddingOpenRouterModel) {
                         viewModel.saveEmbeddingOpenRouterModel()
                     }
-            }
 
-            Stepper(value: $viewModel.embeddingDimension, in: 256...AppSettings.maxEmbeddingDimension, step: 256) {
-                HStack {
-                    Text("Embedding Dimensions")
-                    Spacer()
-                    Text("\(viewModel.embeddingDimension)")
-                        .foregroundStyle(.secondary)
+                Stepper(value: $viewModel.embeddingDimension, in: 256...AppSettings.maxEmbeddingDimension, step: 256) {
+                    HStack {
+                        Text("Embedding Dimensions")
+                        Spacer()
+                        Text("\(viewModel.embeddingDimension)")
+                            .foregroundStyle(.secondary)
+                    }
                 }
-            }
-            .onChange(of: viewModel.embeddingDimension) {
-                viewModel.saveEmbeddingDimension()
+                .onChange(of: viewModel.embeddingDimension) {
+                    viewModel.saveEmbeddingDimension()
+                }
             }
         } header: {
             Text("Knowledge Extraction")
         } footer: {
-            Text("Configure LLM for knowledge extraction and embedding model for semantic search. Changing the embedding dimension requires a knowledge graph reset.")
+            if viewModel.embeddingProvider == .nomic {
+                Text("Configure LLM for knowledge extraction. Nomic Embed Text v1.5 runs on-device via MLTensor (768-d vectors). Switching providers may require a knowledge graph reset.")
+            } else {
+                Text("Configure LLM for knowledge extraction and embedding model for semantic search. Changing the embedding dimension requires a knowledge graph reset.")
+            }
         }
     }
 

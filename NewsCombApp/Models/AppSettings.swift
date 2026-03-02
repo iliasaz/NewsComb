@@ -34,18 +34,15 @@ extension AppSettings {
 
     // Embedding Configuration
     static let embeddingProvider = "embedding_provider"
-    static let defaultEmbeddingProvider = "ollama"
-    static let embeddingOllamaEndpoint = "embedding_ollama_endpoint"
-    static let defaultEmbeddingOllamaEndpoint = "http://localhost:11434"
-    static let embeddingOllamaModel = "embedding_ollama_model"
-    static let defaultEmbeddingOllamaModel = "nomic-embed-text:v1.5"
+    static let defaultEmbeddingProvider = "nomic"
     static let embeddingOpenRouterModel = "embedding_openrouter_model"
     static let defaultEmbeddingOpenRouterModel = "openai/text-embedding-3-large"
     static let embeddingDimension = "embedding_dimension"
     /// Maximum embedding dimension: (8192 - RelationFamily.count) / 3 ≈ 2726.
     /// Event vectors concatenate 3× the embedding + a one-hot, and sqlite-vec caps at 8192.
     static let maxEmbeddingDimension = 2560  // largest multiple of 256 that fits
-    static let defaultEmbeddingDimension = 1536
+    /// Default dimension matches the on-device Nomic Embed Text v1.5 model (768-d).
+    static let defaultEmbeddingDimension = 768
     /// Tracks the dimension the vec0 virtual tables were created with.
     /// Used to detect when tables need to be recreated after a dimension change.
     static let activeEmbeddingDimension = "active_embedding_dimension"

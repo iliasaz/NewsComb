@@ -127,22 +127,16 @@ final class HypergraphServiceTests: XCTestCase {
         XCTAssertNil(settings.ollamaModel)
         XCTAssertNil(settings.openRouterKey)
         XCTAssertNil(settings.openRouterModel)
-        XCTAssertEqual(settings.embeddingProvider, "ollama")
-        XCTAssertNil(settings.embeddingOllamaEndpoint)
-        XCTAssertNil(settings.embeddingOllamaModel)
+        XCTAssertEqual(settings.embeddingProvider, "nomic")
         XCTAssertNil(settings.embeddingOpenRouterModel)
     }
 
     func testLLMSettingsEmbeddingConfiguration() {
         var settings = LLMSettings()
         settings.embeddingProvider = "openrouter"
-        settings.embeddingOllamaEndpoint = "http://localhost:11435"
-        settings.embeddingOllamaModel = "mxbai-embed-large"
         settings.embeddingOpenRouterModel = "openai/text-embedding-3-large"
 
         XCTAssertEqual(settings.embeddingProvider, "openrouter")
-        XCTAssertEqual(settings.embeddingOllamaEndpoint, "http://localhost:11435")
-        XCTAssertEqual(settings.embeddingOllamaModel, "mxbai-embed-large")
         XCTAssertEqual(settings.embeddingOpenRouterModel, "openai/text-embedding-3-large")
     }
 
@@ -202,8 +196,6 @@ final class HypergraphServiceTests: XCTestCase {
 
     func testAppSettingsEmbeddingKeys() {
         XCTAssertEqual(AppSettings.embeddingProvider, "embedding_provider")
-        XCTAssertEqual(AppSettings.embeddingOllamaEndpoint, "embedding_ollama_endpoint")
-        XCTAssertEqual(AppSettings.embeddingOllamaModel, "embedding_ollama_model")
         XCTAssertEqual(AppSettings.embeddingOpenRouterModel, "embedding_openrouter_model")
     }
 
@@ -231,23 +223,23 @@ final class HypergraphServiceTests: XCTestCase {
     // MARK: - EmbeddingProviderOption Tests
 
     func testEmbeddingProviderOptionDisplayNames() {
-        XCTAssertEqual(EmbeddingProviderOption.ollama.displayName, "Ollama (Local)")
+        XCTAssertEqual(EmbeddingProviderOption.nomic.displayName, "Nomic (On-Device)")
         XCTAssertEqual(EmbeddingProviderOption.openrouter.displayName, "OpenRouter (Cloud)")
     }
 
     func testEmbeddingProviderOptionRawValues() {
-        XCTAssertEqual(EmbeddingProviderOption.ollama.rawValue, "ollama")
+        XCTAssertEqual(EmbeddingProviderOption.nomic.rawValue, "nomic")
         XCTAssertEqual(EmbeddingProviderOption.openrouter.rawValue, "openrouter")
     }
 
     func testEmbeddingProviderOptionAllCases() {
         XCTAssertEqual(EmbeddingProviderOption.allCases.count, 2)
-        XCTAssertTrue(EmbeddingProviderOption.allCases.contains(.ollama))
+        XCTAssertTrue(EmbeddingProviderOption.allCases.contains(.nomic))
         XCTAssertTrue(EmbeddingProviderOption.allCases.contains(.openrouter))
     }
 
     func testEmbeddingProviderOptionIdentifiable() {
-        XCTAssertEqual(EmbeddingProviderOption.ollama.id, "ollama")
+        XCTAssertEqual(EmbeddingProviderOption.nomic.id, "nomic")
         XCTAssertEqual(EmbeddingProviderOption.openrouter.id, "openrouter")
     }
 
