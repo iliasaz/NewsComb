@@ -34,6 +34,11 @@ class MainViewModel {
     // RSS source management
     var newSourceURL: String = ""
 
+    // OPML import state
+    var isImportingOPML = false
+    var opmlImportResult: OPMLImportResult?
+    var opmlURLInput: String = ""
+
     // Feed statistics
     var newArticlesFromLastRefresh: Int = 0
     var lastRefreshTime: Date?
@@ -53,6 +58,9 @@ class MainViewModel {
     var isSimplifyingGraph = false
 
     private let database = Database.shared
+
+    @ObservationIgnored
+    private let opmlService = OPMLImportService()
 
     @ObservationIgnored
     private let rssService = RSSService()
@@ -125,6 +133,76 @@ class MainViewModel {
         for url in urls {
             addSourceURL(url)
         }
+    }
+
+    // MARK: - OPML Import
+
+    /// Import feeds from a local OPML file.
+    func importOPML(from fileURL: URL) async {
+        guard !isImportingOPML else { return }
+        isImportingOPML = true
+        defer { isImportingOPML = false }
+
+        do {
+            let feeds = try opmlService.parseFeeds(fromFile: fileURL)
+            applyOPMLFeeds(feeds)
+        } catch {
+            errorMessage = "Failed to import OPML: \(error.localizedDescription)"
+        }
+    }
+
+    /// Import feeds from a remote OPML URL.
+    func importOPMLFromURL() async {
+        let trimmed = opmlURLInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let url = URL(string: trimmed) else {
+            errorMessage = "Please enter a valid URL."
+            return
+        }
+
+        guard !isImportingOPML else { return }
+        isImportingOPML = true
+        defer { isImportingOPML = false }
+
+        do {
+            let feeds = try await opmlService.parseFeeds(fromRemoteURL: url)
+            applyOPMLFeeds(feeds)
+        } catch {
+            errorMessage = "Failed to import OPML: \(error.localizedDescription)"
+        }
+
+        opmlURLInput = ""
+    }
+
+    /// Insert parsed OPML feeds into the database, tracking added vs. skipped counts.
+    private func applyOPMLFeeds(_ feeds: [OPMLFeed]) {
+        guard !feeds.isEmpty else {
+            errorMessage = "No RSS feeds found in the OPML file."
+            return
+        }
+
+        let existingURLs = Set(metrics.map { normalizeURL($0.sourceURL) })
+        var added = 0
+        var skipped = 0
+
+        for feed in feeds {
+            let normalized = normalizeURL(feed.xmlUrl)
+            if existingURLs.contains(normalized) {
+                skipped += 1
+                continue
+            }
+
+            do {
+                _ = try database.write { db in
+                    try RSSSource(url: normalized, title: feed.title).insert(db, onConflict: .ignore)
+                }
+                added += 1
+            } catch {
+                skipped += 1
+            }
+        }
+
+        loadSources()
+        opmlImportResult = OPMLImportResult(added: added, skipped: skipped, total: feeds.count)
     }
 
     private func addSourceURL(_ url: String) {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
 #endif
@@ -11,6 +12,8 @@ struct MainView: View {
     @State private var isExporting = false
     @State private var exportError: String?
     @State private var exportSuccess: String?
+    @State private var showingOPMLFilePicker = false
+    @State private var showingOPMLURLInput = false
     @Environment(\.scenePhase) private var scenePhase
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -194,6 +197,36 @@ struct MainView: View {
             }
             .sheet(isPresented: $showingStatistics) {
                 StatisticsSheet(viewModel: viewModel)
+            }
+            .sheet(isPresented: $showingOPMLURLInput) {
+                OPMLURLInputSheet(viewModel: viewModel)
+            }
+            .fileImporter(
+                isPresented: $showingOPMLFilePicker,
+                allowedContentTypes: [.xml, UTType(filenameExtension: "opml") ?? .xml]
+            ) { result in
+                switch result {
+                case .success(let url):
+                    let gotAccess = url.startAccessingSecurityScopedResource()
+                    defer {
+                        if gotAccess { url.stopAccessingSecurityScopedResource() }
+                    }
+                    Task {
+                        await viewModel.importOPML(from: url)
+                    }
+                case .failure(let error):
+                    viewModel.errorMessage = "Failed to open file: \(error.localizedDescription)"
+                }
+            }
+            .alert("OPML Import Complete", isPresented: .init(
+                get: { viewModel.opmlImportResult != nil },
+                set: { if !$0 { viewModel.opmlImportResult = nil } }
+            )) {
+                Button("OK") { viewModel.opmlImportResult = nil }
+            } message: {
+                if let result = viewModel.opmlImportResult {
+                    Text("Added \(result.added) new feed\(result.added == 1 ? "" : "s"). \(result.skipped) already existed.")
+                }
             }
         }
     }
@@ -543,10 +576,31 @@ struct MainView: View {
             Button("Paste from Clipboard", systemImage: "doc.on.clipboard") {
                 pasteFromClipboard()
             }
+
+            Menu {
+                Button("From File...", systemImage: "doc") {
+                    showingOPMLFilePicker = true
+                }
+                Button("From URL...", systemImage: "link") {
+                    showingOPMLURLInput = true
+                }
+            } label: {
+                if viewModel.isImportingOPML {
+                    Label {
+                        Text("Importing OPML...")
+                    } icon: {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                } else {
+                    Label("Import OPML", systemImage: "square.and.arrow.down")
+                }
+            }
+            .disabled(viewModel.isImportingOPML)
         } header: {
             Text("Add RSS Feed")
         } footer: {
-            Text("Add RSS feed URLs individually or paste multiple URLs (one per line or comma-separated).")
+            Text("Add RSS feed URLs individually, paste multiple URLs, or import from an OPML file.")
         }
     }
 
@@ -666,6 +720,50 @@ struct MainView: View {
         case .error:
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.red)
+        }
+    }
+}
+
+/// Sheet for entering a remote OPML URL to import feeds from.
+private struct OPMLURLInputSheet: View {
+    let viewModel: MainViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("OPML URL", text: Bindable(viewModel).opmlURLInput)
+                        .textContentType(.URL)
+                        #if os(iOS)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        #endif
+                } footer: {
+                    Text("Enter the URL of an OPML file containing RSS feed subscriptions.")
+                }
+            }
+            .navigationTitle("Import OPML from URL")
+            #if os(macOS)
+            .frame(minWidth: 400, minHeight: 150)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        viewModel.opmlURLInput = ""
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Import") {
+                        Task {
+                            await viewModel.importOPMLFromURL()
+                            dismiss()
+                        }
+                    }
+                    .disabled(viewModel.opmlURLInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
         }
     }
 }
