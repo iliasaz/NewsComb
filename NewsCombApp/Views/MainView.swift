@@ -733,19 +733,21 @@ private struct OPMLURLInputSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("OPML URL", text: Bindable(viewModel).opmlURLInput)
+                    TextField("URL", text: Bindable(viewModel).opmlURLInput, prompt: Text("https://example.com/feeds.opml"))
                         .textContentType(.URL)
                         #if os(iOS)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         #endif
                 } footer: {
-                    Text("Enter the URL of an OPML file containing RSS feed subscriptions.")
+                    Text("Paste a link to an OPML file.")
                 }
             }
-            .navigationTitle("Import OPML from URL")
+            .formStyle(.grouped)
+            .navigationTitle("Import OPML")
             #if os(macOS)
-            .frame(minWidth: 400, minHeight: 150)
+            .padding()
+            .frame(minWidth: 450, idealWidth: 500, minHeight: 160)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
