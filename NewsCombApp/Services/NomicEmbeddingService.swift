@@ -27,6 +27,13 @@ final class NomicEmbeddingService: Sendable {
 
     // MARK: - Public API
 
+    /// Ensures the model is downloaded and ready before concurrent work begins.
+    /// Call this once before spawning parallel embedding tasks.
+    @concurrent
+    func ensureModelLoaded() async throws {
+        _ = try await modelHolder.modelBundle(logger: logger)
+    }
+
     /// Embeds a single text string, returning a Float array of dimension 768.
     @concurrent
     func embed(_ text: String) async throws -> [Float] {
@@ -60,20 +67,42 @@ final class NomicEmbeddingService: Sendable {
 // MARK: - Model Holder Actor
 
 /// Actor that ensures the model bundle is loaded exactly once.
+///
+/// Uses a coalescing Task to avoid the actor-reentrancy problem:
+/// when the first caller awaits the download, subsequent callers
+/// await the *same* Task instead of starting a second download.
 private actor ModelHolder {
     private var cachedBundle: NomicBert.ModelBundle?
+    private var loadingTask: Task<NomicBert.ModelBundle, any Error>?
 
     func modelBundle(logger: Logger) async throws -> NomicBert.ModelBundle {
         if let cachedBundle {
             return cachedBundle
         }
 
-        logger.info("Loading Nomic embedding model from Hugging Face Hub: \(NomicEmbeddingService.modelName, privacy: .public)")
-        let bundle = try await NomicBert.loadModelBundle(
-            from: NomicEmbeddingService.modelName
-        )
-        cachedBundle = bundle
-        logger.info("Nomic embedding model loaded successfully")
-        return bundle
+        // If a download is already in flight, await it instead of starting another.
+        if let loadingTask {
+            return try await loadingTask.value
+        }
+
+        let task = Task {
+            logger.info("Loading Nomic embedding model from Hugging Face Hub: \(NomicEmbeddingService.modelName, privacy: .public)")
+            let bundle = try await NomicBert.loadModelBundle(
+                from: NomicEmbeddingService.modelName
+            )
+            logger.info("Nomic embedding model loaded successfully")
+            return bundle
+        }
+        loadingTask = task
+
+        do {
+            let bundle = try await task.value
+            cachedBundle = bundle
+            loadingTask = nil
+            return bundle
+        } catch {
+            loadingTask = nil
+            throw error
+        }
     }
 }

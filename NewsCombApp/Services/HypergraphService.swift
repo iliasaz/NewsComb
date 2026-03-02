@@ -221,6 +221,13 @@ final class HypergraphService: Sendable {
         let settings = try loadSettings()
         let maxConcurrent = settings.maxConcurrentProcessing
 
+        // Pre-download the embedding model before spawning concurrent tasks.
+        // This avoids a race where multiple tasks try to download simultaneously.
+        if settings.embeddingProvider != "openrouter" {
+            logger.info("Ensuring Nomic embedding model is downloaded before processing")
+            try await NomicEmbeddingService.shared.ensureModelLoaded()
+        }
+
         let totalCount = articles.count
         var processedCount = 0
         var failedCount = 0
