@@ -331,7 +331,7 @@ final class GraphRAGService: Sendable {
         }
     }
 
-    /// Generates an embedding using the configured provider (Ollama or OpenRouter).
+    /// Generates an embedding using the configured provider (Nomic on-device or OpenRouter).
     @MainActor
     private func embedText(_ text: String, settings: LLMSettings) async throws -> [Float] {
         if settings.embeddingProvider == "openrouter" {
@@ -346,16 +346,7 @@ final class GraphRAGService: Sendable {
             )
             return try await service.embed(text)
         } else {
-            let embeddingEndpoint = settings.embeddingOllamaEndpoint ?? settings.ollamaEndpoint ?? AppSettings.defaultEmbeddingOllamaEndpoint
-            let embeddingModel = settings.embeddingOllamaModel ?? AppSettings.defaultEmbeddingOllamaModel
-
-            let ollama: OllamaService
-            if let host = URL(string: embeddingEndpoint) {
-                ollama = OllamaService(host: host, embeddingModel: embeddingModel)
-            } else {
-                ollama = OllamaService(embeddingModel: embeddingModel)
-            }
-            return try await ollama.embed(text)
+            return try await NomicEmbeddingService.shared.embed(text)
         }
     }
 
@@ -1014,19 +1005,8 @@ final class GraphRAGService: Sendable {
             if let provider = try AppSettings
                 .filter(AppSettings.Columns.key == AppSettings.embeddingProvider)
                 .fetchOne(db) {
-                settings.embeddingProvider = provider.value
-            }
-
-            if let endpoint = try AppSettings
-                .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaEndpoint)
-                .fetchOne(db) {
-                settings.embeddingOllamaEndpoint = endpoint.value
-            }
-
-            if let model = try AppSettings
-                .filter(AppSettings.Columns.key == AppSettings.embeddingOllamaModel)
-                .fetchOne(db) {
-                settings.embeddingOllamaModel = model.value
+                // Migrate legacy "ollama" provider to "nomic"
+                settings.embeddingProvider = provider.value == "ollama" ? "nomic" : provider.value
             }
 
             if let model = try AppSettings

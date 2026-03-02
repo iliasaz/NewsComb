@@ -10,6 +10,7 @@
 		490FA38C2F1B7D1200BAEBFC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA38B2F1B7D1200BAEBFC /* GRDB */; };
 		490FA38E2F1B7D1200BAEBFC /* SQLiteExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA38D2F1B7D1200BAEBFC /* SQLiteExtensions */; };
 		490FA3912F1B7E1000BAEBFC /* HyperGraphReasoning in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3902F1B7E1000BAEBFC /* HyperGraphReasoning */; };
+		490FA3942F1B7E2000BAEBFC /* Embeddings in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3932F1B7E2000BAEBFC /* Embeddings */; };
 		491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000021 /* FeedKit */; };
 		491E2BE42F16EC2300D1840C /* PostlightSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000050 /* PostlightSwift */; };
 /* End PBXBuildFile section */
@@ -88,6 +89,7 @@
 			files = (
 				490FA3912F1B7E1000BAEBFC /* HyperGraphReasoning in Frameworks */,
 				490FA38C2F1B7D1200BAEBFC /* GRDB in Frameworks */,
+				490FA3942F1B7E2000BAEBFC /* Embeddings in Frameworks */,
 				491E2BE42F16EC2300D1840C /* PostlightSwift in Frameworks */,
 				490FA38E2F1B7D1200BAEBFC /* SQLiteExtensions in Frameworks */,
 				491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */,
@@ -165,6 +167,7 @@
 				490FA38B2F1B7D1200BAEBFC /* GRDB */,
 				490FA38D2F1B7D1200BAEBFC /* SQLiteExtensions */,
 				490FA3902F1B7E1000BAEBFC /* HyperGraphReasoning */,
+				490FA3932F1B7E2000BAEBFC /* Embeddings */,
 			);
 			productName = NewsCombApp;
 			productReference = 8A0000000000000000000001 /* NewsCombApp.app */;
@@ -249,6 +252,7 @@
 				8A0000000000000000000051 /* XCRemoteSwiftPackageReference "postlight-swift" */,
 				490FA38A2F1B7D1200BAEBFC /* XCLocalSwiftPackageReference "GRDBCustom" */,
 				490FA38F2F1B7E1000BAEBFC /* XCLocalSwiftPackageReference "../HyperGraphReasoning/hypergraph-reasoning-swift" */,
+				490FA3922F1B7E2000BAEBFC /* XCRemoteSwiftPackageReference "swift-embeddings" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8A0000000000000000000005 /* Products */;
@@ -647,6 +651,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		490FA3922F1B7E2000BAEBFC /* XCRemoteSwiftPackageReference "swift-embeddings" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jkrukowski/swift-embeddings";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.16;
+			};
+		};
 		8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/nmdias/FeedKit";
@@ -677,6 +689,11 @@
 		490FA3902F1B7E1000BAEBFC /* HyperGraphReasoning */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = HyperGraphReasoning;
+		};
+		490FA3932F1B7E2000BAEBFC /* Embeddings */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 490FA3922F1B7E2000BAEBFC /* XCRemoteSwiftPackageReference "swift-embeddings" */;
+			productName = Embeddings;
 		};
 		8A0000000000000000000021 /* FeedKit */ = {
 			isa = XCSwiftPackageProductDependency;

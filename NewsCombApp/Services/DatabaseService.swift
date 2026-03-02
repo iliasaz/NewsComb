@@ -524,8 +524,6 @@ public final class Database: Sendable {
 
             // Embedding Configuration
             (AppSettings.embeddingProvider, AppSettings.defaultEmbeddingProvider),
-            (AppSettings.embeddingOllamaEndpoint, AppSettings.defaultEmbeddingOllamaEndpoint),
-            (AppSettings.embeddingOllamaModel, AppSettings.defaultEmbeddingOllamaModel),
             (AppSettings.embeddingOpenRouterModel, AppSettings.defaultEmbeddingOpenRouterModel),
             (AppSettings.embeddingDimension, String(AppSettings.defaultEmbeddingDimension)),
 
