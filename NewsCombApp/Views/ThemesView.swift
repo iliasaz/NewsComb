@@ -22,10 +22,21 @@ struct ThemesView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Button("Recompute", systemImage: "arrow.triangle.2.circlepath") {
-                        Task {
-                            await viewModel.rebuildClusters()
+                    Menu {
+                        Button("Recompute All", systemImage: "arrow.triangle.2.circlepath") {
+                            Task {
+                                await viewModel.rebuildClusters()
+                            }
                         }
+
+                        Button("Regenerate Summaries", systemImage: "text.badge.star") {
+                            Task {
+                                await viewModel.regenerateSummaries()
+                            }
+                        }
+                        .disabled(!viewModel.hasClusters)
+                    } label: {
+                        Label("Actions", systemImage: "ellipsis.circle")
                     }
                 }
             }

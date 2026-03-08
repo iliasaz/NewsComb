@@ -36,6 +36,7 @@ final class ThemeClusterViewModel {
     // MARK: - Internal
 
     private let clusteringService = ClusteringService()
+    private let clusterLabelingService = ClusterLabelingService()
     private let database = Database.shared
     private let logger = Logger(subsystem: "com.newscomb", category: "ThemeClusterViewModel")
 
@@ -97,6 +98,45 @@ final class ThemeClusterViewModel {
             logger.info("Cluster rebuild cancelled")
         } catch {
             logger.error("Cluster rebuild failed: \(error.localizedDescription, privacy: .public)")
+            rebuildError = error.localizedDescription
+        }
+
+        isRebuilding = false
+    }
+
+    /// Re-runs only the LLM labeling step for existing clusters.
+    func regenerateSummaries() async {
+        guard !isRebuilding else { return }
+        guard let buildId = clusters.first?.buildId else {
+            rebuildError = "No clusters to regenerate summaries for."
+            return
+        }
+
+        isRebuilding = true
+        rebuildError = nil
+        rebuildProgress = 0
+        rebuildStatus = "Regenerating summaries\u{2026}"
+
+        do {
+            await clusterLabelingService.labelClusters(
+                buildId: buildId,
+                statusCallback: { [weak self] status in
+                    self?.rebuildStatus = status
+                },
+                progressCallback: { [weak self] progress in
+                    self?.rebuildProgress = progress
+                }
+            )
+
+            loadClusters()
+            rebuildStatus = ""
+            logger.info("Summary regeneration completed")
+
+        } catch is CancellationError {
+            rebuildStatus = ""
+            logger.info("Summary regeneration cancelled")
+        } catch {
+            logger.error("Summary regeneration failed: \(error.localizedDescription, privacy: .public)")
             rebuildError = error.localizedDescription
         }
 

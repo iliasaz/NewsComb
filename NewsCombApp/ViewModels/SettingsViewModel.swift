@@ -98,11 +98,16 @@ class SettingsViewModel {
     var engineerAgentPrompt: String = AppSettings.defaultEngineerAgentPrompt
     var hypothesizerAgentPrompt: String = AppSettings.defaultHypothesizerAgentPrompt
 
+    /// True when the selected embedding provider's dimension doesn't match
+    /// the dimension the vec0 tables were built with, and graph data exists.
+    var needsGraphRebuild = false
+
     private let database = Database.shared
 
     func loadData() {
         loadRSSSources()
         loadAPIKeys()
+        checkEmbeddingDimensionMismatch()
     }
 
     private func loadRSSSources() {
@@ -354,6 +359,7 @@ class SettingsViewModel {
 
     func saveEmbeddingProvider() {
         saveAPIKey(key: AppSettings.embeddingProvider, value: embeddingProvider.rawValue)
+        checkEmbeddingDimensionMismatch()
     }
 
     func saveEmbeddingOpenRouterModel() {
@@ -362,6 +368,7 @@ class SettingsViewModel {
 
     func saveEmbeddingDimension() {
         saveAPIKey(key: AppSettings.embeddingDimension, value: String(embeddingDimension))
+        checkEmbeddingDimensionMismatch()
     }
 
     // MARK: - Analysis LLM Save Methods
@@ -462,6 +469,36 @@ class SettingsViewModel {
     func resetHypothesizerAgentPromptToDefault() {
         hypothesizerAgentPrompt = AppSettings.defaultHypothesizerAgentPrompt
         saveHypothesizerAgentPrompt()
+    }
+
+    // MARK: - Embedding Dimension Mismatch Detection
+
+    /// Checks whether the effective embedding dimension for the current provider
+    /// differs from what the vec0 tables were built with, and graph data exists.
+    func checkEmbeddingDimensionMismatch() {
+        do {
+            needsGraphRebuild = try database.read { db in
+                let effectiveDim = try AppSettings.effectiveEmbeddingDimension(db)
+
+                let activeDim: Int
+                if let setting = try AppSettings
+                    .filter(AppSettings.Columns.key == AppSettings.activeEmbeddingDimension)
+                    .fetchOne(db),
+                   let value = Int(setting.value) {
+                    activeDim = value
+                } else {
+                    activeDim = 0
+                }
+
+                guard effectiveDim != activeDim else { return false }
+
+                // Only warn if there's existing graph data that would conflict
+                let nodeCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM hypergraph_node") ?? 0
+                return nodeCount > 0
+            }
+        } catch {
+            needsGraphRebuild = false
+        }
     }
 
     private func saveAPIKey(key: String, value: String) {

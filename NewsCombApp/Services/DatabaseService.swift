@@ -431,29 +431,9 @@ public final class Database: Sendable {
     /// Compares `active_embedding_dimension` with `embedding_dimension`.
     /// When they differ the old tables are dropped and recreated with the new size.
     private func createVec0Tables(_ db: GRDB.Database) throws {
-        // Read the desired dimension from settings, clamped to the sqlite-vec maximum
-        let rawDim: Int
-        if let setting = try AppSettings
-            .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
-            .fetchOne(db),
-           let value = Int(setting.value) {
-            rawDim = value
-        } else {
-            rawDim = AppSettings.defaultEmbeddingDimension
-        }
-        let desiredDim = min(rawDim, AppSettings.maxEmbeddingDimension)
-
-        // If the stored value exceeds the cap, correct it so Settings UI stays in sync
-        if rawDim > AppSettings.maxEmbeddingDimension {
-            Self.logger.warning("Stored embedding_dimension (\(rawDim)) exceeds max (\(AppSettings.maxEmbeddingDimension)). Clamping.")
-            try db.execute(
-                sql: """
-                    INSERT INTO app_settings (key, value) VALUES (?, ?)
-                    ON CONFLICT(key) DO UPDATE SET value = excluded.value
-                """,
-                arguments: [AppSettings.embeddingDimension, String(desiredDim)]
-            )
-        }
+        // Derive the desired dimension from the active embedding provider.
+        // Nomic always produces 768-d vectors; OpenRouter uses the configured dimension.
+        let desiredDim = try AppSettings.effectiveEmbeddingDimension(db)
 
         // Read the active dimension (what the tables were last created with)
         let activeDim: Int

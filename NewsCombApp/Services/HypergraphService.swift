@@ -454,12 +454,9 @@ final class HypergraphService: Sendable {
                 settings.embeddingOpenRouterModel = model.value
             }
 
-            if let setting = try AppSettings
-                .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
-                .fetchOne(db),
-               let value = Int(setting.value) {
-                settings.embeddingDimension = min(value, AppSettings.maxEmbeddingDimension)
-            }
+            // Use the provider-aware dimension: Nomic always produces 768-d,
+            // OpenRouter uses the user-configured dimension.
+            settings.embeddingDimension = try AppSettings.effectiveEmbeddingDimension(db)
 
             // Temperature configuration
             if let setting = try AppSettings
@@ -894,16 +891,9 @@ final class HypergraphService: Sendable {
     /// effect without requiring a manual graph reset when no data exists yet.
     private func ensureVec0TablesMatchDimension() throws {
         try database.write { db in
-            let rawDim: Int
-            if let setting = try AppSettings
-                .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
-                .fetchOne(db),
-               let value = Int(setting.value) {
-                rawDim = value
-            } else {
-                rawDim = AppSettings.defaultEmbeddingDimension
-            }
-            let desiredDim = min(rawDim, AppSettings.maxEmbeddingDimension)
+            // Derive the desired dimension from the active embedding provider.
+            // Nomic always produces 768-d vectors; OpenRouter uses the configured dimension.
+            let desiredDim = try AppSettings.effectiveEmbeddingDimension(db)
 
             let activeDim: Int
             if let setting = try AppSettings

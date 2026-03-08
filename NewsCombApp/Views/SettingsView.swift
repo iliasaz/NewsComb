@@ -131,11 +131,19 @@ struct SettingsView: View {
                     viewModel.saveEmbeddingDimension()
                 }
             }
+
+            if viewModel.needsGraphRebuild {
+                Label(
+                    "Embedding dimensions have changed. Reset the knowledge graph before processing new articles.",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .foregroundStyle(.orange)
+            }
         } header: {
             Text("Knowledge Extraction")
         } footer: {
             if viewModel.embeddingProvider == .nomic {
-                Text("Configure LLM for knowledge extraction. Nomic Embed Text v1.5 runs on-device via MLTensor (768-d vectors). Switching providers may require a knowledge graph reset.")
+                Text("Configure LLM for knowledge extraction. Nomic Embed Text v1.5 runs on-device via MLTensor (768-d vectors). Switching providers requires a knowledge graph reset.")
             } else {
                 Text("Configure LLM for knowledge extraction and embedding model for semantic search. Changing the embedding dimension requires a knowledge graph reset.")
             }

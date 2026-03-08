@@ -535,6 +535,15 @@ struct MainView: View {
                             .foregroundStyle(.purple)
                     }
 
+                    if viewModel.embeddingDimensionMismatch {
+                        Label(
+                            "Embedding model changed. Reset the knowledge graph before processing new articles.",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .foregroundStyle(.orange)
+                        .font(.caption)
+                    }
+
                     if !viewModel.isProcessingHypergraph && !viewModel.isSimplifyingGraph {
                         if viewModel.isResettingGraph {
                             HStack(spacing: 8) {

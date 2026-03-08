@@ -22,14 +22,26 @@ final class ClusterLabelingService: Sendable {
     // MARK: - System Prompt
 
     private static let systemPrompt = """
-        You are a concise news editor. Given a cluster of related news events, \
-        produce a short headline and a brief summary paragraph.
+        You are a news analyst writing thematic overviews. You are given data about \
+        a news topic or trend that was automatically identified from multiple news \
+        articles. Your job is to synthesize the data into a clear, informative overview.
+
+        You will receive:
+        - Key entities (people, companies, products) involved in this topic
+        - Types of relationships between them
+        - Representative events extracted from the articles (in Subject-Verb-Object form)
+        - Source articles with headlines and publisher descriptions
 
         Rules:
-        - The title must be under 10 words and specific (like a newspaper headline).
-        - The summary must be exactly one paragraph of 2-4 sentences.
-        - Focus on WHAT happened, WHO is involved, and WHY it matters.
-        - Write in a neutral, factual news tone.
+        - The title must be a specific, descriptive headline (under 10 words).
+        - The summary must be 2-4 sentences that explain the topic: what is happening, \
+        who are the main players, and why it matters.
+        - Synthesize the information into a coherent narrative. Do NOT critique or \
+        comment on the quality of the data.
+        - Write in a neutral, informative news tone.
+        - Use the article headlines, descriptions, and entity names to ground your summary in specifics.
+        - Only state facts present in the provided data. Do not infer or speculate beyond what is given.
+        - Refer to this as a "topic" or "theme", never as a "cluster".
 
         Output EXACTLY this JSON: {"title": "...", "summary": "..."}
         """
@@ -91,11 +103,11 @@ final class ClusterLabelingService: Sendable {
             await statusCallback?("Generating theme summary \(index + 1)/\(clusters.count)\u{2026}")
 
             do {
-                let exemplars = try loadExemplarSentences(clusterId: cluster.clusterId)
+                let exemplars = try loadExemplars(clusterId: cluster.clusterId)
                 let userPrompt = buildUserPrompt(
                     topEntities: cluster.topEntities,
                     topFamilies: cluster.topRelFamilies,
-                    exemplarSentences: exemplars
+                    exemplars: exemplars
                 )
 
                 let response = try await callLLM(
@@ -129,11 +141,19 @@ final class ClusterLabelingService: Sendable {
 
     // MARK: - Exemplar Loading
 
-    /// Loads S-V-O sentences for a cluster's exemplar events.
+    /// Context for a single exemplar event: the S-V-O sentence and the source article metadata.
+    struct ExemplarContext {
+        let sentence: String
+        let articleTitle: String?
+        let articleDescription: String?
+    }
+
+    /// Loads S-V-O sentences, article titles, and RSS descriptions for a cluster's exemplar events.
     ///
     /// Joins `cluster_exemplars → hypergraph_edge → hypergraph_incidence → hypergraph_node`
-    /// to produce sentences like `"Apple announces Vision Pro headset"`.
-    private func loadExemplarSentences(clusterId: Int64) throws -> [String] {
+    /// to produce sentences like `"Apple announces Vision Pro headset"`, plus article metadata
+    /// from `article_edge_provenance → feed_item` for additional context.
+    private func loadExemplars(clusterId: Int64) throws -> [ExemplarContext] {
         try database.read { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT
@@ -144,7 +164,21 @@ final class ClusterLabelingService: Sendable {
                     ) AS subjects,
                     GROUP_CONCAT(
                         CASE WHEN i.role = 'object' THEN n.label END
-                    ) AS objects
+                    ) AS objects,
+                    (
+                        SELECT fi.title
+                        FROM article_edge_provenance aep
+                        JOIN feed_item fi ON fi.id = aep.feed_item_id
+                        WHERE aep.edge_id = e.id
+                        LIMIT 1
+                    ) AS article_title,
+                    (
+                        SELECT fi.rss_description
+                        FROM article_edge_provenance aep
+                        JOIN feed_item fi ON fi.id = aep.feed_item_id
+                        WHERE aep.edge_id = e.id AND fi.rss_description IS NOT NULL
+                        LIMIT 1
+                    ) AS article_description
                 FROM cluster_exemplars ce
                 JOIN hypergraph_edge e ON e.id = ce.event_id
                 JOIN hypergraph_incidence i ON i.edge_id = e.id
@@ -155,44 +189,85 @@ final class ClusterLabelingService: Sendable {
                 LIMIT 8
             """, arguments: [clusterId])
 
-            return rows.compactMap { row -> String? in
+            return rows.compactMap { row -> ExemplarContext? in
                 let verb: String = row["verb"]
                 let subjects: String? = row["subjects"]
                 let objects: String? = row["objects"]
+                let articleTitle: String? = row["article_title"]
+                let articleDescription: String? = row["article_description"]
 
                 let subjectPart = subjects ?? "Unknown"
                 let verbPart = verb
                 let objectPart = objects.map { " \($0)" } ?? ""
 
                 let sentence = "\(subjectPart) \(verbPart)\(objectPart)"
-                return sentence.isEmpty ? nil : sentence
+                guard !sentence.isEmpty else { return nil }
+                return ExemplarContext(
+                    sentence: sentence,
+                    articleTitle: articleTitle,
+                    articleDescription: articleDescription
+                )
             }
         }
     }
 
     // MARK: - Prompt Building
 
-    /// Builds the per-cluster user prompt from entities, relation families, and S-V-O sentences.
+    /// Builds the per-cluster user prompt from entities, relation families, exemplars, and article context.
     func buildUserPrompt(
         topEntities: [RankedEntity],
         topFamilies: [RankedFamily],
-        exemplarSentences: [String]
+        exemplars: [ExemplarContext]
     ) -> String {
         let entities = topEntities.prefix(10).map(\.label).joined(separator: ", ")
         let families = topFamilies.prefix(5).map(\.family).joined(separator: ", ")
-        let sentences = exemplarSentences.prefix(8)
+        let sentences = exemplars.prefix(8)
             .enumerated()
-            .map { "\($0.offset + 1). \($0.element)" }
+            .map { "\($0.offset + 1). \($0.element.sentence)" }
             .joined(separator: "\n")
 
-        return """
-            Top entities: \(entities)
+        // Deduplicated article headlines
+        var seenTitles = Set<String>()
+        let headlines = exemplars.compactMap { $0.articleTitle }
+            .filter { seenTitles.insert($0).inserted }
 
-            Relation types: \(families)
+        // Deduplicated article descriptions (RSS summaries from the publishers)
+        var seenDescriptions = Set<String>()
+        let descriptions = exemplars.compactMap { $0.articleDescription }
+            .filter { seenDescriptions.insert($0).inserted }
 
-            Key events:
+        // Combine headlines with their descriptions where available
+        var articleContext: [String] = []
+        for title in headlines.prefix(6) {
+            // Find the matching description for this title
+            let desc = exemplars.first { $0.articleTitle == title }?.articleDescription
+            if let desc {
+                articleContext.append("- \(title)\n  \(desc)")
+            } else {
+                articleContext.append("- \(title)")
+            }
+        }
+        // Add any descriptions from articles whose titles we didn't include
+        for desc in descriptions where !exemplars.contains(where: {
+            headlines.prefix(6).contains($0.articleTitle ?? "") && $0.articleDescription == desc
+        }) {
+            articleContext.append("- \(desc)")
+        }
+
+        var prompt = """
+            Key entities: \(entities)
+
+            Relationship types: \(families)
+
+            Representative events:
             \(sentences)
             """
+
+        if !articleContext.isEmpty {
+            prompt += "\n\nSource articles:\n\(articleContext.prefix(8).joined(separator: "\n"))"
+        }
+
+        return prompt
     }
 
     // MARK: - Response Parsing

@@ -1015,12 +1015,9 @@ final class GraphRAGService: Sendable {
                 settings.embeddingOpenRouterModel = model.value
             }
 
-            if let setting = try AppSettings
-                .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
-                .fetchOne(db),
-               let value = Int(setting.value) {
-                settings.embeddingDimension = min(value, AppSettings.maxEmbeddingDimension)
-            }
+            // Use the provider-aware dimension: Nomic always produces 768-d,
+            // OpenRouter uses the user-configured dimension.
+            settings.embeddingDimension = try AppSettings.effectiveEmbeddingDimension(db)
 
             // Temperature configuration
             if let setting = try AppSettings

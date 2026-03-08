@@ -33,6 +33,7 @@ struct ThemeDetailView: View {
         Section {
             if let summary = viewModel.cluster.summary {
                 Text(summary)
+                    .textSelection(.enabled)
             }
 
             LabeledContent("Events", value: "\(viewModel.cluster.size)")

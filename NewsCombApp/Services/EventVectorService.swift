@@ -26,17 +26,11 @@ final class EventVectorService: Sendable {
         self.eventVecDim = 3 * dim + RelationFamily.count
     }
 
-    /// Reads the embedding dimension from app settings.
+    /// Reads the effective embedding dimension for the active provider.
     private static func loadEmbeddingDimension() -> Int {
         do {
             return try Database.shared.read { db in
-                if let setting = try AppSettings
-                    .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
-                    .fetchOne(db),
-                   let value = Int(setting.value) {
-                    return min(value, AppSettings.maxEmbeddingDimension)
-                }
-                return AppSettings.defaultEmbeddingDimension
+                return try AppSettings.effectiveEmbeddingDimension(db)
             }
         } catch {
             return AppSettings.defaultEmbeddingDimension

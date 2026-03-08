@@ -47,6 +47,39 @@ extension AppSettings {
     /// Used to detect when tables need to be recreated after a dimension change.
     static let activeEmbeddingDimension = "active_embedding_dimension"
 
+    /// Returns the effective embedding dimension for the currently active provider.
+    ///
+    /// Nomic Embed Text v1.5 always produces 768-d vectors regardless of the
+    /// `embedding_dimension` setting (which is only meaningful for OpenRouter).
+    /// This helper ensures vec0 tables are created with the correct size.
+    static func effectiveEmbeddingDimension(_ db: GRDB.Database) throws -> Int {
+        let provider: String
+        if let setting = try AppSettings
+            .filter(Columns.key == embeddingProvider)
+            .fetchOne(db) {
+            // Migrate legacy "ollama" provider to "nomic"
+            provider = setting.value == "ollama" ? "nomic" : setting.value
+        } else {
+            provider = defaultEmbeddingProvider
+        }
+
+        if provider == "nomic" {
+            return NomicEmbeddingService.embeddingDimension  // 768
+        }
+
+        // OpenRouter: use the user-configured dimension, clamped to the sqlite-vec limit
+        let rawDim: Int
+        if let setting = try AppSettings
+            .filter(Columns.key == embeddingDimension)
+            .fetchOne(db),
+           let value = Int(setting.value) {
+            rawDim = value
+        } else {
+            rawDim = defaultEmbeddingDimension
+        }
+        return min(rawDim, maxEmbeddingDimension)
+    }
+
     // Analysis LLM Configuration (for answers and deep analysis)
     static let analysisLLMProvider = "analysis_llm_provider"
     static let defaultAnalysisLLMProvider = ""  // Empty = Same as Chat LLM

@@ -54,6 +54,10 @@ class MainViewModel {
     // Graph reset state
     var isResettingGraph = false
 
+    /// True when the current embedding provider's dimension doesn't match
+    /// the vec0 tables, and existing graph data would conflict.
+    var embeddingDimensionMismatch = false
+
     // Graph simplification state (set during auto-simplify at end of processing)
     var isSimplifyingGraph = false
 
@@ -421,17 +425,8 @@ class MainViewModel {
                     try db.execute(sql: "DELETE FROM chunk_embedding_metadata")
                     try db.execute(sql: "DELETE FROM node_embedding_metadata")
 
-                    // Drop and recreate vec0 tables with current dimension (clamped to max)
-                    let rawDim: Int
-                    if let setting = try AppSettings
-                        .filter(AppSettings.Columns.key == AppSettings.embeddingDimension)
-                        .fetchOne(db),
-                       let value = Int(setting.value) {
-                        rawDim = value
-                    } else {
-                        rawDim = AppSettings.defaultEmbeddingDimension
-                    }
-                    let embDim = min(rawDim, AppSettings.maxEmbeddingDimension)
+                    // Drop and recreate vec0 tables with the provider-aware dimension
+                    let embDim = try AppSettings.effectiveEmbeddingDimension(db)
                     let eventVecDim = 3 * embDim + 12  // 12 = RelationFamily.count
 
                     try db.execute(sql: "DROP TABLE IF EXISTS event_vectors")
@@ -511,6 +506,7 @@ class MainViewModel {
                 await MainActor.run { [weak self] in
                     self?.hypergraphStats = nil
                     self?.isResettingGraph = false
+                    self?.embeddingDimensionMismatch = false
                 }
             } catch {
                 await MainActor.run { [weak self] in
@@ -689,12 +685,42 @@ class MainViewModel {
         hypergraphProcessingStatus = "Cancelling..."
     }
 
-    /// Loads hypergraph statistics.
+    /// Loads hypergraph statistics and checks for embedding dimension mismatch.
     func loadHypergraphStats() {
         do {
             hypergraphStats = try hypergraphService.getStatistics()
         } catch {
             // Silently fail - stats are not critical
+        }
+        checkEmbeddingDimensionMismatch()
+    }
+
+    // MARK: - Embedding Dimension Mismatch
+
+    /// Checks whether the current embedding provider's dimension conflicts
+    /// with the existing vec0 tables and graph data.
+    private func checkEmbeddingDimensionMismatch() {
+        do {
+            embeddingDimensionMismatch = try database.read { db in
+                let effectiveDim = try AppSettings.effectiveEmbeddingDimension(db)
+
+                let activeDim: Int
+                if let setting = try AppSettings
+                    .filter(AppSettings.Columns.key == AppSettings.activeEmbeddingDimension)
+                    .fetchOne(db),
+                   let value = Int(setting.value) {
+                    activeDim = value
+                } else {
+                    activeDim = 0
+                }
+
+                guard effectiveDim != activeDim else { return false }
+
+                let nodeCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM hypergraph_node") ?? 0
+                return nodeCount > 0
+            }
+        } catch {
+            embeddingDimensionMismatch = false
         }
     }
 
