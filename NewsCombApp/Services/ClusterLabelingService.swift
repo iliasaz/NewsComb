@@ -29,7 +29,8 @@ final class ClusterLabelingService: Sendable {
         You will receive:
         - Key entities (people, companies, products) involved in this topic
         - Types of relationships between them
-        - Representative events extracted from the articles (in Subject-Verb-Object form)
+        - Representative events extracted from the articles (in Subject-Verb-Object form), \
+        each with original source context from the article text when available
         - Source articles with headlines and publisher descriptions
 
         Rules:
@@ -141,9 +142,10 @@ final class ClusterLabelingService: Sendable {
 
     // MARK: - Exemplar Loading
 
-    /// Context for a single exemplar event: the S-V-O sentence and the source article metadata.
+    /// Context for a single exemplar event: the S-V-O sentence, source chunk text, and article metadata.
     struct ExemplarContext {
         let sentence: String
+        let chunkText: String?
         let articleTitle: String?
         let articleDescription: String?
     }
@@ -165,6 +167,15 @@ final class ClusterLabelingService: Sendable {
                     GROUP_CONCAT(
                         CASE WHEN i.role = 'object' THEN n.label END
                     ) AS objects,
+                    (
+                        SELECT COALESCE(aep.chunk_text, ac.content)
+                        FROM article_edge_provenance aep
+                        LEFT JOIN article_chunk ac
+                            ON ac.feed_item_id = aep.feed_item_id
+                            AND ac.chunk_index = aep.chunk_index
+                        WHERE aep.edge_id = e.id
+                        LIMIT 1
+                    ) AS chunk_text,
                     (
                         SELECT fi.title
                         FROM article_edge_provenance aep
@@ -193,6 +204,7 @@ final class ClusterLabelingService: Sendable {
                 let verb: String = row["verb"]
                 let subjects: String? = row["subjects"]
                 let objects: String? = row["objects"]
+                let chunkText: String? = row["chunk_text"]
                 let articleTitle: String? = row["article_title"]
                 let articleDescription: String? = row["article_description"]
 
@@ -204,6 +216,7 @@ final class ClusterLabelingService: Sendable {
                 guard !sentence.isEmpty else { return nil }
                 return ExemplarContext(
                     sentence: sentence,
+                    chunkText: chunkText,
                     articleTitle: articleTitle,
                     articleDescription: articleDescription
                 )
@@ -223,7 +236,15 @@ final class ClusterLabelingService: Sendable {
         let families = topFamilies.prefix(5).map(\.family).joined(separator: ", ")
         let sentences = exemplars.prefix(8)
             .enumerated()
-            .map { "\($0.offset + 1). \($0.element.sentence)" }
+            .map { index, exemplar in
+                var line = "\(index + 1). \(exemplar.sentence)"
+                if let chunk = exemplar.chunkText {
+                    // Truncate long chunks to keep the prompt focused
+                    let preview = chunk.count > 300 ? String(chunk.prefix(300)) + "..." : chunk
+                    line += "\n   Source context: \(preview)"
+                }
+                return line
+            }
             .joined(separator: "\n")
 
         // Deduplicated article headlines

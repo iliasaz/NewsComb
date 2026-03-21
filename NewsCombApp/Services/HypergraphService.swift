@@ -532,20 +532,26 @@ final class HypergraphService: Sendable {
         // Track nodes that need embeddings (populated inside write, generated after)
         var nodesNeedingEmbeddings: [(nodeLabel: String, nodeRowId: Int64)] = []
 
-        // Chunk the content for provenance tracking
-        let chunks = TextChunker.chunkText(content)
+        // Use the library's ChunkIndex for provenance tracking.
+        // The library identifies chunks by MD5 hash, not sequential index.
+        // Build a deterministic ordering so we can assign sequential integer
+        // indices for the article_chunk table.
+        let libraryChunkIDs = result.chunkIndex.chunkIDs.sorted()
 
         try database.write { db in
-            // Store article chunks and build a mapping from chunk index to chunk row ID
-            var chunkIdMap: [Int: Int64] = [:]
-            for (index, chunkContent) in chunks.enumerated() {
+            // Store article chunks keyed by the library's MD5 chunk IDs
+            var chunkHashToSequentialIndex: [String: Int] = [:]
+            var chunkHashToRowId: [String: Int64] = [:]
+            for (index, chunkHash) in libraryChunkIDs.enumerated() {
+                guard let chunkContent = result.chunkIndex[chunkHash] else { continue }
                 let chunkRowId = try self.upsertArticleChunk(
                     db: db,
                     feedItemId: feedItemId,
                     chunkIndex: index,
                     content: chunkContent
                 )
-                chunkIdMap[index] = chunkRowId
+                chunkHashToSequentialIndex[chunkHash] = index
+                chunkHashToRowId[chunkHash] = chunkRowId
                 chunksStored += 1
             }
 
@@ -555,16 +561,8 @@ final class HypergraphService: Sendable {
                 let edgeMetadata = result.metadata.first { $0.edge == edgeId }
                 let relation = edgeMetadata.map { self.extractRelation(from: $0) } ?? "unknown"
 
-                // Extract chunk index from metadata
-                let chunkIndex: Int?
-                if let meta = edgeMetadata {
-                    chunkIndex = Int(meta.chunkID.components(separatedBy: "_").last ?? "")
-                } else {
-                    chunkIndex = nil
-                }
-
-                // Get the chunk row ID if available
-                let sourceChunkId = chunkIndex.flatMap { chunkIdMap[$0] }
+                // Look up the chunk row ID via the library's MD5 chunk hash
+                let sourceChunkId = edgeMetadata.flatMap { chunkHashToRowId[$0.chunkID] }
 
                 // Upsert the edge with source chunk reference
                 let edgeRowId = try self.upsertEdge(
@@ -605,16 +603,15 @@ final class HypergraphService: Sendable {
                     )
                 }
 
-                // Create provenance link with chunk text
+                // Create provenance link with the actual source chunk text
                 if let meta = edgeMetadata {
-                    let chunkText = chunkIndex.flatMap { idx in
-                        idx < chunks.count ? chunks[idx] : nil
-                    }
+                    let chunkText = result.chunkIndex[meta.chunkID]
+                    let sequentialIndex = chunkHashToSequentialIndex[meta.chunkID] ?? 0
                     try self.upsertProvenance(
                         db: db,
                         edgeId: edgeRowId,
                         feedItemId: feedItemId,
-                        chunkId: meta.chunkID,
+                        chunkIndex: sequentialIndex,
                         chunkText: chunkText
                     )
                 }
@@ -739,10 +736,7 @@ final class HypergraphService: Sendable {
         )
     }
 
-    private func upsertProvenance(db: GRDB.Database, edgeId: Int64, feedItemId: Int64, chunkId: String, chunkText: String? = nil) throws {
-        // Extract chunk index from chunkId if possible
-        let chunkIndex = Int(chunkId.components(separatedBy: "_").last ?? "0") ?? 0
-
+    private func upsertProvenance(db: GRDB.Database, edgeId: Int64, feedItemId: Int64, chunkIndex: Int, chunkText: String?) throws {
         try db.execute(
             sql: """
                 INSERT INTO article_edge_provenance (edge_id, feed_item_id, chunk_index, chunk_text)

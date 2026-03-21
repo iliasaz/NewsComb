@@ -113,6 +113,20 @@ final class ClusterLabelingServiceTests: XCTestCase {
 
     // MARK: - buildUserPrompt Tests
 
+    private func makeExemplar(
+        sentence: String,
+        chunkText: String? = nil,
+        articleTitle: String? = nil,
+        articleDescription: String? = nil
+    ) -> ClusterLabelingService.ExemplarContext {
+        ClusterLabelingService.ExemplarContext(
+            sentence: sentence,
+            chunkText: chunkText,
+            articleTitle: articleTitle,
+            articleDescription: articleDescription
+        )
+    }
+
     func testBuildUserPrompt() {
         let entities = [
             RankedEntity(label: "Apple", score: 5.0),
@@ -123,15 +137,15 @@ final class ClusterLabelingServiceTests: XCTestCase {
             RankedFamily(family: "Competition", count: 10),
             RankedFamily(family: "Partnership", count: 5),
         ]
-        let sentences = [
-            "Apple launches new AI product",
-            "Google responds with competing service",
+        let exemplars = [
+            makeExemplar(sentence: "Apple launches new AI product"),
+            makeExemplar(sentence: "Google responds with competing service"),
         ]
 
         let prompt = service.buildUserPrompt(
             topEntities: entities,
             topFamilies: families,
-            exemplarSentences: sentences
+            exemplars: exemplars
         )
 
         XCTAssertTrue(prompt.contains("Apple"))
@@ -144,15 +158,14 @@ final class ClusterLabelingServiceTests: XCTestCase {
     }
 
     func testBuildUserPromptLimitsEntities() {
-        // Create more than 10 entities to verify the limit
         let entities = (1...15).map { RankedEntity(label: "Entity\($0)", score: Double(16 - $0)) }
         let families = [RankedFamily(family: "Action", count: 1)]
-        let sentences = ["Something happened"]
+        let exemplars = [makeExemplar(sentence: "Something happened")]
 
         let prompt = service.buildUserPrompt(
             topEntities: entities,
             topFamilies: families,
-            exemplarSentences: sentences
+            exemplars: exemplars
         )
 
         XCTAssertTrue(prompt.contains("Entity1"))
@@ -163,15 +176,99 @@ final class ClusterLabelingServiceTests: XCTestCase {
     func testBuildUserPromptLimitsSentences() {
         let entities = [RankedEntity(label: "Test", score: 1.0)]
         let families = [RankedFamily(family: "Action", count: 1)]
-        let sentences = (1...12).map { "Event number \($0)" }
+        let exemplars = (1...12).map { makeExemplar(sentence: "Event number \($0)") }
 
         let prompt = service.buildUserPrompt(
             topEntities: entities,
             topFamilies: families,
-            exemplarSentences: sentences
+            exemplars: exemplars
         )
 
         XCTAssertTrue(prompt.contains("8. Event number 8"))
         XCTAssertFalse(prompt.contains("9. Event number 9"))
+    }
+
+    // MARK: - Chunk Text in Prompt Tests
+
+    func testBuildUserPromptIncludesChunkText() {
+        let entities = [RankedEntity(label: "Apple", score: 5.0)]
+        let families = [RankedFamily(family: "launches", count: 1)]
+        let exemplars = [
+            makeExemplar(
+                sentence: "Apple launches Vision Pro",
+                chunkText: "Apple today announced the launch of Vision Pro, its first spatial computing device."
+            ),
+        ]
+
+        let prompt = service.buildUserPrompt(
+            topEntities: entities,
+            topFamilies: families,
+            exemplars: exemplars
+        )
+
+        XCTAssertTrue(prompt.contains("Source context:"))
+        XCTAssertTrue(prompt.contains("Apple today announced the launch of Vision Pro"))
+    }
+
+    func testBuildUserPromptOmitsSourceContextWhenChunkTextNil() {
+        let entities = [RankedEntity(label: "Apple", score: 5.0)]
+        let families = [RankedFamily(family: "launches", count: 1)]
+        let exemplars = [
+            makeExemplar(sentence: "Apple launches Vision Pro", chunkText: nil),
+        ]
+
+        let prompt = service.buildUserPrompt(
+            topEntities: entities,
+            topFamilies: families,
+            exemplars: exemplars
+        )
+
+        XCTAssertFalse(prompt.contains("Source context:"))
+        XCTAssertTrue(prompt.contains("1. Apple launches Vision Pro"))
+    }
+
+    func testBuildUserPromptTruncatesLongChunkText() {
+        let entities = [RankedEntity(label: "Apple", score: 5.0)]
+        let families = [RankedFamily(family: "launches", count: 1)]
+        let longText = String(repeating: "word ", count: 100) // 500 chars, exceeds 300 limit
+        let exemplars = [
+            makeExemplar(sentence: "Apple launches product", chunkText: longText),
+        ]
+
+        let prompt = service.buildUserPrompt(
+            topEntities: entities,
+            topFamilies: families,
+            exemplars: exemplars
+        )
+
+        XCTAssertTrue(prompt.contains("Source context:"))
+        XCTAssertTrue(prompt.contains("..."))
+        // The source context should be truncated to ~300 chars + "..."
+        let sourceLines = prompt.components(separatedBy: "\n")
+            .filter { $0.contains("Source context:") }
+        XCTAssertEqual(sourceLines.count, 1)
+    }
+
+    func testBuildUserPromptWithArticleContext() {
+        let entities = [RankedEntity(label: "Apple", score: 5.0)]
+        let families = [RankedFamily(family: "launches", count: 1)]
+        let exemplars = [
+            makeExemplar(
+                sentence: "Apple launches Vision Pro",
+                chunkText: "Apple announced its spatial computing device today.",
+                articleTitle: "Apple Enters Spatial Computing",
+                articleDescription: "The tech giant unveils its headset."
+            ),
+        ]
+
+        let prompt = service.buildUserPrompt(
+            topEntities: entities,
+            topFamilies: families,
+            exemplars: exemplars
+        )
+
+        XCTAssertTrue(prompt.contains("Source context: Apple announced"))
+        XCTAssertTrue(prompt.contains("Apple Enters Spatial Computing"))
+        XCTAssertTrue(prompt.contains("The tech giant unveils its headset."))
     }
 }

@@ -415,6 +415,20 @@ public final class Database: Sendable {
             try db.execute(sql: "INSERT INTO fts_node(fts_node) VALUES('rebuild')")
             try db.execute(sql: "INSERT INTO fts_chunk(fts_chunk) VALUES('rebuild')")
 
+            // Mark articles for reprocessing if their provenance has NULL chunk_text.
+            // The old extraction code left chunk_text unpopulated because it tried to
+            // parse sequential indices from MD5 hash chunk IDs. Deleting the processing
+            // status row makes getUnprocessedArticles() pick them up again via its
+            // LEFT JOIN ... WHERE ah.id IS NULL check.
+            try db.execute(sql: """
+                DELETE FROM article_hypergraph
+                WHERE feed_item_id IN (
+                    SELECT DISTINCT aep.feed_item_id
+                    FROM article_edge_provenance aep
+                    WHERE aep.chunk_text IS NULL
+                )
+            """)
+
             // Seed default settings if they don't exist
             try seedDefaultSettings(db)
 
