@@ -431,16 +431,37 @@ struct SettingsView: View {
     }
     private var socialSimulationSection: some View {
         Section {
-            // OASIS Integration
-            TextField("Python Path", text: $viewModel.simPythonPath)
-                .onChange(of: viewModel.simPythonPath) {
-                    viewModel.saveSimPythonPath()
-                }
+            // Environment Status
+            Button("Check Environment", systemImage: "arrow.triangle.2.circlepath") {
+                Task { await viewModel.checkOasisEnvironment() }
+            }
+            .disabled(viewModel.isCheckingEnvironment)
 
-            TextField("OASIS Working Directory", text: $viewModel.simWorkingDirectory)
-                .onChange(of: viewModel.simWorkingDirectory) {
-                    viewModel.saveSimWorkingDirectory()
+            LabeledContent("Python") {
+                if viewModel.isCheckingEnvironment {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if viewModel.simPythonDetectedPath.isEmpty || viewModel.simPythonDetectedPath == "Not found" {
+                    Text(viewModel.simPythonDetectedPath.isEmpty ? "Not checked" : "Not found")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(viewModel.simPythonDetectedPath)
+                        .foregroundStyle(.green)
                 }
+            }
+
+            LabeledContent("OASIS") {
+                if viewModel.isCheckingEnvironment {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if viewModel.simOasisInstalled {
+                    Text(viewModel.simOasisStatusText)
+                        .foregroundStyle(.green)
+                } else {
+                    Text(viewModel.simOasisStatusText)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             Divider()
 
@@ -533,7 +554,7 @@ struct SettingsView: View {
         } header: {
             Text("Social Simulation")
         } footer: {
-            Text("Configure OASIS social simulation integration. Set the Python binary path, working directory for simulation data, default simulation parameters, and the system prompt used to generate agent personas from knowledge graph entities.")
+            Text("Configure OASIS social simulation. Click 'Check Environment' to auto-detect Python and verify camel-oasis is installed. Install with: pip install camel-oasis")
         }
     }
 }

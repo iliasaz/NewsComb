@@ -108,6 +108,12 @@ class SettingsViewModel {
     var simSemaphoreLimit: Int = AppSettings.defaultSimSemaphoreLimit
     var simProfilePrompt: String = AppSettings.defaultSimProfilePrompt
 
+    // Social Simulation — Environment Status
+    private(set) var simPythonDetectedPath: String = ""
+    private(set) var simOasisStatusText: String = "Not checked"
+    private(set) var simOasisInstalled: Bool = false
+    private(set) var isCheckingEnvironment: Bool = false
+
     /// True when the selected embedding provider's dimension doesn't match
     /// the dimension the vec0 tables were built with, and graph data exists.
     var needsGraphRebuild = false
@@ -533,6 +539,40 @@ class SettingsViewModel {
     func resetSimProfilePromptToDefault() {
         simProfilePrompt = AppSettings.defaultSimProfilePrompt
         saveSimProfilePrompt()
+    }
+
+    /// Auto-detects Python and checks OASIS installation.
+    func checkOasisEnvironment() async {
+        isCheckingEnvironment = true
+        let envService = OasisEnvironmentService()
+
+        if let path = await envService.detectPythonPath() {
+            simPythonDetectedPath = path
+            simPythonPath = path
+            saveSimPythonPath()
+
+            let status = await envService.checkOasisInstalled(pythonPath: path)
+            switch status {
+            case .installed(let version):
+                simOasisStatusText = "Installed (v\(version))"
+                simOasisInstalled = true
+            case .notInstalled:
+                simOasisStatusText = "Not installed \u{2014} run: pip install camel-oasis"
+                simOasisInstalled = false
+            case .error(let msg):
+                simOasisStatusText = msg
+                simOasisInstalled = false
+            case .pythonNotFound:
+                simOasisStatusText = "Python not found"
+                simOasisInstalled = false
+            }
+        } else {
+            simPythonDetectedPath = "Not found"
+            simOasisStatusText = "Python not found"
+            simOasisInstalled = false
+        }
+
+        isCheckingEnvironment = false
     }
 
     // MARK: - Embedding Dimension Mismatch Detection

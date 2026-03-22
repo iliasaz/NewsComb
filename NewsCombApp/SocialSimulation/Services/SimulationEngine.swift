@@ -96,9 +96,35 @@ actor SimulationEngine {
         }
         logMonitor = ActionLogMonitor(logFiles: logFiles)
 
+        // Auto-detect Python path if using default
+        let envService = OasisEnvironmentService()
+        let pythonPath: String
+        if config.pythonPath.isEmpty || config.pythonPath == AppSettings.defaultSimPythonPath {
+            if let detected = await envService.detectPythonPath() {
+                pythonPath = detected
+            } else {
+                throw SimulationEngineError.pythonNotFound
+            }
+        } else {
+            pythonPath = config.pythonPath
+        }
+
+        // Verify OASIS is installed
+        let oasisStatus = await envService.checkOasisInstalled(pythonPath: pythonPath)
+        guard oasisStatus.isInstalled else {
+            throw SimulationEngineError.oasisNotInstalled
+        }
+
+        // Load OpenRouter credentials from AppSettings to share with OASIS
+        let (openRouterKey, openRouterModel) = try database.read { db -> (String?, String?) in
+            let key = try AppSettings.filter(AppSettings.Columns.key == AppSettings.openRouterKey).fetchOne(db)?.value
+            let model = try AppSettings.filter(AppSettings.Columns.key == AppSettings.openRouterModel).fetchOne(db)?.value
+            return (key, model)
+        }
+
         // Launch the Python subprocess
         let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: config.pythonPath)
+        proc.executableURL = URL(fileURLWithPath: pythonPath)
         proc.arguments = [
             simDirectory.appending(path: "run_simulation.py").path(),
             "--config", simDirectory.appending(path: "simulation_config.json").path(),
@@ -107,7 +133,10 @@ actor SimulationEngine {
         proc.currentDirectoryURL = simDirectory
         proc.environment = ProcessInfo.processInfo.environment.merging([
             "PYTHONUTF8": "1",
-            "PYTHONIOENCODING": "utf-8"
+            "PYTHONIOENCODING": "utf-8",
+            "OPENAI_API_KEY": openRouterKey ?? "",
+            "OPENAI_API_BASE_URL": "https://openrouter.ai/api/v1",
+            "OPENAI_MODEL_NAME": openRouterModel ?? "meta-llama/llama-4-maverick",
         ]) { _, new in new }
 
         // Capture stdout/stderr
@@ -295,6 +324,8 @@ actor SimulationEngine {
 enum SimulationEngineError: LocalizedError {
     case alreadyRunning
     case notRunning
+    case pythonNotFound
+    case oasisNotInstalled
 
     var errorDescription: String? {
         switch self {
@@ -302,6 +333,10 @@ enum SimulationEngineError: LocalizedError {
             "A simulation is already running."
         case .notRunning:
             "No simulation is currently running."
+        case .pythonNotFound:
+            "Python 3.11+ was not found. Install Python and try again."
+        case .oasisNotInstalled:
+            "camel-oasis is not installed. Run: pip install camel-oasis"
         }
     }
 }
