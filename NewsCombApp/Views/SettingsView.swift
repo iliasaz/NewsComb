@@ -569,6 +569,65 @@ struct SettingsView: View {
 
             Divider()
 
+            // Entity Classification
+            Text("Entity Classification")
+                .font(.headline)
+
+            TextField("Classification Model", text: $viewModel.simClassificationModel)
+                .onChange(of: viewModel.simClassificationModel) {
+                    viewModel.saveSimClassificationModel()
+                }
+
+            Stepper(value: $viewModel.simClassificationBatchSize, in: 5...100) {
+                HStack {
+                    Text("Batch Size")
+                    Spacer()
+                    Text("\(viewModel.simClassificationBatchSize)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.simClassificationBatchSize) {
+                viewModel.saveSimClassificationBatchSize()
+            }
+
+            Stepper(value: $viewModel.simClassificationThreads, in: 1...32) {
+                HStack {
+                    Text("Concurrent Threads")
+                    Spacer()
+                    Text("\(viewModel.simClassificationThreads)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.simClassificationThreads) {
+                viewModel.saveSimClassificationThreads()
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Classification Prompt")
+                        .font(.headline)
+                    Spacer()
+                    Button("Reset to Default") {
+                        viewModel.resetSimClassificationPromptToDefault()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+                }
+
+                TextEditor(text: $viewModel.simClassificationPrompt)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 150)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(.rect(cornerRadius: 8))
+                    .onChange(of: viewModel.simClassificationPrompt) {
+                        viewModel.saveSimClassificationPrompt()
+                    }
+            }
+
+            Divider()
+
             // Agent Profile Prompt
             VStack(alignment: .leading, spacing: 8) {
                 HStack {

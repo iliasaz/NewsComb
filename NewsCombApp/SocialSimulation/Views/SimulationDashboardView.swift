@@ -102,6 +102,15 @@ struct SimulationDashboardView: View {
                 isError: !(viewModel.oasisStatus?.isInstalled ?? true)
             )
 
+            Button("Classify Entities", systemImage: "tag") {
+                Task { await viewModel.classifyEntities() }
+            }
+            .disabled(viewModel.isClassifying)
+
+            if viewModel.isClassifying {
+                ProgressView(value: viewModel.classificationProgress)
+            }
+
             Button("Configure & Launch", systemImage: "play.fill") {
                 showingConfig = true
             }

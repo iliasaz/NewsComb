@@ -219,6 +219,25 @@ extension AppSettings {
     Preserve technical terms, product names, and company names exactly as written.
     """
 
+    // MARK: - Entity Classification
+    static let simClassificationModel = "sim_classification_model"
+    static let defaultSimClassificationModel = "openai/gpt-4.1-nano"
+    static let simClassificationPrompt = "sim_classification_prompt"
+    static let simClassificationBatchSize = "sim_classification_batch_size"
+    static let defaultSimClassificationBatchSize = 20
+    static let simClassificationThreads = "sim_classification_threads"
+    static let defaultSimClassificationThreads = 8
+    static let defaultSimClassificationPrompt = """
+        Classify each entity into one of these types: person, organization, company, \
+        government, institution, product, concept, event, location, media, other.
+
+        For each entity, consider its name and the relationship context provided. \
+        Respond with a JSON array where each element has "node_id" and "type" fields.
+
+        Example response:
+        [{"node_id": 1, "type": "person"}, {"node_id": 2, "type": "organization"}]
+        """
+
     // MARK: - Social Simulation Configuration
     static let simPythonPath = "sim_python_path"
     static let defaultSimPythonPath = "/usr/bin/python3"

@@ -247,6 +247,31 @@ final class SimulationDashboardViewModel {
         }
     }
 
+    // MARK: - Entity Classification
+
+    private(set) var isClassifying = false
+    private(set) var classificationProgress: Double = 0
+
+    func classifyEntities() async {
+        isClassifying = true
+        classificationProgress = 0
+        log("Starting entity classification\u{2026}")
+
+        let service = NodeClassificationService()
+        do {
+            let count = try await service.classifyUntypedNodes(
+                statusCallback: { [weak self] msg in self?.log(msg) },
+                progressCallback: { [weak self] p in self?.classificationProgress = p }
+            )
+            log("Classified \(count) entities")
+            loadData()
+        } catch {
+            logError("Classification failed: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
+        }
+        isClassifying = false
+    }
+
     // MARK: - Computed
 
     var isRunning: Bool { status.isActive }

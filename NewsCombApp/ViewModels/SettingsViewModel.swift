@@ -101,6 +101,12 @@ class SettingsViewModel {
     var engineerAgentPrompt: String = AppSettings.defaultEngineerAgentPrompt
     var hypothesizerAgentPrompt: String = AppSettings.defaultHypothesizerAgentPrompt
 
+    // Entity Classification
+    var simClassificationModel: String = AppSettings.defaultSimClassificationModel
+    var simClassificationBatchSize: Int = AppSettings.defaultSimClassificationBatchSize
+    var simClassificationThreads: Int = AppSettings.defaultSimClassificationThreads
+    var simClassificationPrompt: String = AppSettings.defaultSimClassificationPrompt
+
     // Social Simulation
     var simPythonPath: String = AppSettings.defaultSimPythonPath
     var simWorkingDirectory: String = AppSettings.defaultSimWorkingDirectory
@@ -322,6 +328,22 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simProfilePrompt).fetchOne(db) {
                     simProfilePrompt = setting.value
+                }
+
+                // Load entity classification settings
+                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationModel).fetchOne(db) {
+                    simClassificationModel = s.value
+                }
+                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationBatchSize).fetchOne(db),
+                   let v = Int(s.value) {
+                    simClassificationBatchSize = v
+                }
+                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationThreads).fetchOne(db),
+                   let v = Int(s.value) {
+                    simClassificationThreads = v
+                }
+                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationPrompt).fetchOne(db) {
+                    simClassificationPrompt = s.value
                 }
 
                 // Load persisted environment detection results
@@ -585,6 +607,18 @@ class SettingsViewModel {
     func resetSimProfilePromptToDefault() {
         simProfilePrompt = AppSettings.defaultSimProfilePrompt
         saveSimProfilePrompt()
+    }
+
+    // MARK: - Entity Classification Save Methods
+
+    func saveSimClassificationModel() { saveAPIKey(key: AppSettings.simClassificationModel, value: simClassificationModel) }
+    func saveSimClassificationBatchSize() { saveAPIKey(key: AppSettings.simClassificationBatchSize, value: String(simClassificationBatchSize)) }
+    func saveSimClassificationThreads() { saveAPIKey(key: AppSettings.simClassificationThreads, value: String(simClassificationThreads)) }
+    func saveSimClassificationPrompt() { saveAPIKey(key: AppSettings.simClassificationPrompt, value: simClassificationPrompt) }
+
+    func resetSimClassificationPromptToDefault() {
+        simClassificationPrompt = AppSettings.defaultSimClassificationPrompt
+        saveSimClassificationPrompt()
     }
 
     /// Auto-detects Python and checks OASIS installation, persisting results.

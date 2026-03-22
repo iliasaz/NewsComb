@@ -644,6 +644,12 @@ public final class Database: Sendable {
             (AppSettings.analysisOllamaModel, AppSettings.defaultAnalysisOllamaModel),
             (AppSettings.analysisOpenRouterModel, AppSettings.defaultAnalysisOpenRouterModel),
 
+            // Entity Classification
+            (AppSettings.simClassificationModel, AppSettings.defaultSimClassificationModel),
+            (AppSettings.simClassificationBatchSize, String(AppSettings.defaultSimClassificationBatchSize)),
+            (AppSettings.simClassificationThreads, String(AppSettings.defaultSimClassificationThreads)),
+            (AppSettings.simClassificationPrompt, AppSettings.defaultSimClassificationPrompt),
+
             // Social Simulation
             (AppSettings.simPythonPath, AppSettings.defaultSimPythonPath),
             (AppSettings.simWorkingDirectory, AppSettings.defaultSimWorkingDirectory),
