@@ -334,7 +334,7 @@ enum SimulationEngineError: LocalizedError {
         case .notRunning:
             "No simulation is currently running."
         case .pythonNotFound:
-            "Python 3.11+ was not found. Install Python and try again."
+            "Python 3.10+ was not found. Install Python and try again."
         case .oasisNotInstalled:
             "camel-oasis is not installed. Run: pip install camel-oasis"
         }

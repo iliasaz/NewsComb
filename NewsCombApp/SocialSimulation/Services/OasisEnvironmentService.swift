@@ -21,17 +21,27 @@ enum OasisStatus: Sendable, Equatable {
 final class OasisEnvironmentService: Sendable {
     private static let logger = Logger(subsystem: "com.newscomb", category: "OasisEnvironment")
 
-    /// Finds the best Python 3 binary by checking common paths and `which`.
+    /// Minimum required Python version (major, minor).
+    static let minimumPythonVersion = (major: 3, minor: 10)
+
+    /// Finds the best Python 3 binary by checking common paths, conda, and `which`.
     @concurrent
     func detectPythonPath() async -> String? {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path()
+
+        // Static candidates + user-specific conda/miniconda/anaconda paths
         let candidates = [
-            "/usr/bin/python3",
-            "/usr/local/bin/python3",
             "/opt/homebrew/bin/python3",
+            "/usr/local/bin/python3",
+            "\(home)/miniconda3/bin/python3",
+            "\(home)/anaconda3/bin/python3",
+            "\(home)/miniforge3/bin/python3",
+            "\(home)/.pyenv/shims/python3",
             "/opt/local/bin/python3",
+            "/usr/bin/python3",
         ]
 
-        // Check candidates first
+        // Check candidates
         for path in candidates {
             if FileManager.default.isExecutableFile(atPath: path) {
                 if await validatePythonVersion(path) {
@@ -41,10 +51,41 @@ final class OasisEnvironmentService: Sendable {
             }
         }
 
-        // Fall back to `which python3`
+        // Check conda environments for a suitable Python
+        let condaDirs = [
+            "\(home)/miniconda3/envs",
+            "\(home)/anaconda3/envs",
+            "\(home)/miniforge3/envs",
+        ]
+        for condaDir in condaDirs {
+            if let envNames = try? FileManager.default.contentsOfDirectory(atPath: condaDir) {
+                for envName in envNames {
+                    let envPython = "\(condaDir)/\(envName)/bin/python3"
+                    if FileManager.default.isExecutableFile(atPath: envPython) {
+                        if await validatePythonVersion(envPython) {
+                            Self.logger.info("Detected Python in conda env '\(envName, privacy: .public)': \(envPython, privacy: .public)")
+                            return envPython
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fall back to `which python3` (may not work in sandboxed apps)
+        if let path = runWhich("python3"), await validatePythonVersion(path) {
+            Self.logger.info("Detected Python via which: \(path, privacy: .public)")
+            return path
+        }
+
+        Self.logger.warning("No suitable Python \(Self.minimumPythonVersion.major).\(Self.minimumPythonVersion.minor)+ installation found")
+        return nil
+    }
+
+    /// Runs `which` to find a binary, returning the path or nil.
+    private func runWhich(_ binary: String) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        process.arguments = ["python3"]
+        process.arguments = [binary]
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = Pipe()
@@ -55,22 +96,23 @@ final class OasisEnvironmentService: Sendable {
             if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                !path.isEmpty,
                FileManager.default.isExecutableFile(atPath: path) {
-                if await validatePythonVersion(path) {
-                    Self.logger.info("Detected Python via which: \(path, privacy: .public)")
-                    return path
-                }
+                return path
             }
         } catch {
-            Self.logger.warning("Failed to run 'which python3': \(error.localizedDescription, privacy: .public)")
+            Self.logger.debug("which \(binary) failed: \(error.localizedDescription, privacy: .public)")
         }
-
-        Self.logger.warning("No suitable Python 3.11+ installation found")
         return nil
     }
 
-    /// Validates that the Python binary at the given path is version 3.11 or later.
+    /// Validates that the Python binary at the given path meets the minimum version requirement.
     @concurrent
     func validatePythonVersion(_ pythonPath: String) async -> Bool {
+        await parsePythonVersion(pythonPath) != nil
+    }
+
+    /// Parses the Python version from a binary, returning (major, minor) if valid.
+    @concurrent
+    func parsePythonVersion(_ pythonPath: String) async -> (major: Int, minor: Int)? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: pythonPath)
         process.arguments = ["--version"]
@@ -82,31 +124,40 @@ final class OasisEnvironmentService: Sendable {
             try process.run()
             process.waitUntilExit()
 
-            guard process.terminationStatus == 0 else { return false }
+            guard process.terminationStatus == 0 else { return nil }
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            guard let output = String(data: data, encoding: .utf8) else { return false }
+            guard let output = String(data: data, encoding: .utf8) else { return nil }
 
-            // Parse "Python 3.X.Y"
-            let components = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                .replacing("Python ", with: "")
-                .split(separator: ".")
-
-            guard components.count >= 2,
-                  let major = Int(components[0]),
-                  let minor = Int(components[1]) else {
-                return false
-            }
-
-            let valid = major == 3 && minor >= 11
-            if !valid {
-                Self.logger.info("Python \(major).\(minor) found at \(pythonPath, privacy: .public) — requires 3.11+")
-            }
-            return valid
+            return Self.parseVersionString(output)
         } catch {
-            Self.logger.debug("Failed to validate Python version at \(pythonPath, privacy: .public): \(error.localizedDescription, privacy: .public)")
-            return false
+            Self.logger.debug("Failed to get Python version at \(pythonPath, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return nil
         }
+    }
+
+    /// Parses a "Python X.Y.Z" version string into (major, minor), validating against the minimum.
+    /// Exposed as static for testability.
+    static func parseVersionString(_ output: String) -> (major: Int, minor: Int)? {
+        let components = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacing("Python ", with: "")
+            .split(separator: ".")
+
+        guard components.count >= 2,
+              let major = Int(components[0]),
+              let minor = Int(components[1]) else {
+            return nil
+        }
+
+        let valid = major > minimumPythonVersion.major ||
+            (major == minimumPythonVersion.major && minor >= minimumPythonVersion.minor)
+
+        if !valid {
+            logger.info("Python \(major).\(minor) — requires \(minimumPythonVersion.major).\(minimumPythonVersion.minor)+")
+            return nil
+        }
+
+        return (major, minor)
     }
 
     /// Checks whether the OASIS package is installed and returns its version.
