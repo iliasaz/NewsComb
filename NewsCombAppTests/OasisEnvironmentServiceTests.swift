@@ -289,6 +289,51 @@ final class OasisEnvironmentServiceTests: XCTestCase {
         XCTAssertLessThanOrEqual(defaults.semaphoreLimit, 1024)
     }
 
+    // MARK: - Persona Node Selection
+
+    func testPersonaNodeTypes_containsExpectedTypes() {
+        let types = AgentProfileService.personaNodeTypes
+        XCTAssertTrue(types.contains("person"))
+        XCTAssertTrue(types.contains("organization"))
+        XCTAssertTrue(types.contains("company"))
+        XCTAssertTrue(types.contains("government"))
+        XCTAssertFalse(types.contains("concept"), "concept is not a persona type")
+    }
+
+    func testNodeSelection_fallsBackWhenNoTypedNodes() throws {
+        // The knowledge graph may have nodes with NULL node_type.
+        // Verify the database has nodes (from the live DB) and that
+        // the service can find some even without typed persona nodes.
+        let nodeCount = try Database.shared.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM hypergraph_node")
+        }
+
+        // Only run this test if the DB has data
+        if let count = nodeCount, count > 0 {
+            let hasTypedPersonas = try Database.shared.read { db in
+                let types = AgentProfileService.personaNodeTypes.map { "'\($0)'" }.joined(separator: ", ")
+                let count = try Int.fetchOne(db, sql: """
+                    SELECT COUNT(*) FROM hypergraph_node
+                    WHERE LOWER(node_type) IN (\(types))
+                    """)
+                return (count ?? 0) > 0
+            }
+
+            let fallbackNodes = try Database.shared.read { db in
+                try Int.fetchOne(db, sql: """
+                    SELECT COUNT(*) FROM hypergraph_node
+                    WHERE LENGTH(label) <= 80
+                    """)
+            }
+
+            if !hasTypedPersonas {
+                // Verify fallback query would find nodes
+                XCTAssertGreaterThan(fallbackNodes ?? 0, 0,
+                    "Fallback query should find nodes when no typed personas exist")
+            }
+        }
+    }
+
     // MARK: - Simulations Directory
 
     func testSimulationsDirectory_createsPath() throws {

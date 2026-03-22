@@ -121,13 +121,16 @@ final class AgentProfileService: Sendable {
     // MARK: - Node Selection
 
     /// Selects hypergraph nodes that represent personas with sufficient context.
+    ///
+    /// First tries to find nodes with persona-type labels (person, organization, etc.).
+    /// If none found (e.g., node_type is NULL), falls back to selecting the most
+    /// connected nodes regardless of type.
     private func selectPersonaNodes(maxCount: Int) throws -> [HypergraphNode] {
         try database.read { db in
             let personaTypes = Self.personaNodeTypes.map { "'\($0)'" }.joined(separator: ", ")
 
-            // Select persona-type nodes with at least 2 edge participations,
-            // ordered by edge count (most connected first)
-            let sql = """
+            // Try persona-type nodes first
+            let typedSQL = """
                 SELECT n.*
                 FROM hypergraph_node n
                 JOIN hypergraph_incidence i ON i.node_id = n.id
@@ -137,7 +140,26 @@ final class AgentProfileService: Sendable {
                 ORDER BY COUNT(DISTINCT i.edge_id) DESC
                 LIMIT ?
                 """
-            return try HypergraphNode.fetchAll(db, sql: sql, arguments: [maxCount])
+            let typed = try HypergraphNode.fetchAll(db, sql: typedSQL, arguments: [maxCount])
+
+            if !typed.isEmpty {
+                return typed
+            }
+
+            // Fallback: select most connected nodes regardless of type.
+            // Filter out very long labels (likely sentence fragments, not entities).
+            logger.info("No typed persona nodes found, falling back to most connected nodes")
+            let fallbackSQL = """
+                SELECT n.*
+                FROM hypergraph_node n
+                JOIN hypergraph_incidence i ON i.node_id = n.id
+                WHERE LENGTH(n.label) <= 80
+                GROUP BY n.id
+                HAVING COUNT(DISTINCT i.edge_id) >= 1
+                ORDER BY COUNT(DISTINCT i.edge_id) DESC
+                LIMIT ?
+                """
+            return try HypergraphNode.fetchAll(db, sql: fallbackSQL, arguments: [maxCount])
         }
     }
 

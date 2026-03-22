@@ -216,7 +216,8 @@ struct SimulationConfigView: View {
         do {
             let types = personaTypes.map { "'\($0)'" }.joined(separator: ", ")
             try Database.shared.read { db in
-                availableNodes = try HypergraphNode.fetchAll(db, sql: """
+                // Try typed persona nodes first
+                var nodes = try HypergraphNode.fetchAll(db, sql: """
                     SELECT n.*
                     FROM hypergraph_node n
                     JOIN hypergraph_incidence i ON i.node_id = n.id
@@ -226,6 +227,21 @@ struct SimulationConfigView: View {
                     ORDER BY COUNT(DISTINCT i.edge_id) DESC
                     LIMIT 200
                     """)
+
+                // Fallback: most connected nodes regardless of type
+                if nodes.isEmpty {
+                    nodes = try HypergraphNode.fetchAll(db, sql: """
+                        SELECT n.*
+                        FROM hypergraph_node n
+                        JOIN hypergraph_incidence i ON i.node_id = n.id
+                        WHERE LENGTH(n.label) <= 80
+                        GROUP BY n.id
+                        HAVING COUNT(DISTINCT i.edge_id) >= 1
+                        ORDER BY COUNT(DISTINCT i.edge_id) DESC
+                        LIMIT 200
+                        """)
+                }
+                availableNodes = nodes
 
                 if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simPythonPath).fetchOne(db) {
                     pythonPath = s.value
