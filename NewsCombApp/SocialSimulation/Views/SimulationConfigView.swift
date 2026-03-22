@@ -198,31 +198,16 @@ struct SimulationConfigView: View {
         if useTwitter { platforms.append("twitter") }
         if useReddit { platforms.append("reddit") }
 
-        // Read persisted settings inside the closure (GRDB requires db access within read block)
-        var agentsMin = AppSettings.defaultSimAgentsPerHourMin
-        var agentsMax = AppSettings.defaultSimAgentsPerHourMax
-        var semaphore = AppSettings.defaultSimSemaphoreLimit
-        do {
-            try Database.shared.read { db in
-                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simAgentsPerHourMin).fetchOne(db),
-                   let v = Int(s.value) { agentsMin = v }
-                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simAgentsPerHourMax).fetchOne(db),
-                   let v = Int(s.value) { agentsMax = v }
-                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simSemaphoreLimit).fetchOne(db),
-                   let v = Int(s.value) { semaphore = v }
-            }
-        } catch {
-            // Use defaults on error
-        }
+        let defaults = SimulationConfig.loadPersistedDefaults()
 
         return SimulationConfig(
             maxRounds: maxRounds,
             minutesPerRound: minutesPerRound,
             platforms: platforms,
-            agentsPerHourMin: agentsMin,
-            agentsPerHourMax: agentsMax,
+            agentsPerHourMin: defaults.agentsPerHourMin,
+            agentsPerHourMax: defaults.agentsPerHourMax,
             pythonPath: detectedPythonPath ?? pythonPath,
-            semaphoreLimit: semaphore
+            semaphoreLimit: defaults.semaphoreLimit
         )
     }
 

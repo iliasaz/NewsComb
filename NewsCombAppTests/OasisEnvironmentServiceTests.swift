@@ -269,6 +269,26 @@ final class OasisEnvironmentServiceTests: XCTestCase {
         }
     }
 
+    // MARK: - SimulationConfig DB Access
+
+    func testLoadPersistedDefaults_doesNotCrash() {
+        // This exercises the GRDB read pattern that previously crashed due to
+        // leaking the db handle outside the closure. If the read is done
+        // correctly inside the closure, this completes without a fatal error.
+        let defaults = SimulationConfig.loadPersistedDefaults()
+        XCTAssertGreaterThan(defaults.agentsPerHourMin, 0)
+        XCTAssertGreaterThanOrEqual(defaults.agentsPerHourMax, defaults.agentsPerHourMin)
+        XCTAssertGreaterThan(defaults.semaphoreLimit, 0)
+    }
+
+    func testLoadPersistedDefaults_returnsExpectedRange() {
+        let defaults = SimulationConfig.loadPersistedDefaults()
+        // Should return either persisted values or AppSettings defaults
+        XCTAssertGreaterThanOrEqual(defaults.agentsPerHourMin, 1)
+        XCTAssertLessThanOrEqual(defaults.agentsPerHourMax, 200)
+        XCTAssertLessThanOrEqual(defaults.semaphoreLimit, 1024)
+    }
+
     // MARK: - Simulations Directory
 
     func testSimulationsDirectory_createsPath() throws {
