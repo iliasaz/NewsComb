@@ -12,13 +12,23 @@ struct SimulationDashboardView: View {
 
     var body: some View {
         List {
-            statusSection
+            if !viewModel.hasAgents && !viewModel.isRunning && !viewModel.isGeneratingProfiles {
+                onboardingSection
+            }
+
+            if viewModel.isGeneratingProfiles || viewModel.isRunning {
+                progressSection
+            } else if case .failed = viewModel.status {
+                errorSection
+            }
 
             if viewModel.hasAgents {
                 statsSection
                 contentSection
                 toolsSection
             }
+
+            activityLogSection
         }
         .navigationTitle(viewModel.simulation.name)
         .toolbar {
@@ -27,23 +37,10 @@ struct SimulationDashboardView: View {
                     Button("Stop", systemImage: "stop.fill", role: .destructive) {
                         Task { await viewModel.stopSimulation() }
                     }
-                } else if !viewModel.hasAgents {
-                    Button("Configure", systemImage: "gearshape") {
-                        showingConfig = true
-                    }
-                } else if viewModel.simulation.status == "configuring" {
+                } else if viewModel.hasAgents && viewModel.simulation.status == "configuring" {
                     Button("Launch", systemImage: "play.fill") {
                         showingConfig = true
                     }
-                }
-            }
-
-            if !viewModel.hasAgents {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Generate Profiles", systemImage: "person.crop.rectangle.stack") {
-                        Task { await viewModel.generateProfiles() }
-                    }
-                    .disabled(viewModel.isGeneratingProfiles)
                 }
             }
         }
@@ -69,38 +66,98 @@ struct SimulationDashboardView: View {
                 Text(error)
             }
         }
-        .onAppear { viewModel.loadData() }
+        .onAppear {
+            viewModel.loadData()
+            Task { await viewModel.checkEnvironment() }
+        }
     }
 
-    // MARK: - Sections
+    // MARK: - Onboarding
 
-    @ViewBuilder
-    private var statusSection: some View {
-        if viewModel.isGeneratingProfiles || viewModel.isRunning {
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text(viewModel.statusMessage)
-                            .font(.headline)
+    private var onboardingSection: some View {
+        Section {
+            // Environment status
+            EnvironmentStatusRow(
+                label: "Python",
+                isChecking: viewModel.isCheckingEnvironment,
+                value: viewModel.pythonPath,
+                placeholder: "Checking\u{2026}"
+            )
+
+            EnvironmentStatusRow(
+                label: "OASIS",
+                isChecking: viewModel.isCheckingEnvironment,
+                value: viewModel.oasisStatus.map { status in
+                    switch status {
+                    case .installed(let v): "v\(v)"
+                    case .notInstalled: "Not installed"
+                    case .pythonNotFound: "Python not found"
+                    case .error(let msg): msg
                     }
+                },
+                placeholder: "Checking\u{2026}",
+                isError: !(viewModel.oasisStatus?.isInstalled ?? true)
+            )
 
-                    if viewModel.isGeneratingProfiles {
-                        ProgressView(value: viewModel.profileProgress)
+            if viewModel.environmentChecked {
+                if viewModel.environmentReady {
+                    Button("Configure & Launch Simulation", systemImage: "play.fill") {
+                        showingConfig = true
                     }
-
-                    if case .running(let round, let total) = viewModel.status {
-                        ProgressView(value: Double(round), total: Double(total))
-                        Text("Round \(round) of \(total)")
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Environment not ready")
+                            .font(.subheadline)
+                            .bold()
+                        Text("Install Python 3.10+ and camel-oasis:\npip install camel-oasis")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
-            } header: {
-                Text("Status")
             }
-        } else if case .failed(let message) = viewModel.status {
+        } header: {
+            Text("Setup")
+        } footer: {
+            if !viewModel.environmentChecked {
+                Text("Checking environment\u{2026}")
+            }
+        }
+    }
+
+    // MARK: - Progress
+
+    private var progressSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(viewModel.statusMessage)
+                        .font(.headline)
+                }
+
+                if viewModel.isGeneratingProfiles {
+                    ProgressView(value: viewModel.profileProgress)
+                }
+
+                if case .running(let round, let total) = viewModel.status {
+                    ProgressView(value: Double(round), total: Double(total))
+                    Text("Round \(round) of \(total)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Status")
+        }
+    }
+
+    // MARK: - Error
+
+    @ViewBuilder
+    private var errorSection: some View {
+        if case .failed(let message) = viewModel.status {
             Section {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
@@ -109,6 +166,8 @@ struct SimulationDashboardView: View {
             }
         }
     }
+
+    // MARK: - Stats
 
     @ViewBuilder
     private var statsSection: some View {
@@ -126,6 +185,8 @@ struct SimulationDashboardView: View {
             }
         }
     }
+
+    // MARK: - Content
 
     private var contentSection: some View {
         Section {
@@ -154,6 +215,8 @@ struct SimulationDashboardView: View {
         }
     }
 
+    // MARK: - Tools
+
     @ViewBuilder
     private var toolsSection: some View {
         if viewModel.hasAgents {
@@ -171,6 +234,64 @@ struct SimulationDashboardView: View {
                 }
             } header: {
                 Text("Tools")
+            }
+        }
+    }
+
+    // MARK: - Activity Log
+
+    private var activityLogSection: some View {
+        Section {
+            if viewModel.activityLog.isEmpty {
+                Text("No activity yet")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(viewModel.activityLog.prefix(30)) { entry in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(entry.timestamp, format: .dateTime.hour().minute().second())
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+
+                        Text(entry.message)
+                            .font(.caption)
+                            .foregroundStyle(entry.isError ? .red : .primary)
+                    }
+                }
+            }
+        } header: {
+            Text("Activity Log")
+        }
+    }
+}
+
+// MARK: - Environment Status Row
+
+private struct EnvironmentStatusRow: View {
+    let label: String
+    let isChecking: Bool
+    let value: String?
+    var placeholder: String = ""
+    var isError: Bool = false
+
+    var body: some View {
+        LabeledContent(label) {
+            if isChecking {
+                HStack(spacing: 4) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(placeholder)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let value {
+                Text(value)
+                    .font(.caption)
+                    .foregroundStyle(isError ? .red : .green)
+            } else {
+                Text("Unknown")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }

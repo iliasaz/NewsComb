@@ -22,6 +22,15 @@ final class SimulationDashboardViewModel {
     private(set) var statusMessage: String = ""
     var errorMessage: String?
 
+    /// Activity log entries shown in the UI, newest first.
+    private(set) var activityLog: [ActivityEntry] = []
+
+    /// Environment check results.
+    private(set) var pythonPath: String?
+    private(set) var oasisStatus: OasisStatus?
+    private(set) var isCheckingEnvironment = false
+    private(set) var environmentChecked = false
+
     // MARK: - Internal
 
     private let engine = SimulationEngine()
@@ -29,7 +38,7 @@ final class SimulationDashboardViewModel {
     private let exportService = OasisExportService()
     private let graphService = SocialGraphService()
     private let database = Database.shared
-    private let logger = Logger(subsystem: "com.newscomb", category: "SimulationDashboardViewModel")
+    private let logger = Logger(subsystem: "com.newscomb", category: "SimDashboard")
 
     private var statusTask: Task<Void, Never>? {
         willSet { statusTask?.cancel() }
@@ -37,34 +46,96 @@ final class SimulationDashboardViewModel {
 
     init(simulation: SocialSimulation) {
         self.simulation = simulation
+        logger.info("Dashboard opened for simulation '\(simulation.name, privacy: .public)' [id=\(simulation.id.prefix(8), privacy: .public), status=\(simulation.status, privacy: .public)]")
+    }
+
+    // MARK: - Activity Log
+
+    struct ActivityEntry: Identifiable {
+        let id = UUID()
+        let timestamp: Date
+        let message: String
+        let isError: Bool
+
+        init(_ message: String, isError: Bool = false) {
+            self.timestamp = Date()
+            self.message = message
+            self.isError = isError
+        }
+    }
+
+    private func log(_ message: String) {
+        logger.info("\(message, privacy: .public)")
+        activityLog.insert(ActivityEntry(message), at: 0)
+    }
+
+    private func logError(_ message: String) {
+        logger.error("\(message, privacy: .public)")
+        activityLog.insert(ActivityEntry(message, isError: true), at: 0)
     }
 
     // MARK: - Data Loading
 
     func loadData() {
+        log("Loading simulation data\u{2026}")
         do {
             agents = try graphService.agents(for: simulation.id)
             stats = try graphService.stats(simulationId: simulation.id)
             recentPosts = try graphService.posts(simulationId: simulation.id, limit: 50)
 
-            // Refresh simulation record
             if let updated = try database.read({ db in
                 try SocialSimulation.fetchOne(db, key: simulation.id)
             }) {
                 simulation = updated
             }
+            log("Loaded: \(agents.count) agents, \(stats?.postCount ?? 0) posts, \(stats?.connectionCount ?? 0) connections")
         } catch {
-            logger.error("Failed to load data: \(error.localizedDescription, privacy: .public)")
+            logError("Failed to load data: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - Environment Check
+
+    func checkEnvironment() async {
+        isCheckingEnvironment = true
+        log("Checking Python and OASIS environment\u{2026}")
+
+        let envService = OasisEnvironmentService()
+        pythonPath = await envService.detectPythonPath()
+
+        if let python = pythonPath {
+            log("Found Python at: \(python)")
+            oasisStatus = await envService.checkOasisInstalled(pythonPath: python)
+            switch oasisStatus! {
+            case .installed(let version):
+                log("OASIS v\(version) installed")
+            case .notInstalled:
+                logError("OASIS not installed. Run: pip install camel-oasis")
+            case .pythonNotFound:
+                logError("Python not found at expected path")
+            case .error(let msg):
+                logError("OASIS check error: \(msg)")
+            }
+        } else {
+            oasisStatus = .pythonNotFound
+            logError("No Python 3.10+ found. Install Python and try again.")
+        }
+
+        isCheckingEnvironment = false
+        environmentChecked = true
+    }
+
+    var environmentReady: Bool {
+        pythonPath != nil && (oasisStatus?.isInstalled ?? false)
     }
 
     // MARK: - Profile Generation
 
-    /// Generates agent profiles from selected hypergraph nodes.
     func generateProfiles(nodeIds: [Int64] = [], maxAgents: Int = 30) async {
         isGeneratingProfiles = true
         profileProgress = 0
         statusMessage = "Starting profile generation\u{2026}"
+        log("Generating agent profiles (max \(maxAgents) agents)\u{2026}")
 
         do {
             let generatedAgents = try await profileService.generateProfiles(
@@ -73,6 +144,7 @@ final class SimulationDashboardViewModel {
                 maxAgents: maxAgents,
                 statusCallback: { [weak self] message in
                     self?.statusMessage = message
+                    self?.log(message)
                 },
                 progressCallback: { [weak self] progress in
                     self?.profileProgress = progress
@@ -81,9 +153,10 @@ final class SimulationDashboardViewModel {
 
             agents = generatedAgents
             statusMessage = "Generated \(generatedAgents.count) agent profiles"
+            log("Profile generation complete: \(generatedAgents.count) agents created")
             loadData()
         } catch {
-            logger.error("Profile generation failed: \(error.localizedDescription, privacy: .public)")
+            logError("Profile generation failed: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
         }
 
@@ -92,12 +165,11 @@ final class SimulationDashboardViewModel {
 
     // MARK: - Simulation Control
 
-    /// Exports profiles and launches the OASIS simulation.
     func startSimulation(config: SimulationConfig) async {
         statusMessage = "Exporting to OASIS\u{2026}"
+        log("Starting simulation with \(config.maxRounds) rounds on \(config.platforms.joined(separator: ", "))")
 
         do {
-            // Save config
             let configData = try JSONEncoder().encode(config)
             let configJson = String(data: configData, encoding: .utf8)
             try database.write { db in
@@ -107,16 +179,16 @@ final class SimulationDashboardViewModel {
                 )
             }
 
-            // Export
+            log("Exporting simulation directory\u{2026}")
             let simDir = try await exportService.exportSimulation(
                 simulationId: simulation.id,
                 config: config
             )
+            log("Exported to: \(simDir.path(percentEncoded: false))")
 
-            // Subscribe to status updates
             subscribeToStatus()
 
-            // Launch
+            log("Launching OASIS subprocess\u{2026}")
             try await engine.startSimulation(
                 simulationId: simulation.id,
                 config: config,
@@ -124,20 +196,22 @@ final class SimulationDashboardViewModel {
             )
 
             statusMessage = "Simulation running"
+            log("Simulation subprocess launched")
         } catch {
-            logger.error("Failed to start simulation: \(error.localizedDescription, privacy: .public)")
+            logError("Failed to start simulation: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             status = .failed(error.localizedDescription)
         }
     }
 
-    /// Stops the running simulation.
     func stopSimulation() async {
+        log("Stopping simulation\u{2026}")
         do {
             try await engine.stopSimulation(simulationId: simulation.id)
+            log("Simulation stopped")
             loadData()
         } catch {
-            logger.error("Failed to stop simulation: \(error.localizedDescription, privacy: .public)")
+            logError("Failed to stop: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
         }
     }
@@ -145,7 +219,6 @@ final class SimulationDashboardViewModel {
     // MARK: - Status Subscription
 
     private func subscribeToStatus() {
-        statusTask?.cancel()
         statusTask = Task { [weak self] in
             guard let self else { return }
             let stream = await engine.makeStatusStream()
@@ -153,17 +226,22 @@ final class SimulationDashboardViewModel {
                 self.status = newStatus
                 self.statusMessage = newStatus.displayText
 
-                // Periodically refresh data during simulation
-                if case .running(let round, _) = newStatus, round % 5 == 0 {
-                    self.loadData()
+                if case .running(let round, let total) = newStatus {
+                    if round % 5 == 0 {
+                        self.log("Round \(round)/\(total)")
+                        self.loadData()
+                    }
                 }
-
-                // Final refresh when complete
                 if case .completed = newStatus {
+                    self.log("Simulation completed")
                     self.loadData()
                 }
                 if case .waitingForInterviews = newStatus {
+                    self.log("Waiting for interviews")
                     self.loadData()
+                }
+                if case .failed(let msg) = newStatus {
+                    self.logError("Simulation failed: \(msg)")
                 }
             }
         }
@@ -171,15 +249,7 @@ final class SimulationDashboardViewModel {
 
     // MARK: - Computed
 
-    var isRunning: Bool {
-        status.isActive
-    }
-
-    var hasAgents: Bool {
-        !agents.isEmpty
-    }
-
-    var hasPosts: Bool {
-        !recentPosts.isEmpty
-    }
+    var isRunning: Bool { status.isActive }
+    var hasAgents: Bool { !agents.isEmpty }
+    var hasPosts: Bool { !recentPosts.isEmpty }
 }
