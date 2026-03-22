@@ -24,37 +24,27 @@ final class OasisEnvironmentService: Sendable {
     /// Minimum required Python version (major, minor).
     static let minimumPythonVersion = (major: 3, minor: 10)
 
-    /// Finds the best Python 3 binary by checking common paths, conda, and `which`.
+    /// Finds the best Python 3 binary, preferring one that has OASIS installed.
+    ///
+    /// Strategy: collect all valid Python paths, then return the first one
+    /// that has camel-oasis installed. If none have it, return the first valid Python.
     @concurrent
     func detectPythonPath() async -> String? {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-            .path(percentEncoded: false)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let homePath = "/\(home)"
+        let homePath = Self.homePath()
 
-        // Static candidates + user-specific conda/miniconda/anaconda paths
-        let candidates = [
-            "/opt/homebrew/bin/python3",
-            "/usr/local/bin/python3",
+        // All candidate paths to check, in preference order
+        var candidates = [
             "\(homePath)/miniconda3/bin/python3",
             "\(homePath)/anaconda3/bin/python3",
             "\(homePath)/miniforge3/bin/python3",
+            "/opt/homebrew/bin/python3",
+            "/usr/local/bin/python3",
             "\(homePath)/.pyenv/shims/python3",
             "/opt/local/bin/python3",
             "/usr/bin/python3",
         ]
 
-        // Check candidates
-        for path in candidates {
-            if FileManager.default.isExecutableFile(atPath: path) {
-                if await validatePythonVersion(path) {
-                    Self.logger.info("Detected Python at: \(path, privacy: .public)")
-                    return path
-                }
-            }
-        }
-
-        // Check conda environments for a suitable Python
+        // Also add conda environment Pythons
         let condaDirs = [
             "\(homePath)/miniconda3/envs",
             "\(homePath)/anaconda3/envs",
@@ -62,26 +52,58 @@ final class OasisEnvironmentService: Sendable {
         ]
         for condaDir in condaDirs {
             if let envNames = try? FileManager.default.contentsOfDirectory(atPath: condaDir) {
-                for envName in envNames {
-                    let envPython = "\(condaDir)/\(envName)/bin/python3"
-                    if FileManager.default.isExecutableFile(atPath: envPython) {
-                        if await validatePythonVersion(envPython) {
-                            Self.logger.info("Detected Python in conda env '\(envName, privacy: .public)': \(envPython, privacy: .public)")
-                            return envPython
-                        }
-                    }
+                for envName in envNames.sorted() {
+                    candidates.append("\(condaDir)/\(envName)/bin/python3")
                 }
             }
         }
 
-        // Fall back to `which python3` (may not work in sandboxed apps)
-        if let path = runWhich("python3"), await validatePythonVersion(path) {
-            Self.logger.info("Detected Python via which: \(path, privacy: .public)")
-            return path
+        // Add `which python3` result
+        if let whichPath = runWhich("python3") {
+            if !candidates.contains(whichPath) {
+                candidates.insert(whichPath, at: 0)
+            }
         }
 
-        Self.logger.warning("No suitable Python \(Self.minimumPythonVersion.major).\(Self.minimumPythonVersion.minor)+ installation found")
-        return nil
+        // Collect all valid Python paths
+        var validPythons: [String] = []
+        for path in candidates {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                if await validatePythonVersion(path) {
+                    validPythons.append(path)
+                }
+            }
+        }
+
+        guard !validPythons.isEmpty else {
+            Self.logger.warning("No suitable Python \(Self.minimumPythonVersion.major).\(Self.minimumPythonVersion.minor)+ found")
+            return nil
+        }
+
+        // Prefer the Python that has OASIS installed
+        for path in validPythons {
+            let status = await checkOasisInstalled(pythonPath: path)
+            if status.isInstalled {
+                Self.logger.info("Detected Python with OASIS at: \(path, privacy: .public)")
+                return path
+            }
+        }
+
+        // No Python has OASIS — return the first valid one
+        let fallback = validPythons[0]
+        Self.logger.info("Detected Python (no OASIS) at: \(fallback, privacy: .public)")
+        return fallback
+    }
+
+    /// Returns the user's home directory path without trailing slash.
+    static func homePath() -> String {
+        let raw = FileManager.default.homeDirectoryForCurrentUser
+            .path(percentEncoded: false)
+        // Remove trailing slash to avoid double-slash in path construction
+        if raw.hasSuffix("/") {
+            return String(raw.dropLast())
+        }
+        return raw
     }
 
     /// Runs `which` to find a binary, returning the path or nil.
@@ -164,6 +186,10 @@ final class OasisEnvironmentService: Sendable {
     }
 
     /// Checks whether the OASIS package is installed and returns its version.
+    ///
+    /// Uses `importlib.metadata` to check the package version without fully
+    /// importing `oasis`, which avoids triggering import errors from
+    /// dependency conflicts (e.g., sentence_transformers + PyTorch version mismatches).
     @concurrent
     func checkOasisInstalled(pythonPath: String) async -> OasisStatus {
         guard FileManager.default.isExecutableFile(atPath: pythonPath) else {
@@ -172,7 +198,7 @@ final class OasisEnvironmentService: Sendable {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: pythonPath)
-        process.arguments = ["-c", "import oasis; print(oasis.__version__)"]
+        process.arguments = ["-c", "import importlib.metadata; print(importlib.metadata.version('camel-oasis'))"]
         let outPipe = Pipe()
         let errPipe = Pipe()
         process.standardOutput = outPipe
@@ -191,7 +217,9 @@ final class OasisEnvironmentService: Sendable {
             } else {
                 let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                 let errMsg = String(data: errData, encoding: .utf8) ?? ""
-                if errMsg.localizedStandardContains("ModuleNotFoundError") || errMsg.localizedStandardContains("No module named") {
+                if errMsg.localizedStandardContains("ModuleNotFoundError")
+                    || errMsg.localizedStandardContains("No module named")
+                    || errMsg.localizedStandardContains("PackageNotFoundError") {
                     Self.logger.info("OASIS not installed")
                     return .notInstalled
                 }

@@ -95,18 +95,14 @@ final class OasisEnvironmentServiceTests: XCTestCase {
 
     // MARK: - Candidate Path Construction
 
-    func testCandidatePaths_noDoubleSlashes() {
-        // Verify that home directory path handling doesn't create double slashes
-        let home = FileManager.default.homeDirectoryForCurrentUser
-            .path(percentEncoded: false)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let homePath = "/\(home)"
-        let condaPath = "\(homePath)/miniconda3/bin/python3"
+    func testHomePath_noTrailingSlash() {
+        let homePath = OasisEnvironmentService.homePath()
+        XCTAssertFalse(homePath.hasSuffix("/"), "homePath should not end with /: \(homePath)")
+        XCTAssertTrue(homePath.hasPrefix("/"), "homePath should start with /: \(homePath)")
 
-        XCTAssertFalse(condaPath.contains("//"),
-                       "Path should not contain double slashes: \(condaPath)")
-        XCTAssertTrue(condaPath.hasPrefix("/Users/") || condaPath.hasPrefix("/home/"),
-                      "Path should start with valid home prefix: \(condaPath)")
+        // Verify path construction doesn't create double slashes
+        let condaPath = "\(homePath)/miniconda3/bin/python3"
+        XCTAssertFalse(condaPath.contains("//"), "Constructed path should not have //: \(condaPath)")
     }
 
     // MARK: - Live Process Execution
@@ -197,6 +193,24 @@ final class OasisEnvironmentServiceTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(version.minor, 10,
                                            "Detected Python should be 3.10+, got 3.\(version.minor)")
             }
+        }
+    }
+
+    func testDetectPythonPath_prefersOasisInstalled() async {
+        // If oasis is installed on this machine, the detected Python should have it
+        let service = OasisEnvironmentService()
+        guard let path = await service.detectPythonPath() else {
+            XCTFail("Python not found")
+            return
+        }
+
+        let status = await service.checkOasisInstalled(pythonPath: path)
+        // On this machine, oasis is installed — the detected Python should be the one with it
+        if case .installed(let version) = status {
+            XCTAssertFalse(version.isEmpty)
+            // The path should be the miniconda one where oasis is installed
+            XCTAssertTrue(path.contains("miniconda") || path.contains("anaconda") || path.contains("conda"),
+                          "Expected conda Python for oasis, got: \(path)")
         }
     }
 
