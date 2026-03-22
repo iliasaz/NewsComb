@@ -82,6 +82,9 @@ class SettingsViewModel {
     // Algorithm Parameters
     var chunkSize: Int = AppSettings.defaultChunkSize
     var similarityThreshold: Float = AppSettings.defaultSimilarityThreshold
+    var pcaIntermediateDimension: Int = AppSettings.defaultPCAIntermediateDimension
+    var umapTargetDimension: Int = AppSettings.defaultUMAPTargetDimension
+    var umapNNeighbors: Int = AppSettings.defaultUMAPNNeighbors
     var extractionTemperature: Float = AppSettings.defaultExtractionTemperature
     var analysisTemperature: Float = AppSettings.defaultAnalysisTemperature
     var llmMaxTokens: Int = AppSettings.defaultLLMMaxTokens
@@ -202,6 +205,21 @@ class SettingsViewModel {
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.similarityThreshold).fetchOne(db),
                    let value = Float(setting.value) {
                     similarityThreshold = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.pcaIntermediateDimension).fetchOne(db),
+                   let value = Int(setting.value) {
+                    pcaIntermediateDimension = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.umapTargetDimension).fetchOne(db),
+                   let value = Int(setting.value) {
+                    umapTargetDimension = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.umapNNeighbors).fetchOne(db),
+                   let value = Int(setting.value) {
+                    umapNNeighbors = value
                 }
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.extractionTemperature).fetchOne(db),
@@ -449,6 +467,18 @@ class SettingsViewModel {
 
     func saveSimilarityThreshold() {
         saveAPIKey(key: AppSettings.similarityThreshold, value: String(similarityThreshold))
+    }
+
+    func savePCAIntermediateDimension() {
+        saveAPIKey(key: AppSettings.pcaIntermediateDimension, value: String(pcaIntermediateDimension))
+    }
+
+    func saveUMAPTargetDimension() {
+        saveAPIKey(key: AppSettings.umapTargetDimension, value: String(umapTargetDimension))
+    }
+
+    func saveUMAPNNeighbors() {
+        saveAPIKey(key: AppSettings.umapNNeighbors, value: String(umapNNeighbors))
     }
 
     func saveExtractionTemperature() {

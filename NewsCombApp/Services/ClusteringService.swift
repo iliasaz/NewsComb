@@ -6,8 +6,10 @@ import OSLog
 /// Orchestrates the full story-theme clustering pipeline:
 /// 1. Compute node DF/IDF weights
 /// 2. Build event vectors
-/// 3. Run HDBSCAN clustering
-/// 4. Build and persist cluster artifacts (centroids, top entities, exemplars, labels)
+/// 3. PCA dimensionality reduction (2316D → ~50D)
+/// 4. UMAP nonlinear embedding (~50D → ~25D)
+/// 5. HDBSCAN density clustering on the reduced vectors
+/// 6. Build and persist cluster artifacts (centroids, top entities, exemplars, labels)
 final class ClusteringService: Sendable {
 
     /// Status update during the clustering pipeline.
@@ -18,6 +20,8 @@ final class ClusteringService: Sendable {
 
     private let database = Database.shared
     private let eventVectorService = EventVectorService()
+    private let pcaService = PCAService()
+    private let umapService = UMAPService()
     private let hdbscanService = HDBSCANService()
     private let clusterLabelingService = ClusterLabelingService()
     private let logger = Logger(subsystem: "com.newscomb", category: "ClusteringService")
@@ -56,7 +60,7 @@ final class ClusteringService: Sendable {
         }
         logger.info("Event vectors built")
 
-        // Step 3: Load vectors and run HDBSCAN
+        // Step 3: Load vectors
         await statusCallback?("Loading event vectors\u{2026}")
         await progressCallback?(0.35)
         let (eventIds, vectors) = try loadEventVectors()
@@ -66,17 +70,55 @@ final class ClusteringService: Sendable {
             throw ClusteringError.noVectors
         }
 
-        await statusCallback?("Running HDBSCAN clustering (\(vectors.count) events)\u{2026}")
-        await progressCallback?(0.45)
+        // Step 3a: PCA dimensionality reduction
+        let pcaTargetDim = loadIntSetting(AppSettings.pcaIntermediateDimension,
+                                          default: AppSettings.defaultPCAIntermediateDimension)
+        let inputDim = vectors[0].count
+        let pcaReduced: [[Float]]
+        if inputDim > pcaTargetDim {
+            await statusCallback?("PCA: \(inputDim)D → \(pcaTargetDim)D\u{2026}")
+            await progressCallback?(0.38)
+            let pcaParams = PCAService.Parameters(targetDimension: pcaTargetDim)
+            let pcaResult = pcaService.project(vectors: vectors, params: pcaParams)
+            pcaReduced = pcaResult.projectedVectors
+            logger.info("PCA: \(inputDim)D → \(pcaTargetDim)D (explained variance: \(String(format: "%.1f", pcaResult.explainedVarianceRatio * 100))%)")
+        } else {
+            pcaReduced = vectors
+            logger.info("Skipping PCA: input dimension (\(inputDim)) <= target (\(pcaTargetDim))")
+        }
+
+        // Step 3b: UMAP nonlinear embedding
+        let umapTargetDim = loadIntSetting(AppSettings.umapTargetDimension,
+                                           default: AppSettings.defaultUMAPTargetDimension)
+        let umapNeighbors = loadIntSetting(AppSettings.umapNNeighbors,
+                                           default: AppSettings.defaultUMAPNNeighbors)
+        let umapReduced: [[Float]]
+        if pcaReduced[0].count > umapTargetDim && pcaReduced.count > umapNeighbors {
+            await statusCallback?("UMAP: \(pcaReduced[0].count)D → \(umapTargetDim)D (\(pcaReduced.count) events)\u{2026}")
+            await progressCallback?(0.42)
+            let umapParams = UMAPService.Parameters(
+                targetDimension: umapTargetDim,
+                nNeighbors: umapNeighbors
+            )
+            umapReduced = umapService.reduce(vectors: pcaReduced, params: umapParams)
+            logger.info("UMAP: \(pcaReduced[0].count)D → \(umapTargetDim)D")
+        } else {
+            umapReduced = pcaReduced
+            logger.info("Skipping UMAP: dimension (\(pcaReduced[0].count)) <= target (\(umapTargetDim)) or too few points")
+        }
+
+        // Step 4: Run HDBSCAN on reduced vectors
+        await statusCallback?("Running HDBSCAN clustering (\(vectors.count) events, \(umapReduced[0].count)D)\u{2026}")
+        await progressCallback?(0.50)
 
         let params = HDBSCANService.Parameters(
             minClusterSize: minClusterSize,
             minSamples: minSamples
         )
-        let result = hdbscanService.cluster(vectors: vectors, params: params)
+        let result = hdbscanService.cluster(vectors: umapReduced, params: params)
         logger.info("HDBSCAN complete: \(result.clusterCount) clusters found")
 
-        // Step 4: Persist assignments
+        // Step 5: Persist assignments
         await statusCallback?("Saving cluster assignments\u{2026}")
         await progressCallback?(0.6)
         try clearPreviousBuild()
@@ -87,7 +129,7 @@ final class ClusteringService: Sendable {
             buildId: buildId
         )
 
-        // Step 5: Build cluster artifacts
+        // Step 6: Build cluster artifacts
         await statusCallback?("Computing cluster metadata\u{2026}")
         await progressCallback?(0.7)
         try buildClusterArtifacts(
@@ -98,7 +140,7 @@ final class ClusteringService: Sendable {
             buildId: buildId
         )
 
-        // Step 5b: Merge similar clusters by centroid proximity
+        // Step 6b: Merge similar clusters by centroid proximity
         await statusCallback?("Merging similar clusters\u{2026}")
         await progressCallback?(0.75)
         let mergedCount = try mergeSimilarClusters(buildId: buildId, similarityThreshold: 0.85)
@@ -106,7 +148,7 @@ final class ClusteringService: Sendable {
             logger.info("Merged \(mergedCount) cluster pairs by centroid similarity")
         }
 
-        // Step 6: LLM-generate cluster titles and summaries
+        // Step 7: LLM-generate cluster titles and summaries
         await statusCallback?("Generating theme summaries\u{2026}")
         await progressCallback?(0.85)
         await clusterLabelingService.labelClusters(
@@ -491,6 +533,23 @@ final class ClusteringService: Sendable {
     }
 
     // MARK: - Helpers
+
+    /// Reads an integer setting from the database, returning a default if not found.
+    private func loadIntSetting(_ key: String, default defaultValue: Int) -> Int {
+        do {
+            return try database.read { db in
+                if let setting = try AppSettings
+                    .filter(AppSettings.Columns.key == key)
+                    .fetchOne(db),
+                   let value = Int(setting.value) {
+                    return value
+                }
+                return defaultValue
+            }
+        } catch {
+            return defaultValue
+        }
+    }
 
     private func loadNodeLabels() throws -> [Int64: String] {
         try database.read { db in

@@ -219,6 +219,48 @@ struct SettingsView: View {
 
             Divider()
 
+            // Dimensionality Reduction (PCA + UMAP)
+            Text("Dimensionality Reduction")
+                .font(.headline)
+
+            Stepper(value: $viewModel.pcaIntermediateDimension, in: 10...200, step: 10) {
+                HStack {
+                    Text("PCA Intermediate Dim")
+                    Spacer()
+                    Text("\(viewModel.pcaIntermediateDimension)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.pcaIntermediateDimension) {
+                viewModel.savePCAIntermediateDimension()
+            }
+
+            Stepper(value: $viewModel.umapTargetDimension, in: 5...100, step: 5) {
+                HStack {
+                    Text("UMAP Target Dim")
+                    Spacer()
+                    Text("\(viewModel.umapTargetDimension)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.umapTargetDimension) {
+                viewModel.saveUMAPTargetDimension()
+            }
+
+            Stepper(value: $viewModel.umapNNeighbors, in: 5...50) {
+                HStack {
+                    Text("UMAP Neighbors")
+                    Spacer()
+                    Text("\(viewModel.umapNNeighbors)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.umapNNeighbors) {
+                viewModel.saveUMAPNNeighbors()
+            }
+
+            Divider()
+
             // LLM Parameters
             HStack {
                 Text("Extraction Temperature")

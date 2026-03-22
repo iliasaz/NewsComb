@@ -106,6 +106,14 @@ extension AppSettings {
     static let similarityThreshold = "similarity_threshold"
     static let defaultSimilarityThreshold: Float = 0.9  // 90% similarity
 
+    // Algorithm Parameters - Dimensionality Reduction (PCA + UMAP)
+    static let pcaIntermediateDimension = "pca_intermediate_dimension"
+    static let defaultPCAIntermediateDimension = 50
+    static let umapTargetDimension = "umap_target_dimension"
+    static let defaultUMAPTargetDimension = 25
+    static let umapNNeighbors = "umap_n_neighbors"
+    static let defaultUMAPNNeighbors = 15
+
     // Algorithm Parameters - LLM
     static let extractionTemperature = "extraction_temperature"
     static let defaultExtractionTemperature: Float = 0.33
