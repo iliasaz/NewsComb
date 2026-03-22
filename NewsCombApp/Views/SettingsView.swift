@@ -13,6 +13,7 @@ struct SettingsView: View {
             algorithmParametersSection
             extractionPromptsSection
             deepAnalysisPromptsSection
+            socialSimulationSection
         }
         .formStyle(.grouped)
         .frame(minWidth: 550, minHeight: 600)
@@ -426,6 +427,113 @@ struct SettingsView: View {
             Text("Deep Analysis Agent Prompts")
         } footer: {
             Text("Customize the prompts for the 'Dive Deeper' multi-agent analysis. The Engineer agent synthesizes insights with academic citations. The Hypothesizer agent generates experiments and follow-up questions.")
+        }
+    }
+    private var socialSimulationSection: some View {
+        Section {
+            // OASIS Integration
+            TextField("Python Path", text: $viewModel.simPythonPath)
+                .onChange(of: viewModel.simPythonPath) {
+                    viewModel.saveSimPythonPath()
+                }
+
+            TextField("OASIS Working Directory", text: $viewModel.simWorkingDirectory)
+                .onChange(of: viewModel.simWorkingDirectory) {
+                    viewModel.saveSimWorkingDirectory()
+                }
+
+            Divider()
+
+            // Simulation Defaults
+            Stepper(value: $viewModel.simDefaultMaxRounds, in: 5...500) {
+                HStack {
+                    Text("Default Max Rounds")
+                    Spacer()
+                    Text("\(viewModel.simDefaultMaxRounds)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.simDefaultMaxRounds) {
+                viewModel.saveSimDefaultMaxRounds()
+            }
+
+            HStack {
+                Text("Minutes Per Round")
+                Spacer()
+                Text("\(viewModel.simMinutesPerRound, format: .number.precision(.fractionLength(0)))")
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: $viewModel.simMinutesPerRound, in: 15...180, step: 5)
+                .onChange(of: viewModel.simMinutesPerRound) {
+                    viewModel.saveSimMinutesPerRound()
+                }
+
+            Stepper(value: $viewModel.simAgentsPerHourMin, in: 1...50) {
+                HStack {
+                    Text("Agents Per Hour Min")
+                    Spacer()
+                    Text("\(viewModel.simAgentsPerHourMin)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.simAgentsPerHourMin) {
+                viewModel.saveSimAgentsPerHourMin()
+            }
+
+            Stepper(value: $viewModel.simAgentsPerHourMax, in: 1...100) {
+                HStack {
+                    Text("Agents Per Hour Max")
+                    Spacer()
+                    Text("\(viewModel.simAgentsPerHourMax)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.simAgentsPerHourMax) {
+                viewModel.saveSimAgentsPerHourMax()
+            }
+
+            Stepper(value: $viewModel.simSemaphoreLimit, in: 1...256) {
+                HStack {
+                    Text("Semaphore Limit")
+                    Spacer()
+                    Text("\(viewModel.simSemaphoreLimit)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.simSemaphoreLimit) {
+                viewModel.saveSimSemaphoreLimit()
+            }
+
+            Divider()
+
+            // Agent Profile Prompt
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Profile Generation System Prompt")
+                        .font(.headline)
+                    Spacer()
+                    Button("Reset to Default") {
+                        viewModel.resetSimProfilePromptToDefault()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+                }
+
+                TextEditor(text: $viewModel.simProfilePrompt)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 200)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(.rect(cornerRadius: 8))
+                    .onChange(of: viewModel.simProfilePrompt) {
+                        viewModel.saveSimProfilePrompt()
+                    }
+            }
+        } header: {
+            Text("Social Simulation")
+        } footer: {
+            Text("Configure OASIS social simulation integration. Set the Python binary path, working directory for simulation data, default simulation parameters, and the system prompt used to generate agent personas from knowledge graph entities.")
         }
     }
 }

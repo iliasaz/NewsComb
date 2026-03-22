@@ -381,6 +381,14 @@ public final class Database: Sendable {
                     content_rowid='id',
                     tokenize='porter unicode61'
                 );
+
+                CREATE VIRTUAL TABLE IF NOT EXISTS fts_cluster USING fts5(
+                    label,
+                    summary,
+                    content='clusters',
+                    content_rowid='cluster_id',
+                    tokenize='porter unicode61'
+                );
             """)
 
             // Sync triggers for FTS node index
@@ -411,22 +419,111 @@ public final class Database: Sendable {
                 END;
             """)
 
+            // Sync triggers for FTS cluster index
+            try db.execute(sql: """
+                CREATE TRIGGER IF NOT EXISTS fts_cluster_ai AFTER INSERT ON clusters BEGIN
+                    INSERT INTO fts_cluster(rowid, label, summary) VALUES (new.cluster_id, new.label, new.summary);
+                END;
+                CREATE TRIGGER IF NOT EXISTS fts_cluster_ad AFTER DELETE ON clusters BEGIN
+                    INSERT INTO fts_cluster(fts_cluster, rowid, label, summary) VALUES('delete', old.cluster_id, old.label, old.summary);
+                END;
+                CREATE TRIGGER IF NOT EXISTS fts_cluster_au AFTER UPDATE ON clusters BEGIN
+                    INSERT INTO fts_cluster(fts_cluster, rowid, label, summary) VALUES('delete', old.cluster_id, old.label, old.summary);
+                    INSERT INTO fts_cluster(rowid, label, summary) VALUES (new.cluster_id, new.label, new.summary);
+                END;
+            """)
+
             // Rebuild FTS indexes from existing data (safe to re-run)
             try db.execute(sql: "INSERT INTO fts_node(fts_node) VALUES('rebuild')")
             try db.execute(sql: "INSERT INTO fts_chunk(fts_chunk) VALUES('rebuild')")
+            try db.execute(sql: "INSERT INTO fts_cluster(fts_cluster) VALUES('rebuild')")
 
-            // Mark articles for reprocessing if their provenance has NULL chunk_text.
-            // The old extraction code left chunk_text unpopulated because it tried to
-            // parse sequential indices from MD5 hash chunk IDs. Deleting the processing
-            // status row makes getUnprocessedArticles() pick them up again via its
-            // LEFT JOIN ... WHERE ah.id IS NULL check.
+            // NOTE: Provenance repair for the chunk_index=0 bug is handled by
+            // HypergraphService.repairProvenance() at app startup, not here.
+            // The repair needs async context and re-chunks articles with the
+            // library's RecursiveTextSplitter to rebuild correct mappings.
+
+            // ── Social Simulation tables ──
+            // These tables form a separate social graph that reads from the
+            // knowledge hypergraph but never writes to it.
+
             try db.execute(sql: """
-                DELETE FROM article_hypergraph
-                WHERE feed_item_id IN (
-                    SELECT DISTINCT aep.feed_item_id
-                    FROM article_edge_provenance aep
-                    WHERE aep.chunk_text IS NULL
-                )
+                CREATE TABLE IF NOT EXISTS social_simulation (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'configuring',
+                    agent_count INTEGER NOT NULL DEFAULT 0,
+                    round_count INTEGER NOT NULL DEFAULT 0,
+                    max_rounds INTEGER NOT NULL DEFAULT 72,
+                    sim_directory TEXT,
+                    config_json TEXT,
+                    started_at REAL,
+                    completed_at REAL,
+                    created_at REAL NOT NULL DEFAULT (unixepoch())
+                );
+
+                CREATE TABLE IF NOT EXISTS social_agent (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    node_id INTEGER NOT NULL REFERENCES hypergraph_node(id),
+                    display_name TEXT NOT NULL,
+                    bio TEXT NOT NULL DEFAULT '',
+                    persona_json TEXT,
+                    simulation_id TEXT NOT NULL REFERENCES social_simulation(id) ON DELETE CASCADE,
+                    oasis_user_id INTEGER,
+                    created_at REAL NOT NULL DEFAULT (unixepoch())
+                );
+                CREATE INDEX IF NOT EXISTS idx_social_agent_simulation ON social_agent(simulation_id);
+                CREATE INDEX IF NOT EXISTS idx_social_agent_node ON social_agent(node_id);
+
+                CREATE TABLE IF NOT EXISTS social_post (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    agent_id INTEGER NOT NULL REFERENCES social_agent(id) ON DELETE CASCADE,
+                    content TEXT NOT NULL,
+                    parent_post_id INTEGER REFERENCES social_post(id),
+                    repost_of_id INTEGER REFERENCES social_post(id),
+                    sim_timestamp REAL NOT NULL,
+                    round_num INTEGER NOT NULL,
+                    platform TEXT NOT NULL DEFAULT 'twitter',
+                    oasis_post_id INTEGER,
+                    simulation_id TEXT NOT NULL,
+                    created_at REAL NOT NULL DEFAULT (unixepoch())
+                );
+                CREATE INDEX IF NOT EXISTS idx_social_post_agent ON social_post(agent_id);
+                CREATE INDEX IF NOT EXISTS idx_social_post_sim ON social_post(simulation_id, sim_timestamp DESC);
+                CREATE INDEX IF NOT EXISTS idx_social_post_parent ON social_post(parent_post_id);
+
+                CREATE TABLE IF NOT EXISTS social_interaction (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    agent_id INTEGER NOT NULL REFERENCES social_agent(id) ON DELETE CASCADE,
+                    post_id INTEGER REFERENCES social_post(id) ON DELETE CASCADE,
+                    action_type TEXT NOT NULL,
+                    sim_timestamp REAL NOT NULL,
+                    round_num INTEGER NOT NULL,
+                    simulation_id TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_social_interaction_post ON social_interaction(post_id);
+                CREATE INDEX IF NOT EXISTS idx_social_interaction_agent ON social_interaction(agent_id);
+
+                CREATE TABLE IF NOT EXISTS social_connection (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    follower_id INTEGER NOT NULL REFERENCES social_agent(id) ON DELETE CASCADE,
+                    followee_id INTEGER NOT NULL REFERENCES social_agent(id) ON DELETE CASCADE,
+                    source TEXT NOT NULL DEFAULT 'initial',
+                    round_num INTEGER,
+                    simulation_id TEXT NOT NULL,
+                    UNIQUE(follower_id, followee_id, simulation_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_social_connection_follower ON social_connection(follower_id);
+                CREATE INDEX IF NOT EXISTS idx_social_connection_followee ON social_connection(followee_id);
+
+                CREATE TABLE IF NOT EXISTS agent_interview (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    agent_id INTEGER NOT NULL REFERENCES social_agent(id) ON DELETE CASCADE,
+                    messages_json TEXT NOT NULL DEFAULT '[]',
+                    simulation_id TEXT NOT NULL,
+                    created_at REAL NOT NULL DEFAULT (unixepoch())
+                );
+                CREATE INDEX IF NOT EXISTS idx_agent_interview_agent ON agent_interview(agent_id);
             """)
 
             // Seed default settings if they don't exist
@@ -546,6 +643,16 @@ public final class Database: Sendable {
             (AppSettings.analysisOllamaEndpoint, AppSettings.defaultAnalysisOllamaEndpoint),
             (AppSettings.analysisOllamaModel, AppSettings.defaultAnalysisOllamaModel),
             (AppSettings.analysisOpenRouterModel, AppSettings.defaultAnalysisOpenRouterModel),
+
+            // Social Simulation
+            (AppSettings.simPythonPath, AppSettings.defaultSimPythonPath),
+            (AppSettings.simWorkingDirectory, AppSettings.defaultSimWorkingDirectory),
+            (AppSettings.simDefaultMaxRounds, String(AppSettings.defaultSimDefaultMaxRounds)),
+            (AppSettings.simMinutesPerRound, String(AppSettings.defaultSimMinutesPerRound)),
+            (AppSettings.simAgentsPerHourMin, String(AppSettings.defaultSimAgentsPerHourMin)),
+            (AppSettings.simAgentsPerHourMax, String(AppSettings.defaultSimAgentsPerHourMax)),
+            (AppSettings.simSemaphoreLimit, String(AppSettings.defaultSimSemaphoreLimit)),
+            (AppSettings.simProfilePrompt, AppSettings.defaultSimProfilePrompt),
         ]
 
         for setting in defaultSettings {

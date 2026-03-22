@@ -98,6 +98,16 @@ class SettingsViewModel {
     var engineerAgentPrompt: String = AppSettings.defaultEngineerAgentPrompt
     var hypothesizerAgentPrompt: String = AppSettings.defaultHypothesizerAgentPrompt
 
+    // Social Simulation
+    var simPythonPath: String = AppSettings.defaultSimPythonPath
+    var simWorkingDirectory: String = AppSettings.defaultSimWorkingDirectory
+    var simDefaultMaxRounds: Int = AppSettings.defaultSimDefaultMaxRounds
+    var simMinutesPerRound: Double = AppSettings.defaultSimMinutesPerRound
+    var simAgentsPerHourMin: Int = AppSettings.defaultSimAgentsPerHourMin
+    var simAgentsPerHourMax: Int = AppSettings.defaultSimAgentsPerHourMax
+    var simSemaphoreLimit: Int = AppSettings.defaultSimSemaphoreLimit
+    var simProfilePrompt: String = AppSettings.defaultSimProfilePrompt
+
     /// True when the selected embedding provider's dimension doesn't match
     /// the dimension the vec0 tables were built with, and graph data exists.
     var needsGraphRebuild = false
@@ -245,6 +255,44 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.hypothesizerAgentPrompt).fetchOne(db) {
                     hypothesizerAgentPrompt = setting.value
+                }
+
+                // Load social simulation settings
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simPythonPath).fetchOne(db) {
+                    simPythonPath = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simWorkingDirectory).fetchOne(db) {
+                    simWorkingDirectory = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simDefaultMaxRounds).fetchOne(db),
+                   let value = Int(setting.value) {
+                    simDefaultMaxRounds = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simMinutesPerRound).fetchOne(db),
+                   let value = Double(setting.value) {
+                    simMinutesPerRound = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simAgentsPerHourMin).fetchOne(db),
+                   let value = Int(setting.value) {
+                    simAgentsPerHourMin = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simAgentsPerHourMax).fetchOne(db),
+                   let value = Int(setting.value) {
+                    simAgentsPerHourMax = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simSemaphoreLimit).fetchOne(db),
+                   let value = Int(setting.value) {
+                    simSemaphoreLimit = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simProfilePrompt).fetchOne(db) {
+                    simProfilePrompt = setting.value
                 }
             }
         } catch {
@@ -469,6 +517,22 @@ class SettingsViewModel {
     func resetHypothesizerAgentPromptToDefault() {
         hypothesizerAgentPrompt = AppSettings.defaultHypothesizerAgentPrompt
         saveHypothesizerAgentPrompt()
+    }
+
+    // MARK: - Social Simulation Save Methods
+
+    func saveSimPythonPath() { saveAPIKey(key: AppSettings.simPythonPath, value: simPythonPath) }
+    func saveSimWorkingDirectory() { saveAPIKey(key: AppSettings.simWorkingDirectory, value: simWorkingDirectory) }
+    func saveSimDefaultMaxRounds() { saveAPIKey(key: AppSettings.simDefaultMaxRounds, value: String(simDefaultMaxRounds)) }
+    func saveSimMinutesPerRound() { saveAPIKey(key: AppSettings.simMinutesPerRound, value: String(simMinutesPerRound)) }
+    func saveSimAgentsPerHourMin() { saveAPIKey(key: AppSettings.simAgentsPerHourMin, value: String(simAgentsPerHourMin)) }
+    func saveSimAgentsPerHourMax() { saveAPIKey(key: AppSettings.simAgentsPerHourMax, value: String(simAgentsPerHourMax)) }
+    func saveSimSemaphoreLimit() { saveAPIKey(key: AppSettings.simSemaphoreLimit, value: String(simSemaphoreLimit)) }
+    func saveSimProfilePrompt() { saveAPIKey(key: AppSettings.simProfilePrompt, value: simProfilePrompt) }
+
+    func resetSimProfilePromptToDefault() {
+        simProfilePrompt = AppSettings.defaultSimProfilePrompt
+        saveSimProfilePrompt()
     }
 
     // MARK: - Embedding Dimension Mismatch Detection

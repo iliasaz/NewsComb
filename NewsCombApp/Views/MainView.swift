@@ -25,6 +25,7 @@ struct MainView: View {
                 allArticlesSection
                 graphRAGSection
                 storyThemesSection
+                socialSimulationSection
                 hypergraphSection
                 addFeedSection
                 sourcesSection
@@ -41,9 +42,14 @@ struct MainView: View {
                     GraphRAGView()
                 case "themes":
                     ThemesView()
+                case "simulation":
+                    SimulationListView()
                 default:
                     EmptyView()
                 }
+            }
+            .navigationDestination(for: SocialAgent.self) { agent in
+                AgentDetailView(agent: agent)
             }
             .navigationDestination(for: QueryHistoryItem.self) { item in
                 AnswerDetailView(historyItem: item)
@@ -459,6 +465,30 @@ struct MainView: View {
                 }
             } header: {
                 Text("Theme Analysis")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var socialSimulationSection: some View {
+        if viewModel.hypergraphStats != nil && (viewModel.hypergraphStats?.nodeCount ?? 0) > 0 {
+            Section {
+                NavigationLink(value: "simulation") {
+                    Label {
+                        VStack(alignment: .leading) {
+                            Text("Social Simulation")
+                                .font(.headline)
+                            Text("Agent-based news discourse simulation")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "person.3.sequence.fill")
+                            .foregroundStyle(.teal)
+                    }
+                }
+            } header: {
+                Text("Social Simulation")
             }
         }
     }

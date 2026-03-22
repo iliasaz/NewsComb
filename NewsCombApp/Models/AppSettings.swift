@@ -211,6 +211,39 @@ extension AppSettings {
     Preserve technical terms, product names, and company names exactly as written.
     """
 
+    // MARK: - Social Simulation Configuration
+    static let simPythonPath = "sim_python_path"
+    static let defaultSimPythonPath = "/usr/bin/python3"
+    static let simWorkingDirectory = "sim_working_directory"
+    static let defaultSimWorkingDirectory = ""  // empty means use default app support path
+    static let simDefaultMaxRounds = "sim_default_max_rounds"
+    static let defaultSimDefaultMaxRounds = 72
+    static let simMinutesPerRound = "sim_minutes_per_round"
+    static let defaultSimMinutesPerRound: Double = 60.0
+    static let simAgentsPerHourMin = "sim_agents_per_hour_min"
+    static let defaultSimAgentsPerHourMin = 3
+    static let simAgentsPerHourMax = "sim_agents_per_hour_max"
+    static let defaultSimAgentsPerHourMax = 10
+    static let simSemaphoreLimit = "sim_semaphore_limit"
+    static let defaultSimSemaphoreLimit = 128
+    static let simProfilePrompt = "sim_profile_prompt"
+    static let defaultSimProfilePrompt = """
+    You are a persona designer for a social media simulation. Given information about \
+    a real-world entity from a news knowledge graph, create a realistic social media \
+    persona for that entity. Respond ONLY with valid JSON matching the schema below.
+
+    The JSON must have these fields:
+    {
+      "age": <integer or null if organization>,
+      "profession": "<role or sector>",
+      "interests": ["<topic1>", "<topic2>", ...],
+      "mbti": "<4-letter type or null>",
+      "sentimentBias": <float -1.0 to 1.0, based on the entity's typical stance>,
+      "stance": "<brief description of known positions or outlook>",
+      "influenceWeight": <float 0.0 to 1.0, based on prominence>
+    }
+    """
+
     // MARK: - Deep Analysis Agent Prompts
 
     /// Default prompt for the Engineer agent - synthesizes with academic citations.
