@@ -111,9 +111,9 @@ This project uses [GRDB.swift](https://github.com/groue/GRDB.swift) for SQLite p
 
 ## Testing instructions
 
-- **Always** write unit tests for logic changes (services, view models, algorithms, models).
+- **Always** write unit tests for logic changes (services, view models, algorithms, models). No task is complete without tests.
 - **Always** write UI tests when unit tests are not possible for UI-specific behavior.
-- **Always** run the full test suite after a successful build to verify correctness.
+- **Always** run the relevant test suite after writing tests and verify all tests pass before declaring any task complete.
 - Run tests with: `xcodebuild test -scheme NewsCombApp -destination 'platform=macOS'`
 - Place test files in the `NewsCombAppTests/` directory, matching the source file structure.
 - Use `XCTest` for all tests. Do not use third-party test frameworks without asking first.
