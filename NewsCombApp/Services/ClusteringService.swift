@@ -98,6 +98,14 @@ final class ClusteringService: Sendable {
             buildId: buildId
         )
 
+        // Step 5b: Merge similar clusters by centroid proximity
+        await statusCallback?("Merging similar clusters\u{2026}")
+        await progressCallback?(0.75)
+        let mergedCount = try mergeSimilarClusters(buildId: buildId, similarityThreshold: 0.85)
+        if mergedCount > 0 {
+            logger.info("Merged \(mergedCount) cluster pairs by centroid similarity")
+        }
+
         // Step 6: LLM-generate cluster titles and summaries
         await statusCallback?("Generating theme summaries\u{2026}")
         await progressCallback?(0.85)
@@ -277,6 +285,93 @@ final class ClusteringService: Sendable {
         logger.info("Built artifacts for \(clusterEvents.count) clusters")
     }
 
+    // MARK: - Cluster Merging
+
+    /// Merges clusters whose centroids are above a cosine similarity threshold.
+    ///
+    /// After HDBSCAN, related topics can get fragmented into multiple small clusters
+    /// (e.g., 13 separate "Paul Graham" clusters). This pass consolidates them by
+    /// merging the smaller cluster into the larger one when their centroids are similar.
+    ///
+    /// - Returns: The number of cluster pairs merged.
+    @discardableResult
+    private func mergeSimilarClusters(buildId: String, similarityThreshold: Float) throws -> Int {
+        // Load all cluster centroids
+        let clusters: [(clusterId: Int64, size: Int, centroid: [Float])] = try database.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT cluster_id, size, centroid_vec
+                FROM clusters WHERE build_id = ? AND centroid_vec IS NOT NULL
+                ORDER BY size DESC
+            """, arguments: [buildId]).compactMap { row in
+                guard let clusterId: Int64 = row["cluster_id"],
+                      let size: Int = row["size"],
+                      let data: Data = row["centroid_vec"] else { return nil }
+                let centroid = data.withUnsafeBytes { buf in
+                    Array(buf.bindMemory(to: Float.self))
+                }
+                guard !centroid.isEmpty else { return nil }
+                return (clusterId, size, centroid)
+            }
+        }
+
+        guard clusters.count >= 2 else { return 0 }
+
+        // Find merge pairs: for each cluster, check if a larger cluster has
+        // a similar centroid. Greedy: merge into the largest similar cluster.
+        var merged = Set<Int64>()
+        var mergeMap: [Int64: Int64] = [:] // small → large
+
+        for i in 0..<clusters.count {
+            let small = clusters[i]
+            if merged.contains(small.clusterId) { continue }
+
+            for j in 0..<i {
+                let large = clusters[j]
+                if merged.contains(large.clusterId) { continue }
+
+                let similarity = AccelerateVectorOps.cosineSimilarity(small.centroid, large.centroid)
+                if similarity >= similarityThreshold {
+                    mergeMap[small.clusterId] = large.clusterId
+                    merged.insert(small.clusterId)
+                    break // merge into the first (largest) match
+                }
+            }
+        }
+
+        guard !mergeMap.isEmpty else { return 0 }
+
+        // Apply merges in the database
+        try database.write { db in
+            for (smallId, largeId) in mergeMap {
+                // Move members
+                try db.execute(sql: """
+                    UPDATE OR IGNORE cluster_members SET cluster_id = ? WHERE cluster_id = ?
+                """, arguments: [largeId, smallId])
+
+                // Move event_cluster assignments
+                try db.execute(sql: """
+                    UPDATE event_cluster SET cluster_id = ? WHERE cluster_id = ? AND build_id = ?
+                """, arguments: [largeId, smallId, buildId])
+
+                // Update size on the target cluster
+                try db.execute(sql: """
+                    UPDATE clusters SET size = (
+                        SELECT COUNT(*) FROM cluster_members WHERE cluster_id = ?
+                    ) WHERE cluster_id = ?
+                """, arguments: [largeId, largeId])
+
+                // Delete the merged cluster (cascades exemplars via FK)
+                try db.execute(sql: "DELETE FROM clusters WHERE cluster_id = ?", arguments: [smallId])
+            }
+
+            // Recompute top entities and exemplars for merged clusters
+            // (they'll be rebuilt during the next labeling pass via the existing data)
+        }
+
+        logger.info("Merged \(mergeMap.count) clusters (threshold: \(similarityThreshold))")
+        return mergeMap.count
+    }
+
     /// Computes the centroid (mean vector) for a set of vectors using Accelerate.
     private func computeCentroid(_ vectors: [[Float]]) -> [Float] {
         guard let first = vectors.first else { return [] }
@@ -317,61 +412,68 @@ final class ClusteringService: Sendable {
         nodeIDFs: [Int64: Double],
         topK: Int
     ) throws -> [RankedEntity] {
+        // Accumulate node scores in Swift using batched queries to avoid
+        // exceeding SQLite's SQLITE_MAX_VARIABLE_NUMBER limit.
+        var entityScores: [String: Double] = [:]
+
         try database.read { db in
-            let placeholders = eventIds.map { _ in "?" }.joined(separator: ",")
-            let rows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT node_id
-                    FROM hypergraph_incidence
-                    WHERE edge_id IN (\(placeholders))
-                """,
-                arguments: StatementArguments(eventIds)
-            )
+            for batch in eventIds.chunked(into: 500) {
+                let placeholders = batch.map { _ in "?" }.joined(separator: ",")
+                let rows = try Row.fetchAll(
+                    db,
+                    sql: """
+                        SELECT node_id
+                        FROM hypergraph_incidence
+                        WHERE edge_id IN (\(placeholders))
+                    """,
+                    arguments: StatementArguments(batch)
+                )
 
-            // Count occurrences weighted by IDF
-            var entityScores: [String: Double] = [:]
-            for row in rows {
-                let nodeId: Int64 = row["node_id"]
-                guard let label = nodeLabels[nodeId] else { continue }
-                let idf = nodeIDFs[nodeId] ?? 1.0
-                entityScores[label, default: 0] += idf
+                for row in rows {
+                    let nodeId: Int64 = row["node_id"]
+                    guard let label = nodeLabels[nodeId] else { continue }
+                    let idf = nodeIDFs[nodeId] ?? 1.0
+                    entityScores[label, default: 0] += idf
+                }
             }
-
-            return entityScores
-                .map { RankedEntity(label: $0.key, score: $0.value) }
-                .sorted { $0.score > $1.score }
-                .prefix(topK)
-                .map { $0 }
         }
+
+        return entityScores
+            .map { RankedEntity(label: $0.key, score: $0.value) }
+            .sorted { $0.score > $1.score }
+            .prefix(topK)
+            .map { $0 }
     }
 
     /// Computes top relation families in the cluster by frequency.
     private func computeTopRelFamilies(eventIds: [Int64], topK: Int) throws -> [RankedFamily] {
+        var familyCounts: [String: Int] = [:]
+
         try database.read { db in
-            let placeholders = eventIds.map { _ in "?" }.joined(separator: ",")
-            let rows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT label FROM hypergraph_edge
-                    WHERE id IN (\(placeholders))
-                """,
-                arguments: StatementArguments(eventIds)
-            )
+            for batch in eventIds.chunked(into: 500) {
+                let placeholders = batch.map { _ in "?" }.joined(separator: ",")
+                let rows = try Row.fetchAll(
+                    db,
+                    sql: """
+                        SELECT label FROM hypergraph_edge
+                        WHERE id IN (\(placeholders))
+                    """,
+                    arguments: StatementArguments(batch)
+                )
 
-            var familyCounts: [String: Int] = [:]
-            for row in rows {
-                let verb: String = row["label"]
-                let family = RelationFamily.classify(verb)
-                familyCounts[family.label, default: 0] += 1
+                for row in rows {
+                    let verb: String = row["label"]
+                    let family = RelationFamily.classify(verb)
+                    familyCounts[family.label, default: 0] += 1
+                }
             }
-
-            return familyCounts
-                .map { RankedFamily(family: $0.key, count: $0.value) }
-                .sorted { $0.count > $1.count }
-                .prefix(topK)
-                .map { $0 }
         }
+
+        return familyCounts
+            .map { RankedFamily(family: $0.key, count: $0.value) }
+            .sorted { $0.count > $1.count }
+            .prefix(topK)
+            .map { $0 }
     }
 
     /// Generates an auto-label for a cluster from its top entities and relation families.

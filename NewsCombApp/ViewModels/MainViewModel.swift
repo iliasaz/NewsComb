@@ -626,6 +626,19 @@ class MainViewModel {
         recentlyExtractedEntities = []
 
         do {
+            // Repair provenance for articles affected by the chunk_index=0 bug.
+            // This is a lightweight in-place fix (no LLM calls) that re-chunks
+            // articles and maps edges to their correct source chunks.
+            hypergraphProcessingStatus = "Repairing provenance…"
+            let repaired = try await hypergraphService.repairProvenance(
+                progressCallback: { [weak self] done, total, status in
+                    self?.hypergraphProcessingStatus = "Repairing provenance \(done)/\(total)…"
+                }
+            )
+            if repaired > 0 {
+                hypergraphProcessingStatus = "Repaired \(repaired) articles, processing…"
+            }
+
             let processedCount = try await hypergraphService.processUnprocessedArticles(
                 progressCallback: { [weak self] processed, total, title in
                     self?.hypergraphProgress = (processed, total)

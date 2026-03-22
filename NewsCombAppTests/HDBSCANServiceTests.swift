@@ -33,6 +33,8 @@ final class HDBSCANServiceTests: XCTestCase {
         // Two well-separated clusters of 10 points each.
         // Use 2D Gaussian-like spread (not collinear) to avoid tied
         // mutual reachability weights that depend on sort stability.
+        // Uses Euclidean metric because these coordinate-based clusters
+        // have similar cosine angles (both near 45°).
         let clusterA: [[Float]] = [
             [1.0, 1.0], [1.2, 0.8], [0.9, 1.3], [1.1, 1.1], [0.7, 0.9],
             [1.3, 1.2], [0.8, 0.7], [1.0, 1.4], [1.4, 1.0], [0.6, 1.1],
@@ -41,9 +43,9 @@ final class HDBSCANServiceTests: XCTestCase {
             [50.0, 50.0], [50.2, 49.8], [49.9, 50.3], [50.1, 50.1], [49.7, 49.9],
             [50.3, 50.2], [49.8, 49.7], [50.0, 50.4], [50.4, 50.0], [49.6, 50.1],
         ]
-        var vectors = clusterA + clusterB
+        let vectors = clusterA + clusterB
 
-        let params = HDBSCANService.Parameters(minClusterSize: 5, minSamples: 3)
+        let params = HDBSCANService.Parameters(minClusterSize: 5, minSamples: 3, metric: .euclidean)
         let result = service.cluster(vectors: vectors, params: params)
 
         // Should find exactly 2 clusters
@@ -84,7 +86,10 @@ final class HDBSCANServiceTests: XCTestCase {
             vectors.append([Float(i) * 0.02, 50 + Float(i) * 0.05])
         }
 
-        let params = HDBSCANService.Parameters(minClusterSize: 4, minSamples: 3)
+        // Uses Euclidean because these coordinate-based clusters include a
+        // cluster at the origin (zero-norm vectors where cosine is undefined)
+        // and collinear points (identical cosine angles).
+        let params = HDBSCANService.Parameters(minClusterSize: 4, minSamples: 3, metric: .euclidean)
         let result = service.cluster(vectors: vectors, params: params)
 
         // Should find at least 2 clusters (3 is ideal but density-based may vary)
@@ -134,12 +139,18 @@ final class HDBSCANServiceTests: XCTestCase {
         XCTAssertLessThanOrEqual(validated.minSamples, validated.minClusterSize)
     }
 
-    func testParametersUnchangedForLargeData() {
+    func testParametersScaleWithDataSize() {
         let params = HDBSCANService.Parameters(minClusterSize: 20, minSamples: 10)
         let validated = params.validated(forDataSize: 10000)
 
-        XCTAssertEqual(validated.minClusterSize, 20)
+        // sqrt(10000)/2 = 50, which is larger than the default 20
+        XCTAssertEqual(validated.minClusterSize, 50)
         XCTAssertEqual(validated.minSamples, 10)
+
+        // For small data, should still cap at n/5
+        let small = params.validated(forDataSize: 50)
+        XCTAssertEqual(small.minClusterSize, 10) // min(max(20, sqrt(50)/2≈3)=20, max(2,10)=10) = 10
+        XCTAssertLessThanOrEqual(small.minSamples, small.minClusterSize)
     }
 
     // MARK: - Membership Scores

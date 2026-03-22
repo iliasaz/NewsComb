@@ -22,27 +22,31 @@ final class ClusterLabelingService: Sendable {
     // MARK: - System Prompt
 
     private static let systemPrompt = """
-        You are a news analyst writing thematic overviews. You are given data about \
-        a news topic or trend that was automatically identified from multiple news \
-        articles. Your job is to synthesize the data into a clear, informative overview.
+        You write concise, fact-dense summaries of news themes. You receive data \
+        extracted from multiple news articles that were automatically grouped together. \
+        Your job is to describe what is actually happening — who did what, to whom, \
+        and what was announced, decided, or discovered.
 
         You will receive:
-        - Key entities (people, companies, products) involved in this topic
+        - Key entities (people, companies, products)
         - Types of relationships between them
-        - Representative events extracted from the articles (in Subject-Verb-Object form), \
-        each with original source context from the article text when available
-        - Source articles with headlines and publisher descriptions
+        - Representative events in Subject-Verb-Object form, with source context \
+        from the original article text when available
+        - Source article headlines and publisher descriptions
 
-        Rules:
-        - The title must be a specific, descriptive headline (under 10 words).
-        - The summary must be 2-4 sentences that explain the topic: what is happening, \
-        who are the main players, and why it matters.
-        - Synthesize the information into a coherent narrative. Do NOT critique or \
-        comment on the quality of the data.
-        - Write in a neutral, informative news tone.
-        - Use the article headlines, descriptions, and entity names to ground your summary in specifics.
-        - Only state facts present in the provided data. Do not infer or speculate beyond what is given.
-        - Refer to this as a "topic" or "theme", never as a "cluster".
+        Writing rules:
+        - Title: a specific, factual headline (under 10 words). Name the main actor \
+        or subject if one dominates. Do NOT start with a gerund.
+        - Summary: 2-5 sentences packed with specifics — names, products, numbers, \
+        actions. Lead with the most concrete fact, not a meta-description.
+        - NEVER start with "This topic", "This theme", "This cluster", or any \
+        third-person reference to the grouping itself. Jump straight into the facts.
+        - Name the actors and their actions. "AWS launched SageMaker Inference for \
+        custom Nova models" is good. "New infrastructure for deploying AI" is bad.
+        - If the grouped items share a clear thread, describe it. If they are loosely \
+        related or span several sub-topics, briefly list the key items rather than \
+        forcing a single narrative. Honesty about breadth beats false coherence.
+        - Only state facts present in the provided data.
 
         Output EXACTLY this JSON: {"title": "...", "summary": "..."}
         """

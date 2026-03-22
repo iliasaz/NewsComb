@@ -115,18 +115,23 @@ final class GraphDataService: Sendable {
             return GraphData(nodes: singleNode, edges: [])
         }
 
-        // Find all nodes connected to these edges
-        let neighborNodeIds = try database.read { db in
-            let placeholders = connectedEdgeIds.map { _ in "?" }.joined(separator: ",")
-            return try Int64.fetchAll(
-                db,
-                sql: """
-                    SELECT DISTINCT node_id
-                    FROM hypergraph_incidence
-                    WHERE edge_id IN (\(placeholders))
-                """,
-                arguments: StatementArguments(connectedEdgeIds)
-            )
+        // Find all nodes connected to these edges (batched to avoid SQLite variable limit)
+        let neighborNodeIds: [Int64] = try database.read { db in
+            var allIds: Set<Int64> = []
+            for batch in connectedEdgeIds.chunked(into: 500) {
+                let placeholders = batch.map { _ in "?" }.joined(separator: ",")
+                let batchIds = try Int64.fetchAll(
+                    db,
+                    sql: """
+                        SELECT DISTINCT node_id
+                        FROM hypergraph_incidence
+                        WHERE edge_id IN (\(placeholders))
+                    """,
+                    arguments: StatementArguments(batch)
+                )
+                allIds.formUnion(batchIds)
+            }
+            return Array(allIds)
         }
 
         return try loadSubgraph(nodeIds: neighborNodeIds)
@@ -570,23 +575,20 @@ final class GraphDataService: Sendable {
 
             guard !edgeDbIds.isEmpty else { return [] }
 
-            // Load edge details
-            let edgePlaceholders = edgeDbIds.map { _ in "?" }.joined(separator: ",")
-            let edgeSQL = """
-                SELECT id, edge_id, label
-                FROM hypergraph_edge
-                WHERE id IN (\(edgePlaceholders))
-            """
-            let edgeRows = try Row.fetchAll(db, sql: edgeSQL, arguments: StatementArguments(edgeDbIds))
-
-            // Load incidences for these edges
-            let incidenceSQL = """
-                SELECT edge_id, node_id, role
-                FROM hypergraph_incidence
-                WHERE edge_id IN (\(edgePlaceholders))
-                ORDER BY edge_id, position
-            """
-            let incidenceRows = try Row.fetchAll(db, sql: incidenceSQL, arguments: StatementArguments(edgeDbIds))
+            // Load edge details and incidences (batched to avoid SQLite variable limit)
+            var edgeRows: [Row] = []
+            var incidenceRows: [Row] = []
+            for batch in edgeDbIds.chunked(into: 500) {
+                let ph = batch.map { _ in "?" }.joined(separator: ",")
+                let args = StatementArguments(batch)
+                edgeRows += try Row.fetchAll(db, sql: """
+                    SELECT id, edge_id, label FROM hypergraph_edge WHERE id IN (\(ph))
+                """, arguments: args)
+                incidenceRows += try Row.fetchAll(db, sql: """
+                    SELECT edge_id, node_id, role FROM hypergraph_incidence
+                    WHERE edge_id IN (\(ph)) ORDER BY edge_id, position
+                """, arguments: args)
+            }
 
             // Group incidences by edge_id
             var sourcesByEdge: [Int64: [Int64]] = [:]

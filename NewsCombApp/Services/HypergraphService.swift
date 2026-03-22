@@ -137,6 +137,9 @@ final class HypergraphService: Sendable {
         logger.debug("Marked article \(feedItemId) as processing")
 
         do {
+            // Bail early if this task was cancelled
+            try Task.checkCancellation()
+
             // Create document processor
             logger.info("Creating document processor...")
             let processor = try await createDocumentProcessor()
@@ -246,7 +249,7 @@ final class HypergraphService: Sendable {
                 throw HypergraphServiceError.cancelled
             }
 
-            // Process each batch in parallel
+            // Process each batch in parallel, with per-task cancellation
             let results = await withTaskGroup(of: (Int64, String, Bool).self, returning: [(Int64, String, Bool)].self) { group in
                 for article in batch {
                     guard let articleId = article.id else { continue }
@@ -265,8 +268,20 @@ final class HypergraphService: Sendable {
                 var batchResults: [(Int64, String, Bool)] = []
                 for await result in group {
                     batchResults.append(result)
+                    // Cancel remaining tasks as soon as the flag is set
+                    if self.isCancelled {
+                        group.cancelAll()
+                        break
+                    }
                 }
                 return batchResults
+            }
+
+            // Exit immediately if cancelled mid-batch
+            if isCancelled {
+                logger.info("Processing cancelled after \(completedSoFar + results.count) articles")
+                progressCallback?(completedSoFar + results.count, totalCount, "Cancelled")
+                throw HypergraphServiceError.cancelled
             }
 
             // Process batch results
@@ -1244,9 +1259,140 @@ enum HypergraphServiceError: Error, LocalizedError {
     }
 }
 
+// MARK: - Provenance Repair
+
+extension HypergraphService {
+
+    /// Repairs provenance data in-place without re-running LLM extraction.
+    ///
+    /// The old code always wrote `chunk_index = 0` because it tried to parse a
+    /// sequential integer from the library's MD5 chunk hash. This method:
+    /// 1. Re-chunks each affected article with `RecursiveTextSplitter` (matching the library)
+    /// 2. Parses the chunk hash from `hypergraph_edge.edge_id`
+    /// 3. Updates `article_edge_provenance` with the correct `chunk_index` and `chunk_text`
+    /// 4. Refreshes `article_chunk` rows and links `hypergraph_edge.source_chunk_id`
+    ///
+    /// No LLM calls or embedding recomputation needed.
+    func repairProvenance(progressCallback: ProgressCallback? = nil) async throws -> Int {
+        // Find articles whose provenance is broken: all chunk_index = 0 but
+        // the article actually had multiple chunks.
+        let articlesToRepair: [(feedItemId: Int64, content: String)] = try database.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT DISTINCT fi.id AS feed_item_id, fi.full_content
+                FROM article_edge_provenance aep
+                JOIN feed_item fi ON fi.id = aep.feed_item_id
+                WHERE fi.full_content IS NOT NULL AND fi.full_content != ''
+                GROUP BY fi.id
+                HAVING MAX(aep.chunk_index) = 0 AND COUNT(*) > 1
+            """).compactMap { row -> (Int64, String)? in
+                guard let id: Int64 = row["feed_item_id"],
+                      let content: String = row["full_content"],
+                      !content.isEmpty else { return nil }
+                return (id, content)
+            }
+        }
+
+        guard !articlesToRepair.isEmpty else {
+            logger.info("No provenance to repair")
+            return 0
+        }
+
+        logger.info("Repairing provenance for \(articlesToRepair.count) articles")
+        let splitter = RecursiveTextSplitter(chunkSize: 1000)
+
+        var repairedCount = 0
+
+        for (index, article) in articlesToRepair.enumerated() {
+            // Re-chunk with the same splitter the library used
+            let chunks = splitter.split(article.content)
+            guard !chunks.isEmpty else { continue }
+
+            // Build hash → (sequentialIndex, text) mapping
+            var hashToIndex: [String: Int] = [:]
+            var hashToText: [String: String] = [:]
+            for (seqIdx, chunk) in chunks.enumerated() {
+                hashToIndex[chunk.chunkID] = seqIdx
+                hashToText[chunk.chunkID] = chunk.text
+            }
+
+            try database.write { db in
+                // Refresh article_chunk rows with library-aligned chunks
+                var chunkIdMap: [String: Int64] = [:]
+                for (seqIdx, chunk) in chunks.enumerated() {
+                    try db.execute(
+                        sql: """
+                            INSERT INTO article_chunk (feed_item_id, chunk_index, content, created_at)
+                            VALUES (?, ?, ?, unixepoch())
+                            ON CONFLICT(feed_item_id, chunk_index) DO UPDATE SET
+                                content = excluded.content
+                        """,
+                        arguments: [article.feedItemId, seqIdx, chunk.text]
+                    )
+                    if let row = try Row.fetchOne(
+                        db,
+                        sql: "SELECT id FROM article_chunk WHERE feed_item_id = ? AND chunk_index = ?",
+                        arguments: [article.feedItemId, seqIdx]
+                    ) {
+                        chunkIdMap[chunk.chunkID] = row["id"]
+                    }
+                }
+
+                // Get all edges for this article via provenance
+                let edgeRows = try Row.fetchAll(db, sql: """
+                    SELECT DISTINCT he.id AS edge_row_id, he.edge_id
+                    FROM article_edge_provenance aep
+                    JOIN hypergraph_edge he ON he.id = aep.edge_id
+                    WHERE aep.feed_item_id = ?
+                """, arguments: [article.feedItemId])
+
+                for edgeRow in edgeRows {
+                    guard let edgeRowId: Int64 = edgeRow["edge_row_id"],
+                          let edgeId: String = edgeRow["edge_id"] else { continue }
+
+                    // Parse chunk hash from edge_id: "relation_chunk<32-char-hash>_index"
+                    guard let chunkRange = edgeId.range(of: "_chunk") else { continue }
+                    let afterChunk = edgeId[chunkRange.upperBound...]
+                    let chunkHash = String(afterChunk.prefix(32))
+                    guard chunkHash.count == 32 else { continue }
+
+                    let seqIdx = hashToIndex[chunkHash] ?? 0
+                    let chunkText = hashToText[chunkHash]
+                    let sourceChunkRowId = chunkIdMap[chunkHash]
+
+                    // Update provenance with correct chunk_index and chunk_text
+                    try db.execute(
+                        sql: """
+                            UPDATE article_edge_provenance
+                            SET chunk_index = ?, chunk_text = ?
+                            WHERE edge_id = ? AND feed_item_id = ?
+                        """,
+                        arguments: [seqIdx, chunkText, edgeRowId, article.feedItemId]
+                    )
+
+                    // Link edge to source chunk
+                    if let chunkRowId = sourceChunkRowId {
+                        try db.execute(
+                            sql: "UPDATE hypergraph_edge SET source_chunk_id = ? WHERE id = ?",
+                            arguments: [chunkRowId, edgeRowId]
+                        )
+                    }
+                }
+            }
+
+            repairedCount += 1
+            if let cb = progressCallback {
+                await cb(index + 1, articlesToRepair.count, "Repairing provenance…")
+            }
+        }
+
+        logger.info("Provenance repair complete: \(repairedCount) articles repaired")
+        return repairedCount
+    }
+}
+
 // MARK: - Array Chunking Extension
 
-private extension Array {
+extension Array {
     /// Splits the array into chunks of the specified size.
     func chunked(into size: Int) -> [[Element]] {
         stride(from: 0, to: count, by: size).map {

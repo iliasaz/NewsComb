@@ -11,10 +11,13 @@ struct ThemesView: View {
             }
 
             if viewModel.hasClusters {
-                statsSection
+                if !viewModel.isSearching {
+                    statsSection
+                }
                 clustersSection
             }
         }
+        .searchable(text: $viewModel.searchText, prompt: "Search themes")
         .navigationTitle("Story Themes")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -106,13 +109,20 @@ struct ThemesView: View {
 
     private var clustersSection: some View {
         Section {
-            ForEach(viewModel.clusters) { cluster in
+            ForEach(viewModel.displayedClusters) { cluster in
                 NavigationLink(value: cluster) {
-                    ClusterRow(cluster: cluster)
+                    ClusterRow(
+                        cluster: cluster,
+                        snippet: viewModel.snippet(for: cluster.clusterId)
+                    )
                 }
             }
         } header: {
-            Text("Themes")
+            if viewModel.isSearching {
+                Text("\(viewModel.searchResults.count) results")
+            } else {
+                Text("Themes")
+            }
         }
     }
 }
@@ -121,6 +131,7 @@ struct ThemesView: View {
 
 private struct ClusterRow: View {
     let cluster: StoryCluster
+    var snippet: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -139,7 +150,12 @@ private struct ClusterRow: View {
                     .clipShape(.capsule)
             }
 
-            if let summary = cluster.summary {
+            if let snippet {
+                HighlightedSnippet(snippet: snippet)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            } else if let summary = cluster.summary {
                 Text(summary)
                     .font(.caption)
                     .foregroundStyle(.secondary)

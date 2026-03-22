@@ -59,24 +59,20 @@ struct AccelerateVectorOps {
             }
         }
 
-        // Matrix multiply: A * A^T = similarity matrix
-        // For normalized vectors, dot product equals cosine similarity
+        // Matrix multiply: A * Aᵀ = similarity matrix
+        // For normalized vectors, dot product equals cosine similarity.
+        // Use vDSP_mmul (non-deprecated) with an explicit transpose.
+        var transposed = [Float](repeating: 0, count: dim * n)
+        vDSP_mtrans(normalized, 1, &transposed, 1, vDSP_Length(dim), vDSP_Length(n))
+
         var result = [Float](repeating: 0, count: n * n)
-        cblas_sgemm(
-            CblasRowMajor,
-            CblasNoTrans,
-            CblasTrans,
-            Int32(n),           // M: rows of A
-            Int32(n),           // N: cols of B^T (rows of B)
-            Int32(dim),         // K: cols of A (rows of B)
-            1.0,                // alpha
-            normalized,         // A
-            Int32(dim),         // lda
-            normalized,         // B
-            Int32(dim),         // ldb
-            0.0,                // beta
-            &result,            // C
-            Int32(n)            // ldc
+        vDSP_mmul(
+            normalized, 1,      // A: n × dim
+            transposed, 1,      // Aᵀ: dim × n
+            &result, 1,         // C: n × n
+            vDSP_Length(n),     // M: rows of A
+            vDSP_Length(n),     // N: cols of Aᵀ
+            vDSP_Length(dim)    // P: cols of A / rows of Aᵀ
         )
 
         // Reshape to 2D array

@@ -23,17 +23,32 @@ final class HDBSCANService: Sendable {
         let clusterCount: Int
     }
 
+    /// Distance metric for clustering.
+    enum DistanceMetric {
+        /// Euclidean (L2) distance.
+        case euclidean
+        /// Cosine distance: `1 - cos(a, b)`. Better for high-dimensional normalized vectors.
+        case cosine
+    }
+
     /// Configuration parameters for HDBSCAN.
     struct Parameters {
         /// Minimum number of points to form a cluster.
         var minClusterSize: Int = 20
         /// Number of neighbors for core distance computation.
         var minSamples: Int = 10
+        /// Distance metric.
+        var metric: DistanceMetric = .cosine
 
         /// Validates and adjusts parameters for the data size.
+        ///
+        /// Scales `minClusterSize` with half the square root of the data size.
+        /// This balances mega-cluster prevention with allowing coherent small
+        /// topics to survive. For N=100 → 20, N=1K → 20, N=15K → 61, N=50K → 112.
         func validated(forDataSize n: Int) -> Parameters {
             var p = self
-            p.minClusterSize = min(p.minClusterSize, max(2, n / 5))
+            let scaled = max(20, Int(Double(n).squareRoot() / 2))
+            p.minClusterSize = min(scaled, max(2, n / 5))
             p.minSamples = min(p.minSamples, p.minClusterSize)
             return p
         }
@@ -56,12 +71,18 @@ final class HDBSCANService: Sendable {
         }
 
         let params = params.validated(forDataSize: n)
-        logger.info("Running HDBSCAN: n=\(n), minClusterSize=\(params.minClusterSize), minSamples=\(params.minSamples)")
+        logger.info("Running HDBSCAN: n=\(n), minClusterSize=\(params.minClusterSize), minSamples=\(params.minSamples), metric=\(String(describing: params.metric))")
         let pipelineStart = ContinuousClock.now
 
         // Step 1: Compute pairwise distances and core distances
         logger.info("Step 1a: Computing \(n)x\(n) distance matrix...")
-        let distances = computeDistanceMatrix(vectors)
+        let distances: [Float]
+        switch params.metric {
+        case .euclidean:
+            distances = computeEuclideanDistanceMatrix(vectors)
+        case .cosine:
+            distances = computeCosineDistanceMatrix(vectors)
+        }
         logger.info("Step 1a: Distance matrix computed in \(ContinuousClock.now - pipelineStart)")
 
         logger.info("Step 1b: Computing core distances (k=\(params.minSamples))...")
@@ -89,45 +110,139 @@ final class HDBSCANService: Sendable {
 
     // MARK: - Step 1: Distance Matrix & Core Distances
 
-    /// Computes the full NxN Euclidean distance matrix using Accelerate.
-    private func computeDistanceMatrix(_ vectors: [[Float]]) -> [Float] {
+    /// Flattens vectors and computes the NxN dot-product matrix A·Aᵀ using
+    /// `vDSP_mmul` (the non-deprecated Accelerate matrix multiply).
+    /// Also returns per-vector squared norms via `vDSP_svesq`.
+    private func computeDotProductMatrix(_ vectors: [[Float]]) -> (dots: [Float], normsSq: [Float], n: Int) {
         let n = vectors.count
-        guard let dim = vectors.first?.count else { return [] }
+        guard let dim = vectors.first?.count else { return ([], [], 0) }
 
-        // Flatten vectors
+        // Flatten into a contiguous row-major matrix
         var flat = [Float](repeating: 0, count: n * dim)
         for i in 0..<n {
             flat.replaceSubrange((i * dim)..<((i + 1) * dim), with: vectors[i])
         }
 
-        // Compute ||a||² for each vector
-        var norms = [Float](repeating: 0, count: n)
-        for i in 0..<n {
-            var normSq: Float = 0
-            vDSP_svesq(Array(flat[(i * dim)..<((i + 1) * dim)]), 1, &normSq, vDSP_Length(dim))
-            norms[i] = normSq
+        // Per-vector squared norms: ||a||² = Σ aᵢ²
+        var normsSq = [Float](repeating: 0, count: n)
+        flat.withUnsafeBufferPointer { flatBuf in
+            for i in 0..<n {
+                vDSP_svesq(flatBuf.baseAddress! + i * dim, 1, &normsSq[i], vDSP_Length(dim))
+            }
         }
 
-        // Compute dot products: A * A^T
-        var dots = [Float](repeating: 0, count: n * n)
-        cblas_sgemm(
-            CblasRowMajor, CblasNoTrans, CblasTrans,
-            Int32(n), Int32(n), Int32(dim),
-            1.0, flat, Int32(dim),
-            flat, Int32(dim),
-            0.0, &dots, Int32(n)
-        )
+        // A·Aᵀ via vDSP_mmul (replaces deprecated cblas_sgemm).
+        // vDSP_mmul(A, 1, B, 1, C, 1, M, N, P) computes C[M×N] = A[M×P] * B[P×N].
+        // For A·Aᵀ we need B = Aᵀ, so: M=N=n, P=dim.
+        // vDSP_mmul expects the *transposed* matrix pre-transposed in memory.
+        var transposed = [Float](repeating: 0, count: dim * n)
+        vDSP_mtrans(flat, 1, &transposed, 1, vDSP_Length(dim), vDSP_Length(n))
 
-        // dist²(a,b) = ||a||² + ||b||² - 2*(a·b)
-        var distances = [Float](repeating: 0, count: n * n)
+        var dots = [Float](repeating: 0, count: n * n)
+        vDSP_mmul(flat, 1, transposed, 1, &dots, 1,
+                  vDSP_Length(n), vDSP_Length(n), vDSP_Length(dim))
+
+        return (dots, normsSq, n)
+    }
+
+    /// Computes the full NxN Euclidean distance matrix using Accelerate.
+    ///
+    /// dist(a,b) = √(||a||² + ||b||² − 2·a·b)
+    ///
+    /// Fully vectorized: builds the N×N ||a||²+||b||² matrix via outer sum,
+    /// subtracts 2·dots, clamps negatives, and batch-sqrts with `vvsqrtf`.
+    private func computeEuclideanDistanceMatrix(_ vectors: [[Float]]) -> [Float] {
+        let (dots, normsSq, n) = computeDotProductMatrix(vectors)
+        guard n > 0 else { return [] }
+        let nn = n * n
+
+        // Build N×N matrix where [i,j] = ||a_i||² + ||b_j||²
+        // = outer sum of normsSq with itself.
+        // Row broadcast: each row i is filled with normsSq[i] + normsSq[:]
+        var normSumMatrix = [Float](repeating: 0, count: nn)
+        normSumMatrix.withUnsafeMutableBufferPointer { buf in
+            for i in 0..<n {
+                var val = normsSq[i]
+                vDSP_vsadd(normsSq, 1, &val, buf.baseAddress! + i * n, 1, vDSP_Length(n))
+            }
+        }
+
+        // distances = normSumMatrix - 2 * dots
+        var minusTwo: Float = -2.0
+        vDSP_vsma(dots, 1, &minusTwo, normSumMatrix, 1, &normSumMatrix, 1, vDSP_Length(nn))
+
+        // Clamp negatives to zero (floating-point rounding can produce tiny negatives)
+        var zero: Float = 0
+        vDSP_vthres(normSumMatrix, 1, &zero, &normSumMatrix, 1, vDSP_Length(nn))
+
+        // Batch sqrt
+        var distances = [Float](repeating: 0, count: nn)
+        var count = Int32(nn)
+        vvsqrtf(&distances, normSumMatrix, &count)
+
+        // Zero the diagonal
         for i in 0..<n {
-            for j in 0..<n {
-                if i == j {
-                    distances[i * n + j] = 0
-                } else {
-                    let d2 = max(0, norms[i] + norms[j] - 2 * dots[i * n + j])
-                    distances[i * n + j] = sqrt(d2)
-                }
+            distances[i * n + i] = 0
+        }
+
+        return distances
+    }
+
+    /// Computes the full NxN cosine distance matrix using Accelerate.
+    ///
+    /// cosine_distance(a,b) = 1 − (a·b)/(||a||·||b||)
+    ///
+    /// Fully vectorized: builds the N×N norm-product matrix via outer product
+    /// of L2 norms, divides dots element-wise, then subtracts from 1.
+    private func computeCosineDistanceMatrix(_ vectors: [[Float]]) -> [Float] {
+        let (dots, normsSq, n) = computeDotProductMatrix(vectors)
+        guard n > 0 else { return [] }
+        let nn = n * n
+
+        // L2 norms: √(normsSq)
+        var norms = [Float](repeating: 0, count: n)
+        var sqrtCount = Int32(n)
+        vvsqrtf(&norms, normsSq, &sqrtCount)
+
+        // Build N×N denominator matrix: denom[i,j] = ||a_i|| * ||b_j||
+        // This is the outer product of the norms vector with itself.
+        var denomMatrix = [Float](repeating: 0, count: nn)
+        denomMatrix.withUnsafeMutableBufferPointer { buf in
+            for i in 0..<n {
+                var val = norms[i]
+                vDSP_vsmul(norms, 1, &val, buf.baseAddress! + i * n, 1, vDSP_Length(n))
+            }
+        }
+
+        // cosine_similarity = dots / denomMatrix (element-wise)
+        // vDSP_vdiv divides B[i]/A[i], so pass denom as A and dots as B.
+        var similarity = [Float](repeating: 0, count: nn)
+        vDSP_vdiv(denomMatrix, 1, dots, 1, &similarity, 1, vDSP_Length(nn))
+
+        // cosine_distance = 1 - similarity
+        var one: Float = 1.0
+        var negOne: Float = -1.0
+        var distances = [Float](repeating: 0, count: nn)
+        // distances = one + (-1 * similarity) = 1 - similarity
+        vDSP_vsmsma(similarity, 1, &negOne, similarity, 1, &one, &distances, 1, vDSP_Length(nn))
+        // vsmsma doesn't do what we want — use vDSP_vsadd on negated similarity instead
+        vDSP_vneg(similarity, 1, &distances, 1, vDSP_Length(nn))
+        vDSP_vsadd(distances, 1, &one, &distances, 1, vDSP_Length(nn))
+
+        // Clamp negatives from floating-point rounding
+        var zero: Float = 0
+        vDSP_vthres(distances, 1, &zero, &distances, 1, vDSP_Length(nn))
+
+        // Zero the diagonal
+        for i in 0..<n {
+            distances[i * n + i] = 0
+        }
+
+        // Handle zero-norm vectors (denom=0 → division produced NaN/Inf)
+        // Replace any NaN/Inf with 1.0 (maximally dissimilar)
+        for i in 0..<nn {
+            if distances[i].isNaN || distances[i].isInfinite {
+                distances[i] = 1.0
             }
         }
 
