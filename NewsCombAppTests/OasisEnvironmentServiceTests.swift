@@ -33,6 +33,13 @@ final class OasisEnvironmentServiceTests: XCTestCase {
         XCTAssertEqual(result?.minor, 13)
     }
 
+    func testParseVersionString_valid314() {
+        let result = OasisEnvironmentService.parseVersionString("Python 3.14.0")
+        XCTAssertNotNil(result, "Python 3.14 should be accepted")
+        XCTAssertEqual(result?.major, 3)
+        XCTAssertEqual(result?.minor, 14)
+    }
+
     func testParseVersionString_tooOld39() {
         let result = OasisEnvironmentService.parseVersionString("Python 3.9.7")
         XCTAssertNil(result, "Python 3.9 should be rejected (minimum is 3.10)")
@@ -86,17 +93,110 @@ final class OasisEnvironmentServiceTests: XCTestCase {
         XCTAssertFalse(OasisStatus.error("something").isInstalled)
     }
 
-    // MARK: - Live Detection (integration test, requires Python on the machine)
+    // MARK: - Candidate Path Construction
+
+    func testCandidatePaths_noDoubleSlashes() {
+        // Verify that home directory path handling doesn't create double slashes
+        let home = FileManager.default.homeDirectoryForCurrentUser
+            .path(percentEncoded: false)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let homePath = "/\(home)"
+        let condaPath = "\(homePath)/miniconda3/bin/python3"
+
+        XCTAssertFalse(condaPath.contains("//"),
+                       "Path should not contain double slashes: \(condaPath)")
+        XCTAssertTrue(condaPath.hasPrefix("/Users/") || condaPath.hasPrefix("/home/"),
+                      "Path should start with valid home prefix: \(condaPath)")
+    }
+
+    // MARK: - Live Process Execution
+
+    func testProcessExecution_pythonVersion() async throws {
+        // Test that Process can actually execute and capture output
+        // This verifies subprocess execution works in the test environment
+        let knownPaths = [
+            "/opt/homebrew/bin/python3",
+            "/usr/bin/python3",
+            FileManager.default.homeDirectoryForCurrentUser
+                .appending(path: "miniconda3/bin/python3").path(percentEncoded: false)
+        ]
+
+        var foundWorkingPython = false
+        for pythonPath in knownPaths {
+            guard FileManager.default.isExecutableFile(atPath: pythonPath) else { continue }
+
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: pythonPath)
+            process.arguments = ["--version"]
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = Pipe()
+
+            do {
+                try process.run()
+                process.waitUntilExit()
+
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let output = String(data: data, encoding: .utf8) ?? ""
+
+                XCTAssertTrue(output.contains("Python"), "Expected 'Python' in output: '\(output)'")
+                XCTAssertEqual(process.terminationStatus, 0, "python3 --version should exit with 0")
+
+                let parsed = OasisEnvironmentService.parseVersionString(output)
+                XCTAssertNotNil(parsed, "Should parse version from: '\(output)'")
+
+                foundWorkingPython = true
+                break
+            } catch {
+                // This path doesn't work, try next
+                continue
+            }
+        }
+
+        XCTAssertTrue(foundWorkingPython, "Should find at least one working Python on this machine")
+    }
+
+    func testValidatePythonVersion_withRealPython() async {
+        // Test the actual validatePythonVersion method with a real Python binary
+        let service = OasisEnvironmentService()
+
+        let knownPaths = [
+            "/opt/homebrew/bin/python3",
+            "/usr/bin/python3",
+            FileManager.default.homeDirectoryForCurrentUser
+                .appending(path: "miniconda3/bin/python3").path(percentEncoded: false)
+        ]
+
+        for pythonPath in knownPaths {
+            guard FileManager.default.isExecutableFile(atPath: pythonPath) else { continue }
+            let valid = await service.validatePythonVersion(pythonPath)
+            // At least one should be valid (we know this machine has Python 3.10+)
+            if valid {
+                return // test passes
+            }
+        }
+
+        XCTFail("No Python binary passed version validation")
+    }
+
+    // MARK: - Full Detection Pipeline
 
     func testDetectPythonPath_findsSystemPython() async {
         let service = OasisEnvironmentService()
         let path = await service.detectPythonPath()
-
-        // This machine has Python installed, so detection should succeed
         XCTAssertNotNil(path, "Should find Python on this machine")
 
         if let path {
-            XCTAssertTrue(FileManager.default.isExecutableFile(atPath: path))
+            XCTAssertTrue(FileManager.default.isExecutableFile(atPath: path),
+                          "Detected path should be executable: \(path)")
+
+            // Verify the detected Python actually works
+            let version = await service.parsePythonVersion(path)
+            XCTAssertNotNil(version, "Detected Python should have valid version")
+            if let version {
+                XCTAssertGreaterThanOrEqual(version.minor, 10,
+                                           "Detected Python should be 3.10+, got 3.\(version.minor)")
+            }
         }
     }
 
@@ -108,17 +208,16 @@ final class OasisEnvironmentServiceTests: XCTestCase {
         }
 
         let status = await service.checkOasisInstalled(pythonPath: pythonPath)
-        // We know oasis is installed on this machine
         switch status {
         case .installed(let version):
             XCTAssertFalse(version.isEmpty, "Version should not be empty")
         case .notInstalled:
-            // Acceptable if the detected Python doesn't have oasis
+            // Acceptable — oasis might not be installed on the detected Python
             break
         case .pythonNotFound:
-            XCTFail("Python was just detected, should not get pythonNotFound")
+            XCTFail("Python was just detected at \(pythonPath), should not get pythonNotFound")
         case .error(let msg):
-            XCTFail("Unexpected error: \(msg)")
+            XCTFail("Unexpected error checking OASIS: \(msg)")
         }
     }
 
@@ -126,6 +225,34 @@ final class OasisEnvironmentServiceTests: XCTestCase {
         let service = OasisEnvironmentService()
         let status = await service.checkOasisInstalled(pythonPath: "/nonexistent/python3")
         XCTAssertEqual(status, .pythonNotFound)
+    }
+
+    // MARK: - SettingsViewModel Integration
+
+    func testSettingsViewModel_checkOasisEnvironment() async {
+        let viewModel = await SettingsViewModel()
+
+        // Initial state
+        await MainActor.run {
+            XCTAssertTrue(viewModel.simPythonDetectedPath.isEmpty, "Should start empty")
+            XCTAssertEqual(viewModel.simOasisStatusText, "Not checked")
+            XCTAssertFalse(viewModel.simOasisInstalled)
+        }
+
+        // Run environment check
+        await viewModel.checkOasisEnvironment()
+
+        // After check, Python should be detected on this machine
+        await MainActor.run {
+            XCTAssertFalse(viewModel.simPythonDetectedPath.isEmpty,
+                           "Should have detected Python path")
+            XCTAssertNotEqual(viewModel.simPythonDetectedPath, "Not found",
+                              "Should find Python, not 'Not found'")
+            XCTAssertNotEqual(viewModel.simOasisStatusText, "Not checked",
+                              "OASIS status should be updated after check")
+            XCTAssertFalse(viewModel.isCheckingEnvironment,
+                           "Should not be checking anymore")
+        }
     }
 
     // MARK: - Simulations Directory

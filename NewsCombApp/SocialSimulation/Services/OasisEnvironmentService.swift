@@ -27,16 +27,19 @@ final class OasisEnvironmentService: Sendable {
     /// Finds the best Python 3 binary by checking common paths, conda, and `which`.
     @concurrent
     func detectPythonPath() async -> String? {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path()
+        let home = FileManager.default.homeDirectoryForCurrentUser
+            .path(percentEncoded: false)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let homePath = "/\(home)"
 
         // Static candidates + user-specific conda/miniconda/anaconda paths
         let candidates = [
             "/opt/homebrew/bin/python3",
             "/usr/local/bin/python3",
-            "\(home)/miniconda3/bin/python3",
-            "\(home)/anaconda3/bin/python3",
-            "\(home)/miniforge3/bin/python3",
-            "\(home)/.pyenv/shims/python3",
+            "\(homePath)/miniconda3/bin/python3",
+            "\(homePath)/anaconda3/bin/python3",
+            "\(homePath)/miniforge3/bin/python3",
+            "\(homePath)/.pyenv/shims/python3",
             "/opt/local/bin/python3",
             "/usr/bin/python3",
         ]
@@ -53,9 +56,9 @@ final class OasisEnvironmentService: Sendable {
 
         // Check conda environments for a suitable Python
         let condaDirs = [
-            "\(home)/miniconda3/envs",
-            "\(home)/anaconda3/envs",
-            "\(home)/miniforge3/envs",
+            "\(homePath)/miniconda3/envs",
+            "\(homePath)/anaconda3/envs",
+            "\(homePath)/miniforge3/envs",
         ]
         for condaDir in condaDirs {
             if let envNames = try? FileManager.default.contentsOfDirectory(atPath: condaDir) {
