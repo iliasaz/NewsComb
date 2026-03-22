@@ -139,56 +139,49 @@ final class VPTreeService: Sendable {
 
     /// Searches the VP-tree for the k nearest neighbors of a query point.
     ///
-    /// Uses a max-heap (sorted array) of the current best k neighbors.
+    /// Uses an iterative traversal with an explicit stack (avoiding stack overflow
+    /// on deep trees) and a bounded max-heap of the current best k neighbors.
     /// Prunes branches whose closest possible point is farther than the
     /// current k-th nearest distance.
     private func knnSearch(tree: VPNode?, query: [Float], queryIndex: Int,
                            k: Int, vectors: [[Float]],
                            distanceFunc: @Sendable ([Float], [Float]) -> Float) -> [Neighbor] {
+        guard let root = tree else { return [] }
+
         var heap = BoundedMaxHeap(capacity: k)
-        searchNode(node: tree, query: query, queryIndex: queryIndex,
-                   vectors: vectors, distanceFunc: distanceFunc, heap: &heap)
+        var stack: [VPNode] = [root]
+
+        while let node = stack.popLast() {
+            let dist = distanceFunc(query, vectors[node.pointIndex])
+
+            // Don't include the query point itself as its own neighbor
+            if node.pointIndex != queryIndex {
+                heap.insert(Neighbor(index: node.pointIndex, distance: dist))
+            }
+
+            // Decide which subtree(s) to search.
+            // Push the less-promising subtree first so the more-promising one
+            // is popped (and searched) first — this tightens tau faster.
+            if dist <= node.radius {
+                // Query is inside the radius — prefer left (close) subtree
+                if let right = node.right, dist + heap.maxDistance > node.radius {
+                    stack.append(right)
+                }
+                if let left = node.left, dist - heap.maxDistance <= node.radius {
+                    stack.append(left)
+                }
+            } else {
+                // Query is outside the radius — prefer right (far) subtree
+                if let left = node.left, dist - heap.maxDistance <= node.radius {
+                    stack.append(left)
+                }
+                if let right = node.right, dist + heap.maxDistance > node.radius {
+                    stack.append(right)
+                }
+            }
+        }
+
         return heap.sorted()
-    }
-
-    /// Recursively searches a VP-tree node, pruning when possible.
-    private func searchNode(node: VPNode?, query: [Float], queryIndex: Int,
-                            vectors: [[Float]],
-                            distanceFunc: @Sendable ([Float], [Float]) -> Float,
-                            heap: inout BoundedMaxHeap) {
-        guard let node else { return }
-
-        let dist = distanceFunc(query, vectors[node.pointIndex])
-
-        // Don't include the query point itself as its own neighbor
-        if node.pointIndex != queryIndex {
-            heap.insert(Neighbor(index: node.pointIndex, distance: dist))
-        }
-
-        let tau = heap.maxDistance
-
-        // Decide which subtree(s) to search
-        if dist <= node.radius {
-            // Query is inside the radius — search left (close) first
-            if dist - tau <= node.radius {
-                searchNode(node: node.left, query: query, queryIndex: queryIndex,
-                           vectors: vectors, distanceFunc: distanceFunc, heap: &heap)
-            }
-            if dist + heap.maxDistance > node.radius {
-                searchNode(node: node.right, query: query, queryIndex: queryIndex,
-                           vectors: vectors, distanceFunc: distanceFunc, heap: &heap)
-            }
-        } else {
-            // Query is outside the radius — search right (far) first
-            if dist + tau > node.radius {
-                searchNode(node: node.right, query: query, queryIndex: queryIndex,
-                           vectors: vectors, distanceFunc: distanceFunc, heap: &heap)
-            }
-            if dist - heap.maxDistance <= node.radius {
-                searchNode(node: node.left, query: query, queryIndex: queryIndex,
-                           vectors: vectors, distanceFunc: distanceFunc, heap: &heap)
-            }
-        }
     }
 
     // MARK: - Bounded Max-Heap

@@ -33,9 +33,12 @@ final class PCAService: Sendable {
     ///
     /// Uses the covariance-matrix approach:
     /// 1. Mean-center the data
-    /// 2. Compute D×D covariance matrix via `vDSP_mmul`
+    /// 2. Compute D×D covariance matrix via BLAS `ssyrk` (no N×D transpose needed)
     /// 3. Eigendecompose via LAPACK `ssyev_`
     /// 4. Project onto top-k eigenvectors
+    ///
+    /// Memory: O(N×D + D²) — the N×D data matrix plus the D×D covariance matrix.
+    /// No intermediate N×D transpose is allocated.
     ///
     /// - Parameters:
     ///   - vectors: Array of N vectors, each of dimension D.
@@ -68,7 +71,9 @@ final class PCAService: Sendable {
         // Step 2: Mean-center the data in-place
         centerData(flat: &flat, mean: mean, n: n, d: d)
 
-        // Step 3: Compute the D×D covariance matrix: C = (1/(n-1)) Xᵀ X
+        // Step 3: Compute the D×D covariance matrix via BLAS ssyrk
+        // ssyrk computes C = α·AᵀA + β·C for the upper triangle, avoiding
+        // the O(N×D) transpose allocation that vDSP_mmul would require.
         var covMatrix = computeCovarianceMatrix(flat: flat, n: n, d: d)
 
         // Step 4: Eigendecompose the covariance matrix via LAPACK ssyev_
@@ -113,7 +118,8 @@ final class PCAService: Sendable {
         }
 
         let elapsed = ContinuousClock.now - startTime
-        logger.info("PCA complete: \(d)D → \(k)D, explained variance: \(String(format: "%.1f", explainedRatio * 100))%, time: \(elapsed)")
+        let variancePct = (explainedRatio * 100).formatted(.number.precision(.fractionLength(1)))
+        logger.info("PCA complete: \(d)D → \(k)D, explained variance: \(variancePct)%, time: \(elapsed)")
 
         return PCAResult(projectedVectors: result, explainedVarianceRatio: explainedRatio)
     }
@@ -146,26 +152,44 @@ final class PCAService: Sendable {
 
     /// Computes the D×D covariance matrix: C = (1/(n-1)) Xᵀ X.
     ///
-    /// The result is stored in column-major order (required by LAPACK).
+    /// Uses BLAS `cblas_ssyrk` (symmetric rank-k update) to compute XᵀX
+    /// without allocating an N×D transpose matrix. Only the upper triangle
+    /// is computed; ssyev_ reads only the upper triangle when uplo='U'.
+    ///
+    /// Memory: O(D²) for the covariance matrix only — no N×D transpose.
     private func computeCovarianceMatrix(flat: [Float], n: Int, d: Int) -> [Float] {
-        // Xᵀ X via vDSP_mmul
-        // X is n×d row-major. We need Xᵀ (d×n) × X (n×d) = d×d.
-        // Transpose X first.
-        var transposed = [Float](repeating: 0, count: d * n)
-        vDSP_mtrans(flat, 1, &transposed, 1, vDSP_Length(d), vDSP_Length(n))
-
         var cov = [Float](repeating: 0, count: d * d)
-        vDSP_mmul(transposed, 1,  // Xᵀ: d×n
-                  flat, 1,         // X: n×d
-                  &cov, 1,         // C: d×d
-                  vDSP_Length(d),
-                  vDSP_Length(d),
-                  vDSP_Length(n))
+        let scale = 1.0 / Float(max(1, n - 1))
 
-        // Scale by 1/(n-1) for unbiased estimate
-        let denom = max(1, n - 1)
-        var scale = 1.0 / Float(denom)
-        vDSP_vsmul(cov, 1, &scale, &cov, 1, vDSP_Length(d * d))
+        // `flat` is N×D row-major. With CblasRowMajor:
+        //   CblasTrans → C = Aᵀ·A where A is N×D → result is D×D. ✓
+        //   N=D (order of output), K=N (samples), lda=D (row stride of A).
+        flat.withUnsafeBufferPointer { flatBuf in
+            cov.withUnsafeMutableBufferPointer { covBuf in
+                cblas_ssyrk(
+                    CblasRowMajor,   // flat is row-major N×D
+                    CblasUpper,      // fill upper triangle
+                    CblasTrans,      // C = Aᵀ·A (D×N · N×D = D×D)
+                    Int32(d),        // N: order of C (d×d)
+                    Int32(n),        // K: number of rows of A (n samples)
+                    scale,           // alpha: fold 1/(n-1) into the multiply
+                    flatBuf.baseAddress!, // A: N×D row-major data
+                    Int32(d),        // lda: leading dimension (row stride = d)
+                    0.0,             // beta: C starts as zero
+                    covBuf.baseAddress!, // C: output D×D covariance matrix
+                    Int32(d)         // ldc: leading dimension of C
+                )
+            }
+        }
+
+        // ssyrk fills only the upper triangle in row-major layout.
+        // ssyev_ with uplo='U' reads only the upper triangle in column-major,
+        // which corresponds to the lower triangle in row-major. Mirror upper→lower.
+        for i in 0..<d {
+            for j in (i + 1)..<d {
+                cov[j * d + i] = cov[i * d + j]
+            }
+        }
 
         return cov
     }

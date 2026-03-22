@@ -81,7 +81,8 @@ final class ClusteringService: Sendable {
             let pcaParams = PCAService.Parameters(targetDimension: pcaTargetDim)
             let pcaResult = pcaService.project(vectors: vectors, params: pcaParams)
             pcaReduced = pcaResult.projectedVectors
-            logger.info("PCA: \(inputDim)D → \(pcaTargetDim)D (explained variance: \(String(format: "%.1f", pcaResult.explainedVarianceRatio * 100))%)")
+            let variancePct = (pcaResult.explainedVarianceRatio * 100).formatted(.number.precision(.fractionLength(1)))
+            logger.info("PCA: \(inputDim)D → \(pcaTargetDim)D (explained variance: \(variancePct)%)")
         } else {
             pcaReduced = vectors
             logger.info("Skipping PCA: input dimension (\(inputDim)) <= target (\(pcaTargetDim))")
