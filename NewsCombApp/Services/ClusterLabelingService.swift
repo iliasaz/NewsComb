@@ -100,45 +100,74 @@ final class ClusterLabelingService: Sendable {
             return
         }
 
-        logger.info("Labeling \(clusters.count) clusters with LLM")
+        let maxConcurrent = settings.maxConcurrentProcessing
+        logger.info("Labeling \(clusters.count) clusters with LLM (max \(maxConcurrent) concurrent)")
 
-        for (index, cluster) in clusters.enumerated() {
-            let fraction = Double(index) / Double(clusters.count)
-            await progressCallback?(fraction)
-            await statusCallback?("Generating theme summary \(index + 1)/\(clusters.count)\u{2026}")
+        let total = clusters.count
+        var completedSoFar = 0
 
-            do {
-                let exemplars = try loadExemplars(clusterId: cluster.clusterId)
-                let userPrompt = buildUserPrompt(
-                    topEntities: cluster.topEntities,
-                    topFamilies: cluster.topRelFamilies,
-                    exemplars: exemplars
-                )
+        for batch in clusters.chunked(into: maxConcurrent) {
+            await statusCallback?("Generating theme summaries \(completedSoFar + 1)–\(min(completedSoFar + batch.count, total))/\(total)\u{2026}")
 
-                let response = try await callLLM(
-                    systemPrompt: Self.systemPrompt,
-                    userPrompt: userPrompt,
-                    settings: settings
-                )
-
-                let parsed = try parseResponse(response)
-
-                try database.write { db in
-                    try db.execute(
-                        sql: """
-                            UPDATE clusters SET label = ?, summary = ?
-                            WHERE cluster_id = ? AND build_id = ?
-                        """,
-                        arguments: [parsed.title, parsed.summary, cluster.clusterId, buildId]
-                    )
+            let results = await withTaskGroup(
+                of: (StoryCluster, LabelResult?).self,
+                returning: [(StoryCluster, LabelResult?)].self
+            ) { group in
+                for cluster in batch {
+                    group.addTask {
+                        do {
+                            let exemplars = try self.loadExemplars(clusterId: cluster.clusterId)
+                            let userPrompt = self.buildUserPrompt(
+                                topEntities: cluster.topEntities,
+                                topFamilies: cluster.topRelFamilies,
+                                exemplars: exemplars
+                            )
+                            let response = try await self.callLLM(
+                                systemPrompt: Self.systemPrompt,
+                                userPrompt: userPrompt,
+                                settings: settings
+                            )
+                            let parsed = try self.parseResponse(response)
+                            return (cluster, parsed)
+                        } catch {
+                            self.logger.warning(
+                                "Failed to label cluster \(cluster.clusterId), preserving auto-label: \(error.localizedDescription)"
+                            )
+                            return (cluster, nil)
+                        }
+                    }
                 }
 
-                logger.info("Labeled cluster \(cluster.clusterId): \(parsed.title)")
-            } catch {
-                logger.warning(
-                    "Failed to label cluster \(cluster.clusterId), preserving auto-label: \(error.localizedDescription)"
-                )
+                var batchResults: [(StoryCluster, LabelResult?)] = []
+                for await result in group {
+                    batchResults.append(result)
+                }
+                return batchResults
             }
+
+            // Persist results and update progress
+            for (cluster, parsed) in results {
+                completedSoFar += 1
+
+                guard let parsed else { continue }
+
+                do {
+                    try database.write { db in
+                        try db.execute(
+                            sql: """
+                                UPDATE clusters SET label = ?, summary = ?
+                                WHERE cluster_id = ? AND build_id = ?
+                            """,
+                            arguments: [parsed.title, parsed.summary, cluster.clusterId, buildId]
+                        )
+                    }
+                    logger.info("Labeled cluster \(cluster.clusterId): \(parsed.title)")
+                } catch {
+                    logger.warning("Failed to persist label for cluster \(cluster.clusterId): \(error.localizedDescription)")
+                }
+            }
+
+            await progressCallback?(Double(completedSoFar) / Double(total))
         }
 
         await progressCallback?(1.0)
