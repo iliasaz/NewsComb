@@ -127,6 +127,11 @@ class SettingsViewModel {
         loadRSSSources()
         loadAPIKeys()
         checkEmbeddingDimensionMismatch()
+
+        // Auto-check OASIS environment if not already known
+        if simPythonDetectedPath.isEmpty || simPythonDetectedPath == "Not found" {
+            Task { await checkOasisEnvironment() }
+        }
     }
 
     private func loadRSSSources() {
@@ -317,6 +322,17 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simProfilePrompt).fetchOne(db) {
                     simProfilePrompt = setting.value
+                }
+
+                // Load persisted environment detection results
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simDetectedPythonPath).fetchOne(db),
+                   !setting.value.isEmpty {
+                    simPythonDetectedPath = setting.value
+                }
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simOasisVersion).fetchOne(db),
+                   !setting.value.isEmpty {
+                    simOasisStatusText = "Installed (v\(setting.value))"
+                    simOasisInstalled = true
                 }
             }
         } catch {
@@ -571,7 +587,7 @@ class SettingsViewModel {
         saveSimProfilePrompt()
     }
 
-    /// Auto-detects Python and checks OASIS installation.
+    /// Auto-detects Python and checks OASIS installation, persisting results.
     func checkOasisEnvironment() async {
         isCheckingEnvironment = true
         let envService = OasisEnvironmentService()
@@ -580,26 +596,33 @@ class SettingsViewModel {
             simPythonDetectedPath = path
             simPythonPath = path
             saveSimPythonPath()
+            saveAPIKey(key: AppSettings.simDetectedPythonPath, value: path)
 
             let status = await envService.checkOasisInstalled(pythonPath: path)
             switch status {
             case .installed(let version):
                 simOasisStatusText = "Installed (v\(version))"
                 simOasisInstalled = true
+                saveAPIKey(key: AppSettings.simOasisVersion, value: version)
             case .notInstalled:
                 simOasisStatusText = "Not installed \u{2014} run: pip install camel-oasis"
                 simOasisInstalled = false
+                saveAPIKey(key: AppSettings.simOasisVersion, value: "")
             case .error(let msg):
                 simOasisStatusText = msg
                 simOasisInstalled = false
+                saveAPIKey(key: AppSettings.simOasisVersion, value: "")
             case .pythonNotFound:
                 simOasisStatusText = "Python not found"
                 simOasisInstalled = false
+                saveAPIKey(key: AppSettings.simOasisVersion, value: "")
             }
         } else {
             simPythonDetectedPath = "Not found"
             simOasisStatusText = "Python not found"
             simOasisInstalled = false
+            saveAPIKey(key: AppSettings.simDetectedPythonPath, value: "")
+            saveAPIKey(key: AppSettings.simOasisVersion, value: "")
         }
 
         isCheckingEnvironment = false

@@ -234,6 +234,8 @@ extension AppSettings {
     static let defaultSimAgentsPerHourMax = 10
     static let simSemaphoreLimit = "sim_semaphore_limit"
     static let defaultSimSemaphoreLimit = 128
+    static let simDetectedPythonPath = "sim_detected_python_path"
+    static let simOasisVersion = "sim_oasis_version"
     static let simProfilePrompt = "sim_profile_prompt"
     static let defaultSimProfilePrompt = """
     You are a persona designer for a social media simulation. Given information about \

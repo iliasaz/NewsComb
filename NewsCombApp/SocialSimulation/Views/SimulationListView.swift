@@ -77,7 +77,7 @@ private struct SimulationRow: View {
                 Text(simulation.name)
                     .font(.headline)
                 HStack(spacing: 8) {
-                    Text(simulation.status.capitalized)
+                    Text(statusText)
                         .font(.caption)
                         .foregroundStyle(statusColor)
                     if simulation.agentCount > 0 {
@@ -98,11 +98,23 @@ private struct SimulationRow: View {
         }
     }
 
+    private var statusText: String {
+        switch simulation.status {
+        case "configuring":
+            simulation.agentCount > 0 ? "Ready to launch" : "Tap to configure"
+        case "running": "Running"
+        case "completed": "Completed"
+        case "failed": "Failed"
+        default: simulation.status.capitalized
+        }
+    }
+
     private var statusColor: Color {
         switch simulation.status {
         case "running": .green
         case "completed": .blue
         case "failed": .red
+        case "configuring": .orange
         default: .secondary
         }
     }
@@ -112,7 +124,7 @@ private struct SimulationRow: View {
         case "running": "play.circle.fill"
         case "completed": "checkmark.circle.fill"
         case "failed": "exclamationmark.circle.fill"
-        case "configuring": "gearshape.fill"
+        case "configuring": "arrow.right.circle.fill"
         default: "circle"
         }
     }
