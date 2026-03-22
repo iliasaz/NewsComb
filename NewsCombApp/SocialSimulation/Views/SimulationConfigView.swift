@@ -190,7 +190,7 @@ struct SimulationConfigView: View {
     // MARK: - Helpers
 
     private var canLaunch: Bool {
-        (useTwitter || useReddit) && detectedPythonPath != nil && (oasisStatus?.isInstalled ?? false)
+        (useTwitter || useReddit) && !isCheckingEnvironment
     }
 
     private func buildConfig() -> SimulationConfig {

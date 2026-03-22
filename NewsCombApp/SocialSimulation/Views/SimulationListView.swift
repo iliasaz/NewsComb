@@ -101,7 +101,7 @@ private struct SimulationRow: View {
     private var statusText: String {
         switch simulation.status {
         case "configuring":
-            simulation.agentCount > 0 ? "Ready to launch" : "Tap to configure"
+            simulation.agentCount > 0 ? "\(simulation.agentCount) agents ready" : "New"
         case "running": "Running"
         case "completed": "Completed"
         case "failed": "Failed"

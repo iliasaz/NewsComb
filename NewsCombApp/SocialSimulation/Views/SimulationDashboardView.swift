@@ -12,14 +12,13 @@ struct SimulationDashboardView: View {
 
     var body: some View {
         List {
-            if !viewModel.hasAgents && !viewModel.isRunning && !viewModel.isGeneratingProfiles {
-                onboardingSection
-            }
-
             if viewModel.isGeneratingProfiles || viewModel.isRunning {
                 progressSection
             } else if case .failed = viewModel.status {
                 errorSection
+            } else if !viewModel.hasAgents && !viewModel.isRunning {
+                // Show environment info while waiting for config
+                environmentSection
             }
 
             if viewModel.hasAgents {
@@ -37,8 +36,8 @@ struct SimulationDashboardView: View {
                     Button("Stop", systemImage: "stop.fill", role: .destructive) {
                         Task { await viewModel.stopSimulation() }
                     }
-                } else if viewModel.hasAgents && viewModel.simulation.status == "configuring" {
-                    Button("Launch", systemImage: "play.fill") {
+                } else if viewModel.simulation.status != "completed" {
+                    Button("Configure", systemImage: "play.fill") {
                         showingConfig = true
                     }
                 }
@@ -69,14 +68,18 @@ struct SimulationDashboardView: View {
         .onAppear {
             viewModel.loadData()
             Task { await viewModel.checkEnvironment() }
+
+            // Auto-open config for new simulations
+            if viewModel.simulation.status == "configuring" && !viewModel.hasAgents {
+                showingConfig = true
+            }
         }
     }
 
-    // MARK: - Onboarding
+    // MARK: - Environment
 
-    private var onboardingSection: some View {
+    private var environmentSection: some View {
         Section {
-            // Environment status
             EnvironmentStatusRow(
                 label: "Python",
                 isChecking: viewModel.isCheckingEnvironment,
@@ -99,29 +102,11 @@ struct SimulationDashboardView: View {
                 isError: !(viewModel.oasisStatus?.isInstalled ?? true)
             )
 
-            if viewModel.environmentChecked {
-                if viewModel.environmentReady {
-                    Button("Configure & Launch Simulation", systemImage: "play.fill") {
-                        showingConfig = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                } else {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Environment not ready")
-                            .font(.subheadline)
-                            .bold()
-                        Text("Install Python 3.10+ and camel-oasis:\npip install camel-oasis")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+            Button("Configure & Launch", systemImage: "play.fill") {
+                showingConfig = true
             }
         } header: {
-            Text("Setup")
-        } footer: {
-            if !viewModel.environmentChecked {
-                Text("Checking environment\u{2026}")
-            }
+            Text("Environment")
         }
     }
 
