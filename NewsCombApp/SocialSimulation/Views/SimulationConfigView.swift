@@ -8,7 +8,7 @@ struct SimulationConfigView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // Config state — initialized from persisted AppSettings
+    // Config state
     @State private var maxRounds = AppSettings.defaultSimDefaultMaxRounds
     @State private var minutesPerRound = AppSettings.defaultSimMinutesPerRound
     @State private var maxAgents = 20
@@ -16,19 +16,24 @@ struct SimulationConfigView: View {
     @State private var useReddit = false
     @State private var pythonPath = AppSettings.defaultSimPythonPath
 
+    // Environment
+    @State private var detectedPythonPath: String?
+    @State private var oasisStatus: OasisStatus?
+    @State private var isCheckingEnvironment = true
+
     // Node selection
     @State private var availableNodes: [HypergraphNode] = []
     @State private var selectedNodeIds: Set<Int64> = []
-    @State private var nodeSearchText = ""
 
     var body: some View {
         NavigationStack {
             Form {
+                environmentSection
                 agentSection
                 platformSection
                 simulationParamsSection
-                pythonSection
             }
+            .formStyle(.grouped)
             .navigationTitle("Configure Simulation")
             #if os(macOS)
             .frame(minWidth: 500, minHeight: 500)
@@ -46,19 +51,72 @@ struct SimulationConfigView: View {
                     .disabled(!canLaunch)
                 }
             }
-            .onAppear { loadPersonaNodes() }
+            .onAppear {
+                loadPersonaNodes()
+                checkEnvironment()
+            }
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Environment
+
+    private var environmentSection: some View {
+        Section {
+            LabeledContent("Python") {
+                if isCheckingEnvironment {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if let path = detectedPythonPath {
+                    Text(path)
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                } else {
+                    Text("Not found")
+                        .foregroundStyle(.red)
+                }
+            }
+
+            LabeledContent("OASIS") {
+                if isCheckingEnvironment {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    switch oasisStatus {
+                    case .installed(let version):
+                        Text("v\(version)")
+                            .foregroundStyle(.green)
+                    case .notInstalled:
+                        Text("Not installed")
+                            .foregroundStyle(.red)
+                    case .pythonNotFound, .error, nil:
+                        Text("Unavailable")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+        } header: {
+            Text("Environment")
+        } footer: {
+            if !(oasisStatus?.isInstalled ?? false) && !isCheckingEnvironment {
+                Text("Install with: pip install camel-oasis")
+            }
+        }
+    }
+
+    // MARK: - Agents
 
     private var agentSection: some View {
         Section {
-            Stepper("Max Agents: \(maxAgents)", value: $maxAgents, in: 3...100)
+            Stepper(value: $maxAgents, in: 3...100) {
+                LabeledContent("Max Agents") {
+                    Text("\(maxAgents)")
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             if !availableNodes.isEmpty {
                 DisclosureGroup("Select Entities (\(selectedNodeIds.count) selected)") {
-                    ForEach(filteredNodes) { node in
+                    ForEach(availableNodes) { node in
                         Toggle(isOn: Binding(
                             get: { selectedNodeIds.contains(node.id!) },
                             set: { isOn in
@@ -81,8 +139,9 @@ struct SimulationConfigView: View {
                     }
                 }
             } else {
-                Text("No persona entities found")
+                Text("No persona entities found in the knowledge graph.")
                     .foregroundStyle(.secondary)
+                    .font(.callout)
             }
         } header: {
             Text("Agents")
@@ -90,6 +149,8 @@ struct SimulationConfigView: View {
             Text("Leave selection empty to auto-select the most connected persona entities.")
         }
     }
+
+    // MARK: - Platforms
 
     private var platformSection: some View {
         Section {
@@ -100,17 +161,24 @@ struct SimulationConfigView: View {
         }
     }
 
+    // MARK: - Simulation Parameters
+
     private var simulationParamsSection: some View {
         Section {
-            Stepper("Rounds: \(maxRounds)", value: $maxRounds, in: 5...500)
-
-            HStack {
-                Text("Minutes per round")
-                Spacer()
-                Text(minutesPerRound, format: .number.precision(.fractionLength(0)))
-                    .foregroundStyle(.secondary)
+            Stepper(value: $maxRounds, in: 5...500) {
+                LabeledContent("Rounds") {
+                    Text("\(maxRounds)")
+                        .foregroundStyle(.secondary)
+                }
             }
-            Slider(value: $minutesPerRound, in: 15...180, step: 15)
+
+            VStack(alignment: .leading) {
+                LabeledContent("Minutes per round") {
+                    Text(minutesPerRound, format: .number.precision(.fractionLength(0)))
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $minutesPerRound, in: 15...180, step: 15)
+            }
         } header: {
             Text("Simulation Parameters")
         } footer: {
@@ -119,29 +187,10 @@ struct SimulationConfigView: View {
         }
     }
 
-    private var pythonSection: some View {
-        Section {
-            TextField("Python Path", text: $pythonPath)
-        } header: {
-            Text("Python Configuration")
-        } footer: {
-            Text("Path to Python 3.11+ with camel-oasis installed.")
-        }
-    }
-
     // MARK: - Helpers
 
     private var canLaunch: Bool {
-        (useTwitter || useReddit) && !availableNodes.isEmpty
-    }
-
-    private var filteredNodes: [HypergraphNode] {
-        if nodeSearchText.isEmpty {
-            return availableNodes
-        }
-        return availableNodes.filter {
-            $0.label.localizedStandardContains(nodeSearchText)
-        }
+        (useTwitter || useReddit) && detectedPythonPath != nil && (oasisStatus?.isInstalled ?? false)
     }
 
     private func buildConfig() -> SimulationConfig {
@@ -149,7 +198,6 @@ struct SimulationConfigView: View {
         if useTwitter { platforms.append("twitter") }
         if useReddit { platforms.append("reddit") }
 
-        // Load persisted agents-per-hour and semaphore from settings
         var agentsMin = AppSettings.defaultSimAgentsPerHourMin
         var agentsMax = AppSettings.defaultSimAgentsPerHourMax
         var semaphore = AppSettings.defaultSimSemaphoreLimit
@@ -168,7 +216,7 @@ struct SimulationConfigView: View {
             platforms: platforms,
             agentsPerHourMin: agentsMin,
             agentsPerHourMax: agentsMax,
-            pythonPath: pythonPath,
+            pythonPath: detectedPythonPath ?? pythonPath,
             semaphoreLimit: semaphore
         )
     }
@@ -189,7 +237,6 @@ struct SimulationConfigView: View {
                     LIMIT 200
                     """)
 
-                // Load persisted defaults
                 if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simPythonPath).fetchOne(db) {
                     pythonPath = s.value
                 }
@@ -204,6 +251,19 @@ struct SimulationConfigView: View {
             }
         } catch {
             availableNodes = []
+        }
+    }
+
+    private func checkEnvironment() {
+        Task {
+            let envService = OasisEnvironmentService()
+            detectedPythonPath = await envService.detectPythonPath()
+            if let python = detectedPythonPath {
+                oasisStatus = await envService.checkOasisInstalled(pythonPath: python)
+            } else {
+                oasisStatus = .pythonNotFound
+            }
+            isCheckingEnvironment = false
         }
     }
 }
