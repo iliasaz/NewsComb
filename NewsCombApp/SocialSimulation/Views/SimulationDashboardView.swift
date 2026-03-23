@@ -22,11 +22,16 @@ struct SimulationDashboardView: View {
 
     var body: some View {
         List {
-            // Show config + environment when not yet running
+            // Show config when no agents yet
             if !viewModel.hasAgents && !viewModel.isRunning && !viewModel.isGeneratingProfiles {
                 environmentSection
                 classificationSection
                 configSection
+            }
+
+            // Show launch controls when agents exist but simulation hasn't run
+            if viewModel.hasAgents && !viewModel.isRunning && !viewModel.hasPosts {
+                launchSection
             }
 
             if viewModel.isGeneratingProfiles || viewModel.isRunning || viewModel.isClassifying {
@@ -187,6 +192,32 @@ struct SimulationDashboardView: View {
         } footer: {
             let hours = Double(maxRounds) * minutesPerRound / 60.0
             Text("Total simulated time: \(hours, format: .number.precision(.fractionLength(1))) hours. Leave entity selection empty to auto-select.")
+        }
+    }
+
+    // MARK: - Launch (agents exist, simulation not yet run)
+
+    private var launchSection: some View {
+        Section {
+            Toggle("Twitter", isOn: $useTwitter)
+            Toggle("Reddit", isOn: $useReddit)
+
+            Stepper(value: $maxRounds, in: 5...500) {
+                LabeledContent("Rounds") {
+                    Text("\(maxRounds)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Button("Launch Simulation", systemImage: "play.fill") {
+                Task { await launchSimulation() }
+            }
+            .disabled(!canLaunch)
+            .buttonStyle(.borderedProminent)
+        } header: {
+            Text("Launch")
+        } footer: {
+            Text("\(viewModel.agents.count) agents ready. Configure rounds and platforms, then launch.")
         }
     }
 
