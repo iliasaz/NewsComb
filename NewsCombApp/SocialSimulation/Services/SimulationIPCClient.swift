@@ -77,7 +77,7 @@ actor SimulationIPCClient {
         while ContinuousClock.now < deadline {
             try Task.checkCancellation()
 
-            if FileManager.default.fileExists(atPath: responseFile.path()) {
+            if FileManager.default.fileExists(atPath: responseFile.path(percentEncoded: false)) {
                 let data = try Data(contentsOf: responseFile)
                 try? FileManager.default.removeItem(at: responseFile)
                 return try JSONDecoder().decode(IPCResponse.self, from: data)

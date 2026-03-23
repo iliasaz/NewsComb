@@ -104,7 +104,7 @@ actor ActionLogMonitor {
         file: URL,
         offset: UInt64
     ) -> (actions: [OasisAction], newOffset: UInt64) {
-        guard FileManager.default.fileExists(atPath: file.path()) else {
+        guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else {
             return ([], offset)
         }
 

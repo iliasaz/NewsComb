@@ -126,8 +126,8 @@ actor SimulationEngine {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: pythonPath)
         proc.arguments = [
-            simDirectory.appending(path: "run_simulation.py").path(),
-            "--config", simDirectory.appending(path: "simulation_config.json").path(),
+            simDirectory.appending(path: "run_simulation.py").path(percentEncoded: false),
+            "--config", simDirectory.appending(path: "simulation_config.json").path(percentEncoded: false),
             "--max-rounds", "\(config.maxRounds)"
         ]
         proc.currentDirectoryURL = simDirectory

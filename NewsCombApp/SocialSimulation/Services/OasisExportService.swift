@@ -68,11 +68,11 @@ final class OasisExportService: Sendable {
         try database.write { db in
             try db.execute(
                 sql: "UPDATE social_simulation SET sim_directory = ? WHERE id = ?",
-                arguments: [simDir.path(), simulationId]
+                arguments: [simDir.path(percentEncoded: false), simulationId]
             )
         }
 
-        logger.info("Export complete to \(simDir.path(), privacy: .public)")
+        logger.info("Export complete to \(simDir.path(percentEncoded: false), privacy: .public)")
         return simDir
     }
 
@@ -428,7 +428,7 @@ final class OasisExportService: Sendable {
         // Make executable
         try FileManager.default.setAttributes(
             [.posixPermissions: 0o755],
-            ofItemAtPath: filePath.path()
+            ofItemAtPath: filePath.path(percentEncoded: false)
         )
     }
 

@@ -57,11 +57,21 @@ final class AgentProfileService: Sendable {
             selectedNodes = try fetchNodes(ids: nodeIds, maxCount: maxAgents)
         }
 
+        // Count total available persona nodes for logging
+        let totalPersonaCount = try database.read { db in
+            let personaTypes = Self.personaNodeTypes.map { "'\($0)'" }.joined(separator: ", ")
+            return try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM hypergraph_node
+                WHERE LOWER(node_type) IN (\(personaTypes))
+                """) ?? 0
+        }
+
         guard !selectedNodes.isEmpty else {
             throw AgentProfileError.noPersonaNodesFound
         }
 
-        logger.info("Selected \(selectedNodes.count) persona nodes")
+        logger.info("Selected \(selectedNodes.count) persona nodes out of \(totalPersonaCount) available")
+        await statusCallback?("Selected \(selectedNodes.count) of \(totalPersonaCount) persona nodes")
 
         // Step 2: Generate profiles via LLM
         await statusCallback?("Generating agent personas\u{2026}")
