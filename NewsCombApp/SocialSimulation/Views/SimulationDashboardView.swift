@@ -1,10 +1,20 @@
 import SwiftUI
+import GRDB
 
-/// Main view for a simulation — shows progress, stats, and content tabs.
+/// Main view for a simulation — environment, classification, config, launch,
+/// progress, results, and activity log all inline in a single scrollable list.
 struct SimulationDashboardView: View {
     @State private var viewModel: SimulationDashboardViewModel
-    @State private var showingConfig = false
     @State private var selectedTab = "feed"
+
+    // Inline config state
+    @State private var maxRounds = AppSettings.defaultSimDefaultMaxRounds
+    @State private var minutesPerRound = AppSettings.defaultSimMinutesPerRound
+    @State private var maxAgents = 20
+    @State private var useTwitter = true
+    @State private var useReddit = false
+    @State private var availableNodes: [HypergraphNode] = []
+    @State private var selectedNodeIds: Set<Int64> = []
 
     init(simulation: SocialSimulation) {
         _viewModel = State(initialValue: SimulationDashboardViewModel(simulation: simulation))
@@ -12,13 +22,19 @@ struct SimulationDashboardView: View {
 
     var body: some View {
         List {
-            if viewModel.isGeneratingProfiles || viewModel.isRunning {
-                progressSection
-            } else if case .failed = viewModel.status {
-                errorSection
-            } else if !viewModel.hasAgents && !viewModel.isRunning {
-                // Show environment info while waiting for config
+            // Show config + environment when not yet running
+            if !viewModel.hasAgents && !viewModel.isRunning && !viewModel.isGeneratingProfiles {
                 environmentSection
+                classificationSection
+                configSection
+            }
+
+            if viewModel.isGeneratingProfiles || viewModel.isRunning || viewModel.isClassifying {
+                progressSection
+            }
+
+            if case .failed = viewModel.status {
+                errorSection
             }
 
             if viewModel.hasAgents {
@@ -31,27 +47,11 @@ struct SimulationDashboardView: View {
         }
         .navigationTitle(viewModel.simulation.name)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                if viewModel.isRunning {
+            if viewModel.isRunning {
+                ToolbarItem(placement: .primaryAction) {
                     Button("Stop", systemImage: "stop.fill", role: .destructive) {
                         Task { await viewModel.stopSimulation() }
                     }
-                } else if viewModel.simulation.status != "completed" {
-                    Button("Configure", systemImage: "play.fill") {
-                        showingConfig = true
-                    }
-                }
-            }
-        }
-        .sheet(isPresented: $showingConfig) {
-            SimulationConfigView(
-                simulationId: viewModel.simulation.id
-            ) { config, nodeIds in
-                Task {
-                    if !viewModel.hasAgents {
-                        await viewModel.generateProfiles(nodeIds: nodeIds, maxAgents: 30)
-                    }
-                    await viewModel.startSimulation(config: config)
                 }
             }
         }
@@ -67,12 +67,8 @@ struct SimulationDashboardView: View {
         }
         .onAppear {
             viewModel.loadData()
+            loadConfigDefaults()
             Task { await viewModel.checkEnvironment() }
-
-            // Auto-open config for new simulations
-            if viewModel.simulation.status == "configuring" && !viewModel.hasAgents {
-                showingConfig = true
-            }
         }
     }
 
@@ -101,7 +97,15 @@ struct SimulationDashboardView: View {
                 placeholder: "Checking\u{2026}",
                 isError: !(viewModel.oasisStatus?.isInstalled ?? true)
             )
+        } header: {
+            Text("Environment")
+        }
+    }
 
+    // MARK: - Classification
+
+    private var classificationSection: some View {
+        Section {
             Button("Classify Entities", systemImage: "tag") {
                 Task { await viewModel.classifyEntities() }
             }
@@ -110,17 +114,85 @@ struct SimulationDashboardView: View {
             if viewModel.isClassifying {
                 ProgressView(value: viewModel.classificationProgress)
             }
-
-            Button("Configure & Launch", systemImage: "play.fill") {
-                showingConfig = true
-            }
         } header: {
-            Text("Environment")
+            Text("Entity Classification")
+        } footer: {
+            Text("Classify knowledge graph entities as persons, organizations, etc. to identify simulation personas.")
+        }
+    }
+
+    // MARK: - Inline Config
+
+    private var configSection: some View {
+        Section {
+            // Agents
+            Stepper(value: $maxAgents, in: 3...100) {
+                LabeledContent("Max Agents") {
+                    Text("\(maxAgents)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if !availableNodes.isEmpty {
+                DisclosureGroup("Select Entities (\(selectedNodeIds.count) selected)") {
+                    ForEach(availableNodes) { node in
+                        Toggle(isOn: Binding(
+                            get: { selectedNodeIds.contains(node.id!) },
+                            set: { isOn in
+                                if isOn { selectedNodeIds.insert(node.id!) }
+                                else { selectedNodeIds.remove(node.id!) }
+                            }
+                        )) {
+                            VStack(alignment: .leading) {
+                                Text(node.label)
+                                if let type = node.nodeType {
+                                    Text(type)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Platforms
+            Toggle("Twitter", isOn: $useTwitter)
+            Toggle("Reddit", isOn: $useReddit)
+
+            // Parameters
+            Stepper(value: $maxRounds, in: 5...500) {
+                LabeledContent("Rounds") {
+                    Text("\(maxRounds)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            VStack(alignment: .leading) {
+                LabeledContent("Minutes per round") {
+                    Text(minutesPerRound, format: .number.precision(.fractionLength(0)))
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $minutesPerRound, in: 15...180, step: 15)
+            }
+
+            // Launch
+            Button("Launch Simulation", systemImage: "play.fill") {
+                Task { await launchSimulation() }
+            }
+            .disabled(!canLaunch)
+            .buttonStyle(.borderedProminent)
+        } header: {
+            Text("Configuration")
+        } footer: {
+            let hours = Double(maxRounds) * minutesPerRound / 60.0
+            Text("Total simulated time: \(hours, format: .number.precision(.fractionLength(1))) hours. Leave entity selection empty to auto-select.")
         }
     }
 
     // MARK: - Progress
 
+    @ViewBuilder
     private var progressSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
@@ -133,6 +205,10 @@ struct SimulationDashboardView: View {
 
                 if viewModel.isGeneratingProfiles {
                     ProgressView(value: viewModel.profileProgress)
+                }
+
+                if viewModel.isClassifying {
+                    ProgressView(value: viewModel.classificationProgress)
                 }
 
                 if case .running(let round, let total) = viewModel.status {
@@ -220,7 +296,6 @@ struct SimulationDashboardView: View {
                 } label: {
                     Label("Social Network", systemImage: "network")
                 }
-
                 NavigationLink {
                     SimulationReportView(simulationId: viewModel.simulation.id)
                 } label: {
@@ -246,7 +321,6 @@ struct SimulationDashboardView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
-
                         Text(entry.message)
                             .font(.caption)
                             .foregroundStyle(entry.isError ? .red : .primary)
@@ -255,6 +329,81 @@ struct SimulationDashboardView: View {
             }
         } header: {
             Text("Activity Log")
+        }
+    }
+
+    // MARK: - Actions
+
+    private var canLaunch: Bool {
+        (useTwitter || useReddit) && !viewModel.isCheckingEnvironment
+    }
+
+    private func launchSimulation() async {
+        let defaults = SimulationConfig.loadPersistedDefaults()
+
+        var platforms: [String] = []
+        if useTwitter { platforms.append("twitter") }
+        if useReddit { platforms.append("reddit") }
+
+        let config = SimulationConfig(
+            maxRounds: maxRounds,
+            minutesPerRound: minutesPerRound,
+            platforms: platforms,
+            agentsPerHourMin: defaults.agentsPerHourMin,
+            agentsPerHourMax: defaults.agentsPerHourMax,
+            pythonPath: viewModel.pythonPath ?? AppSettings.defaultSimPythonPath,
+            semaphoreLimit: defaults.semaphoreLimit
+        )
+
+        if !viewModel.hasAgents {
+            await viewModel.generateProfiles(
+                nodeIds: Array(selectedNodeIds),
+                maxAgents: maxAgents
+            )
+        }
+        await viewModel.startSimulation(config: config)
+    }
+
+    private func loadConfigDefaults() {
+        // Load persisted config defaults and available nodes
+        do {
+            try Database.shared.read { db in
+                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simDefaultMaxRounds).fetchOne(db),
+                   let v = Int(s.value) { maxRounds = v }
+                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simMinutesPerRound).fetchOne(db),
+                   let v = Double(s.value) { minutesPerRound = v }
+
+                // Load available nodes (typed personas first, then fallback)
+                let personaTypes = AgentProfileService.personaNodeTypes
+                let types = personaTypes.map { "'\($0)'" }.joined(separator: ", ")
+
+                var nodes = try HypergraphNode.fetchAll(db, sql: """
+                    SELECT n.*
+                    FROM hypergraph_node n
+                    JOIN hypergraph_incidence i ON i.node_id = n.id
+                    WHERE LOWER(n.node_type) IN (\(types))
+                    GROUP BY n.id
+                    HAVING COUNT(DISTINCT i.edge_id) >= 2
+                    ORDER BY COUNT(DISTINCT i.edge_id) DESC
+                    LIMIT 200
+                    """)
+
+                if nodes.isEmpty {
+                    nodes = try HypergraphNode.fetchAll(db, sql: """
+                        SELECT n.*
+                        FROM hypergraph_node n
+                        JOIN hypergraph_incidence i ON i.node_id = n.id
+                        WHERE LENGTH(n.label) <= 80
+                        GROUP BY n.id
+                        HAVING COUNT(DISTINCT i.edge_id) >= 1
+                        ORDER BY COUNT(DISTINCT i.edge_id) DESC
+                        LIMIT 200
+                        """)
+                }
+                availableNodes = nodes
+            }
+        } catch {
+            // Use defaults
         }
     }
 }
