@@ -972,11 +972,17 @@ final class HypergraphService: Sendable {
             ) ?? 0
             let embeddingCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM node_embedding") ?? 0
 
+            let personaTypes = AgentProfileService.personaNodeTypes.map { "'\($0)'" }.joined(separator: ", ")
+            let personaNodeCount = try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM hypergraph_node WHERE LOWER(node_type) IN (\(personaTypes))
+                """) ?? 0
+
             return HypergraphStatistics(
                 nodeCount: nodeCount,
                 edgeCount: edgeCount,
                 processedArticles: processedArticles,
-                embeddingCount: embeddingCount
+                embeddingCount: embeddingCount,
+                personaNodeCount: personaNodeCount
             )
         }
     }
@@ -1231,6 +1237,7 @@ struct HypergraphStatistics: Sendable {
     let edgeCount: Int
     let processedArticles: Int
     let embeddingCount: Int
+    let personaNodeCount: Int
 }
 
 enum HypergraphServiceError: Error, LocalizedError {

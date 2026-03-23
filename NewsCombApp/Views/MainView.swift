@@ -294,6 +294,9 @@ struct MainView: View {
                 if let stats = viewModel.hypergraphStats {
                     LabeledContent("Concepts (Nodes)", value: "\(stats.nodeCount)")
                     LabeledContent("Relationships (Edges)", value: "\(stats.edgeCount)")
+                    if stats.personaNodeCount > 0 {
+                        LabeledContent("Persona Nodes", value: "\(stats.personaNodeCount)")
+                    }
                 }
             } header: {
                 Label("Knowledge Graph", systemImage: "brain.head.profile")
