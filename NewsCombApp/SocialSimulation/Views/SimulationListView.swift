@@ -18,6 +18,16 @@ struct SimulationListView: View {
                             viewModel.deleteSimulation(simulation)
                         }
                     }
+                    .contextMenu {
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            viewModel.deleteSimulation(simulation)
+                        }
+                    }
+                }
+                .onDelete { indexSet in
+                    for index in indexSet {
+                        viewModel.deleteSimulation(viewModel.simulations[index])
+                    }
                 }
             }
         }
