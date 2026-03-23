@@ -206,9 +206,11 @@ final class OasisExportService: Sendable {
 
             # ── Imports (after env vars set) ──
             try:
+                from datetime import datetime
                 from camel.models import ModelFactory
                 from camel.types.enums import ModelPlatformType
                 from oasis.social_platform.platform import Platform
+                from oasis.social_platform.channel import Channel
                 from oasis.social_platform.typing import ActionType
                 from oasis.social_agent.agents_generator import generate_agents
                 from oasis.environment.env import OasisEnv
@@ -285,12 +287,15 @@ final class OasisExportService: Sendable {
                     loggers[platform].log_event("simulation_start", agent_count=len(profiles))
 
                 # Initialize LLM model for agent decisions
+                # OpenRouter expects OPENROUTER_API_KEY env var
                 model = None
                 if api_key:
+                    os.environ["OPENROUTER_API_KEY"] = api_key
                     try:
                         model = ModelFactory.create(
                             model_platform=ModelPlatformType.OPENROUTER,
                             model_type=model_name,
+                            api_key=api_key,
                         )
                         print(f"LLM model initialized: {model_name}")
                     except Exception as e:
@@ -304,15 +309,22 @@ final class OasisExportService: Sendable {
 
                     try:
                         db_path = str(sim_dir / platform_name / f"{platform_name}.db")
-
-                        agent_graph = generate_agents(
-                            agent_info_path=str(sim_dir / "twitter_profiles.csv"),
-                            model=model,
-                        )
+                        start_time = datetime.now()
+                        channel = Channel()
 
                         platform = Platform(
                             db_path=db_path,
-                            channel_type=platform_name,
+                            channel=channel,
+                            start_time=start_time,
+                            recsys_type=platform_name,
+                        )
+
+                        agent_graph = await generate_agents(
+                            agent_info_path=str(sim_dir / "twitter_profiles.csv"),
+                            channel=channel,
+                            model=model,
+                            start_time=start_time,
+                            recsys_type=platform_name,
                         )
 
                         env = OasisEnv(

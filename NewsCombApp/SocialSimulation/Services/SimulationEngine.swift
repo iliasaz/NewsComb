@@ -142,6 +142,7 @@ actor SimulationEngine {
             "PYTHONUTF8": "1",
             "PYTHONIOENCODING": "utf-8",
             "OPENAI_API_KEY": openRouterKey ?? "",
+            "OPENROUTER_API_KEY": openRouterKey ?? "",
             "OPENAI_API_BASE_URL": "https://openrouter.ai/api/v1",
             "OPENAI_MODEL_NAME": openRouterModel ?? "meta-llama/llama-4-maverick",
         ]) { _, new in new }
