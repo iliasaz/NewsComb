@@ -274,7 +274,7 @@ final class SimulationDashboardViewModel {
 
     // MARK: - Computed
 
-    var isRunning: Bool { status.isActive }
+    var isRunning: Bool { status.isProcessing }
     var hasAgents: Bool { !agents.isEmpty }
     var hasPosts: Bool { !recentPosts.isEmpty }
 }

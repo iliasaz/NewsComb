@@ -11,9 +11,30 @@ enum SimulationStatus: Sendable, Equatable {
     case completed
     case failed(String)
 
+    /// Whether the simulation subprocess is actively working (show spinner).
+    var isProcessing: Bool {
+        switch self {
+        case .generatingProfiles, .exportingToOasis, .launching, .running:
+            true
+        default:
+            false
+        }
+    }
+
+    /// Whether the simulation is still alive (processing or waiting for interaction).
     var isActive: Bool {
         switch self {
         case .generatingProfiles, .exportingToOasis, .launching, .running, .waitingForInterviews:
+            true
+        default:
+            false
+        }
+    }
+
+    /// Whether the simulation has finished (successfully or not).
+    var isDone: Bool {
+        switch self {
+        case .completed, .waitingForInterviews:
             true
         default:
             false

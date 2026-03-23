@@ -34,11 +34,11 @@ struct SimulationDashboardView: View {
                 launchSection
             }
 
-            if viewModel.isGeneratingProfiles || viewModel.isRunning || viewModel.isClassifying {
+            if viewModel.isGeneratingProfiles || viewModel.status.isProcessing || viewModel.isClassifying {
                 progressSection
-            }
-
-            if case .failed = viewModel.status {
+            } else if viewModel.status.isDone {
+                completedSection
+            } else if case .failed = viewModel.status {
                 errorSection
             }
 
@@ -52,7 +52,7 @@ struct SimulationDashboardView: View {
         }
         .navigationTitle(viewModel.simulation.name)
         .toolbar {
-            if viewModel.isRunning {
+            if viewModel.status.isProcessing {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Stop", systemImage: "stop.fill", role: .destructive) {
                         Task { await viewModel.stopSimulation() }
@@ -218,6 +218,29 @@ struct SimulationDashboardView: View {
             Text("Launch")
         } footer: {
             Text("\(viewModel.agents.count) agents ready. Configure rounds and platforms, then launch.")
+        }
+    }
+
+    // MARK: - Completed
+
+    private var completedSection: some View {
+        Section {
+            Label {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(viewModel.statusMessage)
+                        .font(.headline)
+                    if let stats = viewModel.stats, stats.postCount > 0 {
+                        Text("\(stats.postCount) posts, \(stats.interactionCount) interactions")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } icon: {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            }
+        } header: {
+            Text("Status")
         }
     }
 
