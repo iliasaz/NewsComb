@@ -97,17 +97,24 @@ final class OasisExportService: Sendable {
 
     // MARK: - Twitter Profile Export (CSV)
 
+    /// Exports profiles in OASIS-expected CSV format.
+    ///
+    /// OASIS `generate_agents()` expects columns:
+    /// `user_id`, `username`, `name`, `description`, `user_char`,
+    /// `following_agentid_list`, `previous_tweets`
     private func exportTwitterProfiles(agents: [SocialAgent], to directory: URL) throws {
-        var csv = "user_id,username,name,bio,persona\n"
+        var csv = "user_id,username,name,description,user_char,following_agentid_list,previous_tweets\n"
 
         for agent in agents {
             let userId = agent.oasisUserId ?? Int(agent.id ?? 0)
             let username = sanitizeCSV(agent.displayName.lowercased().replacing(" ", with: "_"))
             let name = sanitizeCSV(agent.displayName)
-            let bio = sanitizeCSV(agent.bio)
-            let persona = sanitizeCSV(agent.personaJson ?? "{}")
+            let description = sanitizeCSV(agent.bio)
+            let userChar = sanitizeCSV(agent.personaJson ?? agent.bio)
+            let followingList = "[]"
+            let previousTweets = "[]"
 
-            csv += "\(userId),\(username),\(name),\(bio),\(persona)\n"
+            csv += "\(userId),\(username),\(name),\(description),\(userChar),\(followingList),\(previousTweets)\n"
         }
 
         let filePath = directory.appending(path: "twitter_profiles.csv")
@@ -325,6 +332,7 @@ final class OasisExportService: Sendable {
                             model=model,
                             start_time=start_time,
                             recsys_type=platform_name,
+                            twitter=platform,
                         )
 
                         env = OasisEnv(
@@ -342,10 +350,10 @@ final class OasisExportService: Sendable {
                             num_active = random.randint(agents_per_hour_min, agents_per_hour_max)
                             num_active = min(num_active, len(profiles))
 
-                            actions = []
-                            active_agents = random.sample(range(len(profiles)), num_active)
-                            for agent_idx in active_agents:
-                                actions.append(("llm", agent_idx))
+                            from oasis.environment.env_action import LLMAction
+                            all_agents = list(agent_graph.agent_mappings.values())
+                            active_agents = random.sample(all_agents, num_active)
+                            actions = {agent: LLMAction() for agent in active_agents}
 
                             try:
                                 await env.step(actions)

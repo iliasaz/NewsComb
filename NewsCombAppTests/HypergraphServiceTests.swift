@@ -147,7 +147,8 @@ final class HypergraphServiceTests: XCTestCase {
             nodeCount: 100,
             edgeCount: 50,
             processedArticles: 25,
-            embeddingCount: 80
+            embeddingCount: 80,
+            personaNodeCount: 15
         )
 
         XCTAssertEqual(stats.nodeCount, 100)
