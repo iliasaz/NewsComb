@@ -206,7 +206,8 @@ final class OasisExportService: Sendable {
 
             # ── Imports (after env vars set) ──
             try:
-                from camel.models import ModelFactory, ModelPlatformType
+                from camel.models import ModelFactory
+                from camel.types.enums import ModelPlatformType
                 from oasis.social_platform.platform import Platform
                 from oasis.social_platform.typing import ActionType
                 from oasis.social_agent.agents_generator import generate_agents
@@ -288,7 +289,7 @@ final class OasisExportService: Sendable {
                 if api_key:
                     try:
                         model = ModelFactory.create(
-                            model_platform=ModelPlatformType.OPENAI,
+                            model_platform=ModelPlatformType.OPENROUTER,
                             model_type=model_name,
                         )
                         print(f"LLM model initialized: {model_name}")
