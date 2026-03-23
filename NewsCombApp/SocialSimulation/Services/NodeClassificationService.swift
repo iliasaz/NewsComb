@@ -39,14 +39,18 @@ final class NodeClassificationService: Sendable {
         await statusCallback?("Classifying \(untypedNodes.count) untyped nodes...")
         logger.info("Starting classification of \(untypedNodes.count) untyped nodes")
 
+        // Create a single shared LLM client (OpenRouterService is an actor, safe to share)
+        guard !config.openRouterKey.isEmpty else {
+            throw ClassificationError.noApiKey
+        }
+        let llmClient = try OpenRouterService(apiKey: config.openRouterKey, model: config.model)
+
         // Split into batches
         let batches = untypedNodes.chunked(into: config.batchSize)
         var totalClassified = 0
         var processedBatches = 0
 
         // Process batches with concurrent task group limited by thread count.
-        // Use withThrowingTaskGroup with a manual semaphore pattern:
-        // add up to `threads` tasks, then wait for one to complete before adding more.
         try await withThrowingTaskGroup(of: Int.self) { group in
             var running = 0
             var batchIterator = batches.makeIterator()
@@ -58,7 +62,8 @@ final class NodeClassificationService: Sendable {
                     try await self.classifyBatch(
                         batch,
                         batchIndex: batchIndex,
-                        config: config
+                        config: config,
+                        llmClient: llmClient
                     )
                 }
                 running += 1
@@ -80,7 +85,8 @@ final class NodeClassificationService: Sendable {
                         try await self.classifyBatch(
                             batch,
                             batchIndex: batchIndex,
-                            config: config
+                            config: config,
+                            llmClient: llmClient
                         )
                     }
                     running += 1
@@ -98,7 +104,8 @@ final class NodeClassificationService: Sendable {
     private func classifyBatch(
         _ nodes: [HypergraphNode],
         batchIndex: Int,
-        config: ClassificationConfig
+        config: ClassificationConfig,
+        llmClient: OpenRouterService
     ) async throws -> Int {
         // Build context for each node: label + edge relationships
         let nodeDescriptions = try nodes.map { node -> String in
@@ -132,11 +139,12 @@ final class NodeClassificationService: Sendable {
             \(nodeDescriptions)
             """
 
-        // Call LLM
-        let response = try await callLLM(
+        // Call LLM using the shared client
+        let response = try await llmClient.chat(
             systemPrompt: config.prompt,
             userPrompt: userPrompt,
-            config: config
+            model: config.model,
+            temperature: 0.1
         )
 
         // Parse response: extract JSON array of {node_id, type}
@@ -230,22 +238,7 @@ final class NodeClassificationService: Sendable {
 
     // MARK: - LLM
 
-    private func callLLM(
-        systemPrompt: String,
-        userPrompt: String,
-        config: ClassificationConfig
-    ) async throws -> String {
-        guard !config.openRouterKey.isEmpty else {
-            throw ClassificationError.noApiKey
-        }
-        let openRouter = try OpenRouterService(apiKey: config.openRouterKey, model: config.model)
-        return try await openRouter.chat(
-            systemPrompt: systemPrompt,
-            userPrompt: userPrompt,
-            model: config.model,
-            temperature: 0.1
-        )
-    }
+    // LLM calls use the shared OpenRouterService instance passed to classifyBatch
 }
 
 enum ClassificationError: LocalizedError {
