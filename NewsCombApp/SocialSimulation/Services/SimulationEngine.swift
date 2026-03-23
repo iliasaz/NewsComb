@@ -66,6 +66,13 @@ actor SimulationEngine {
         config: SimulationConfig,
         simDirectory: URL
     ) async throws {
+        // Clean up stale process reference from previous failed/completed runs
+        if let existing = process, !existing.isRunning {
+            process = nil
+            monitorTask?.cancel()
+            monitorTask = nil
+        }
+
         guard process == nil else {
             throw SimulationEngineError.alreadyRunning
         }
