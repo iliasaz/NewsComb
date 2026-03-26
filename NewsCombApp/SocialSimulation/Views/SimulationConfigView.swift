@@ -4,7 +4,7 @@ import GRDB
 /// Configuration sheet for setting up and launching a simulation.
 struct SimulationConfigView: View {
     let simulationId: String
-    let onLaunch: (SimulationConfig, [Int64]) -> Void
+    let onLaunch: (SimulationConfig, [Int64], Int) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
@@ -45,7 +45,7 @@ struct SimulationConfigView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Launch Simulation") {
                         let config = buildConfig()
-                        onLaunch(config, Array(selectedNodeIds))
+                        onLaunch(config, Array(selectedNodeIds), maxAgents)
                         dismiss()
                     }
                     .disabled(!canLaunch)

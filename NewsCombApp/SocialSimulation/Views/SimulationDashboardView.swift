@@ -1,20 +1,11 @@
 import SwiftUI
-import GRDB
 
-/// Main view for a simulation — environment, classification, config, launch,
-/// progress, results, and activity log all inline in a single scrollable list.
+/// Main view for a simulation — environment, classification, progress,
+/// results, and activity log. Configuration is handled by SimulationConfigView.
 struct SimulationDashboardView: View {
     @State private var viewModel: SimulationDashboardViewModel
     @State private var selectedTab = "feed"
-
-    // Inline config state
-    @State private var maxRounds = AppSettings.defaultSimDefaultMaxRounds
-    @State private var minutesPerRound = AppSettings.defaultSimMinutesPerRound
-    @State private var maxAgents = 20
-    @State private var useTwitter = true
-    @State private var useReddit = false
-    @State private var availableNodes: [HypergraphNode] = []
-    @State private var selectedNodeIds: Set<Int64> = []
+    @State private var showingConfig = false
 
     init(simulation: SocialSimulation) {
         _viewModel = State(initialValue: SimulationDashboardViewModel(simulation: simulation))
@@ -22,16 +13,16 @@ struct SimulationDashboardView: View {
 
     var body: some View {
         List {
-            // Show config when no agents yet
+            // Show setup sections when no agents yet
             if !viewModel.hasAgents && !viewModel.isRunning && !viewModel.isGeneratingProfiles {
                 environmentSection
                 classificationSection
-                configSection
+                configureSection
             }
 
             // Show launch controls when agents exist but simulation hasn't run
             if viewModel.hasAgents && !viewModel.isRunning && !viewModel.hasPosts {
-                launchSection
+                configureSection
             }
 
             if viewModel.isGeneratingProfiles || viewModel.status.isProcessing || viewModel.isClassifying {
@@ -60,6 +51,21 @@ struct SimulationDashboardView: View {
                 }
             }
         }
+        .sheet(isPresented: $showingConfig) {
+            SimulationConfigView(
+                simulationId: viewModel.simulation.id
+            ) { config, nodeIds, maxAgents in
+                Task {
+                    if !viewModel.hasAgents {
+                        await viewModel.generateProfiles(
+                            nodeIds: nodeIds,
+                            maxAgents: maxAgents
+                        )
+                    }
+                    await viewModel.startSimulation(config: config)
+                }
+            }
+        }
         .alert("Error", isPresented: .init(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
@@ -72,7 +78,6 @@ struct SimulationDashboardView: View {
         }
         .onAppear {
             viewModel.loadData()
-            loadConfigDefaults()
             Task { await viewModel.checkEnvironment() }
         }
     }
@@ -126,117 +131,24 @@ struct SimulationDashboardView: View {
         }
     }
 
-    // MARK: - Inline Config
+    // MARK: - Configure & Launch
 
-    private var configSection: some View {
+    private var configureSection: some View {
         Section {
-            // Agents
-            LabeledContent("Max Agents") {
-                TextField("Max Agents", value: $maxAgents, format: .number)
-                    .multilineTextAlignment(.trailing)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-                    .frame(width: 80)
-                    .onChange(of: maxAgents) {
-                        maxAgents = max(3, min(100, maxAgents))
-                    }
+            Button("Configure & Launch", systemImage: "play.fill") {
+                showingConfig = true
             }
-
-            if !availableNodes.isEmpty {
-                DisclosureGroup("Select Entities (\(selectedNodeIds.count) selected)") {
-                    Button("Randomly Select", systemImage: "dice") {
-                        selectRandomEntities()
-                    }
-
-                    ForEach(availableNodes) { node in
-                        Toggle(isOn: Binding(
-                            get: { selectedNodeIds.contains(node.id!) },
-                            set: { isOn in
-                                if isOn { selectedNodeIds.insert(node.id!) }
-                                else { selectedNodeIds.remove(node.id!) }
-                            }
-                        )) {
-                            VStack(alignment: .leading) {
-                                Text(node.label)
-                                if let type = node.nodeType {
-                                    Text(type)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Platforms
-            Toggle("Twitter", isOn: $useTwitter)
-            Toggle("Reddit", isOn: $useReddit)
-
-            // Parameters
-            LabeledContent("Rounds") {
-                TextField("Rounds", value: $maxRounds, format: .number)
-                    .multilineTextAlignment(.trailing)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-                    .frame(width: 80)
-                    .onChange(of: maxRounds) {
-                        maxRounds = max(5, min(500, maxRounds))
-                    }
-            }
-
-            VStack(alignment: .leading) {
-                LabeledContent("Minutes per round") {
-                    Text(minutesPerRound, format: .number.precision(.fractionLength(0)))
-                        .foregroundStyle(.secondary)
-                }
-                Slider(value: $minutesPerRound, in: 15...180, step: 15)
-            }
-
-            // Launch
-            Button("Launch Simulation", systemImage: "play.fill") {
-                Task { await launchSimulation() }
-            }
-            .disabled(!canLaunch)
             .buttonStyle(.borderedProminent)
         } header: {
-            Text("Configuration")
-        } footer: {
-            let hours = Double(maxRounds) * minutesPerRound / 60.0
-            Text("Total simulated time: \(hours, format: .number.precision(.fractionLength(1))) hours. Leave entity selection empty to auto-select.")
-        }
-    }
-
-    // MARK: - Launch (agents exist, simulation not yet run)
-
-    private var launchSection: some View {
-        Section {
-            Toggle("Twitter", isOn: $useTwitter)
-            Toggle("Reddit", isOn: $useReddit)
-
-            LabeledContent("Rounds") {
-                TextField("Rounds", value: $maxRounds, format: .number)
-                    .multilineTextAlignment(.trailing)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-                    .frame(width: 80)
-                    .onChange(of: maxRounds) {
-                        maxRounds = max(5, min(500, maxRounds))
-                    }
+            if viewModel.hasAgents {
+                Text("Launch")
+            } else {
+                Text("Configuration")
             }
-
-            Button("Launch Simulation", systemImage: "play.fill") {
-                Task { await launchSimulation() }
-            }
-            .disabled(!canLaunch)
-            .buttonStyle(.borderedProminent)
-        } header: {
-            Text("Launch")
         } footer: {
-            Text("\(viewModel.agents.count) agents ready. Configure rounds and platforms, then launch.")
+            if viewModel.hasAgents {
+                Text("\(viewModel.agents.count) agents ready. Configure rounds and platforms, then launch.")
+            }
         }
     }
 
@@ -402,87 +314,6 @@ struct SimulationDashboardView: View {
             }
         } header: {
             Text("Activity Log")
-        }
-    }
-
-    // MARK: - Actions
-
-    private var canLaunch: Bool {
-        (useTwitter || useReddit) && !viewModel.isCheckingEnvironment
-    }
-
-    private func selectRandomEntities() {
-        let pool = availableNodes.compactMap(\.id)
-        let count = min(maxAgents, pool.count)
-        selectedNodeIds = Set(pool.shuffled().prefix(count))
-    }
-
-    private func launchSimulation() async {
-        let defaults = SimulationConfig.loadPersistedDefaults()
-
-        var platforms: [String] = []
-        if useTwitter { platforms.append("twitter") }
-        if useReddit { platforms.append("reddit") }
-
-        let config = SimulationConfig(
-            maxRounds: maxRounds,
-            minutesPerRound: minutesPerRound,
-            platforms: platforms,
-            agentsPerHourMin: defaults.agentsPerHourMin,
-            agentsPerHourMax: defaults.agentsPerHourMax,
-            pythonPath: viewModel.pythonPath ?? AppSettings.defaultSimPythonPath,
-            semaphoreLimit: defaults.semaphoreLimit
-        )
-
-        if !viewModel.hasAgents {
-            await viewModel.generateProfiles(
-                nodeIds: Array(selectedNodeIds),
-                maxAgents: maxAgents
-            )
-        }
-        await viewModel.startSimulation(config: config)
-    }
-
-    private func loadConfigDefaults() {
-        // Load persisted config defaults and available nodes
-        do {
-            try Database.shared.read { db in
-                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simDefaultMaxRounds).fetchOne(db),
-                   let v = Int(s.value) { maxRounds = v }
-                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simMinutesPerRound).fetchOne(db),
-                   let v = Double(s.value) { minutesPerRound = v }
-
-                // Load available nodes (typed personas first, then fallback)
-                let personaTypes = AgentProfileService.personaNodeTypes
-                let types = personaTypes.map { "'\($0)'" }.joined(separator: ", ")
-
-                var nodes = try HypergraphNode.fetchAll(db, sql: """
-                    SELECT n.*
-                    FROM hypergraph_node n
-                    JOIN hypergraph_incidence i ON i.node_id = n.id
-                    WHERE LOWER(n.node_type) IN (\(types))
-                    GROUP BY n.id
-                    HAVING COUNT(DISTINCT i.edge_id) >= 2
-                    ORDER BY COUNT(DISTINCT i.edge_id) DESC
-                    LIMIT 200
-                    """)
-
-                if nodes.isEmpty {
-                    nodes = try HypergraphNode.fetchAll(db, sql: """
-                        SELECT n.*
-                        FROM hypergraph_node n
-                        JOIN hypergraph_incidence i ON i.node_id = n.id
-                        WHERE LENGTH(n.label) <= 80
-                        GROUP BY n.id
-                        HAVING COUNT(DISTINCT i.edge_id) >= 1
-                        ORDER BY COUNT(DISTINCT i.edge_id) DESC
-                        LIMIT 200
-                        """)
-                }
-                availableNodes = nodes
-            }
-        } catch {
-            // Use defaults
         }
     }
 }
