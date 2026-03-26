@@ -319,11 +319,13 @@ final class OasisExportService: Sendable {
                         start_time = datetime.now()
                         channel = Channel()
 
+                        # Use 'reddit' recsys — 'twitter' uses TWHIN-BERT which crashes
+                        # on post_id access after posts are created
                         platform = Platform(
                             db_path=db_path,
                             channel=channel,
                             start_time=start_time,
-                            recsys_type=platform_name,
+                            recsys_type="reddit",
                         )
 
                         agent_graph = await generate_agents(
@@ -331,7 +333,7 @@ final class OasisExportService: Sendable {
                             channel=channel,
                             model=model,
                             start_time=start_time,
-                            recsys_type=platform_name,
+                            recsys_type="reddit",
                             twitter=platform,
                         )
 
@@ -345,20 +347,60 @@ final class OasisExportService: Sendable {
                         await env.reset()
                         print(f"OASIS environment initialized with {len(profiles)} agents")
 
-                        import random
+                        import random, sqlite3
+                        from oasis.environment.env_action import LLMAction
+                        all_agents = list(agent_graph.agent_mappings.values())
+                        trace_offset = 0  # track last read row in trace table
+
                         for round_num in range(max_rounds):
                             num_active = random.randint(agents_per_hour_min, agents_per_hour_max)
-                            num_active = min(num_active, len(profiles))
-
-                            from oasis.environment.env_action import LLMAction
-                            all_agents = list(agent_graph.agent_mappings.values())
+                            num_active = min(num_active, len(all_agents))
                             active_agents = random.sample(all_agents, num_active)
                             actions = {agent: LLMAction() for agent in active_agents}
 
                             try:
                                 await env.step(actions)
+                            except KeyError as e:
+                                # OASIS recsys bug: 'post_id' KeyError in rec_sys_personalized_twh
+                                # Fall back to random recsys for this platform
+                                if str(e) == "'post_id'" and platform.recsys_type != "random":
+                                    print(f"  Round {round_num}: switching to random recsys (twitter recsys bug)", file=sys.stderr)
+                                    platform.recsys_type = "random"
+                                    try:
+                                        await env.step(actions)
+                                    except Exception as e2:
+                                        print(f"  Round {round_num} error after recsys switch: {e2}", file=sys.stderr)
+                                else:
+                                    print(f"  Round {round_num} error: {e}", file=sys.stderr)
                             except Exception as e:
                                 print(f"  Round {round_num} error: {e}", file=sys.stderr)
+
+                            # Read new traces from OASIS DB and log to JSONL
+                            try:
+                                conn = sqlite3.connect(db_path)
+                                cursor = conn.execute(
+                                    "SELECT rowid, * FROM trace WHERE rowid > ? ORDER BY rowid",
+                                    (trace_offset,)
+                                )
+                                for row in cursor:
+                                    rowid = row[0]
+                                    agent_id = row[1]
+                                    action_round = row[2]
+                                    action_type = row[3]
+                                    action_args = row[4] if len(row) > 4 else "{}"
+                                    args_dict = json.loads(action_args) if action_args else {}
+                                    logger.log_action(
+                                        agent_id=agent_id,
+                                        round=round_num,
+                                        action_type=action_type,
+                                        content=args_dict.get("content", ""),
+                                        target_post_id=args_dict.get("post_id"),
+                                        success=True,
+                                    )
+                                    trace_offset = max(trace_offset, rowid)
+                                conn.close()
+                            except Exception as e:
+                                print(f"  Trace read error: {e}", file=sys.stderr)
 
                             logger.log_event("round_end", round=round_num)
 
