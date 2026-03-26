@@ -131,15 +131,24 @@ struct SimulationDashboardView: View {
     private var configSection: some View {
         Section {
             // Agents
-            Stepper(value: $maxAgents, in: 3...100) {
-                LabeledContent("Max Agents") {
-                    Text("\(maxAgents)")
-                        .foregroundStyle(.secondary)
-                }
+            LabeledContent("Max Agents") {
+                TextField("Max Agents", value: $maxAgents, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    #if os(iOS)
+                    .keyboardType(.numberPad)
+                    #endif
+                    .frame(width: 80)
+                    .onChange(of: maxAgents) {
+                        maxAgents = max(3, min(100, maxAgents))
+                    }
             }
 
             if !availableNodes.isEmpty {
                 DisclosureGroup("Select Entities (\(selectedNodeIds.count) selected)") {
+                    Button("Randomly Select", systemImage: "dice") {
+                        selectRandomEntities()
+                    }
+
                     ForEach(availableNodes) { node in
                         Toggle(isOn: Binding(
                             get: { selectedNodeIds.contains(node.id!) },
@@ -166,11 +175,16 @@ struct SimulationDashboardView: View {
             Toggle("Reddit", isOn: $useReddit)
 
             // Parameters
-            Stepper(value: $maxRounds, in: 5...500) {
-                LabeledContent("Rounds") {
-                    Text("\(maxRounds)")
-                        .foregroundStyle(.secondary)
-                }
+            LabeledContent("Rounds") {
+                TextField("Rounds", value: $maxRounds, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    #if os(iOS)
+                    .keyboardType(.numberPad)
+                    #endif
+                    .frame(width: 80)
+                    .onChange(of: maxRounds) {
+                        maxRounds = max(5, min(500, maxRounds))
+                    }
             }
 
             VStack(alignment: .leading) {
@@ -202,11 +216,16 @@ struct SimulationDashboardView: View {
             Toggle("Twitter", isOn: $useTwitter)
             Toggle("Reddit", isOn: $useReddit)
 
-            Stepper(value: $maxRounds, in: 5...500) {
-                LabeledContent("Rounds") {
-                    Text("\(maxRounds)")
-                        .foregroundStyle(.secondary)
-                }
+            LabeledContent("Rounds") {
+                TextField("Rounds", value: $maxRounds, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    #if os(iOS)
+                    .keyboardType(.numberPad)
+                    #endif
+                    .frame(width: 80)
+                    .onChange(of: maxRounds) {
+                        maxRounds = max(5, min(500, maxRounds))
+                    }
             }
 
             Button("Launch Simulation", systemImage: "play.fill") {
@@ -390,6 +409,12 @@ struct SimulationDashboardView: View {
 
     private var canLaunch: Bool {
         (useTwitter || useReddit) && !viewModel.isCheckingEnvironment
+    }
+
+    private func selectRandomEntities() {
+        let pool = availableNodes.compactMap(\.id)
+        let count = min(maxAgents, pool.count)
+        selectedNodeIds = Set(pool.shuffled().prefix(count))
     }
 
     private func launchSimulation() async {
