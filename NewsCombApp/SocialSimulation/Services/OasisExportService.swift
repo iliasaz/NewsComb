@@ -319,13 +319,14 @@ final class OasisExportService: Sendable {
                         start_time = datetime.now()
                         channel = Channel()
 
-                        # Use 'reddit' recsys — 'twitter' uses TWHIN-BERT which crashes
-                        # on post_id access after posts are created
+                        # Use 'twitter' recsys — produces better agent behavior.
+                        # If it hits the TWHIN-BERT 'post_id' bug after posts are
+                        # created, the error handler below switches to 'random'.
                         platform = Platform(
                             db_path=db_path,
                             channel=channel,
                             start_time=start_time,
-                            recsys_type="reddit",
+                            recsys_type="twitter",
                         )
 
                         agent_graph = await generate_agents(
@@ -333,7 +334,7 @@ final class OasisExportService: Sendable {
                             channel=channel,
                             model=model,
                             start_time=start_time,
-                            recsys_type="reddit",
+                            recsys_type="twitter",
                             twitter=platform,
                         )
 
