@@ -107,16 +107,25 @@ struct SimulationConfigView: View {
 
     private var agentSection: some View {
         Section {
-            Stepper(value: $maxAgents, in: 3...100) {
-                LabeledContent("Max Agents") {
-                    Text("\(maxAgents)")
-                        .foregroundStyle(.secondary)
-                }
+            LabeledContent("Max Agents") {
+                TextField("Max Agents", value: $maxAgents, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    #if os(iOS)
+                    .keyboardType(.numberPad)
+                    #endif
+                    .frame(width: 80)
+                    .onChange(of: maxAgents) {
+                        maxAgents = max(3, min(100, maxAgents))
+                    }
             }
 
             if !availableNodes.isEmpty {
                 DisclosureGroup("Select Entities (\(selectedNodeIds.count) selected)") {
-                    ForEach(availableNodes) { node in
+                    Button("Randomly Select", systemImage: "dice") {
+                        selectRandomEntities()
+                    }
+
+                    ForEach(filteredNodes) { node in
                         Toggle(isOn: Binding(
                             get: { selectedNodeIds.contains(node.id!) },
                             set: { isOn in
@@ -165,19 +174,23 @@ struct SimulationConfigView: View {
 
     private var simulationParamsSection: some View {
         Section {
-            Stepper(value: $maxRounds, in: 5...500) {
-                LabeledContent("Rounds") {
-                    Text("\(maxRounds)")
-                        .foregroundStyle(.secondary)
-                }
+            LabeledContent("Rounds") {
+                TextField("Rounds", value: $maxRounds, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    #if os(iOS)
+                    .keyboardType(.numberPad)
+                    #endif
+                    .frame(width: 80)
+                    .onChange(of: maxRounds) {
+                        maxRounds = max(5, min(500, maxRounds))
+                    }
             }
 
-            VStack(alignment: .leading) {
-                LabeledContent("Minutes per round") {
-                    Text(minutesPerRound, format: .number.precision(.fractionLength(0)))
-                        .foregroundStyle(.secondary)
-                }
-                Slider(value: $minutesPerRound, in: 15...180, step: 15)
+            HStack {
+                Text("Minutes per round")
+                Spacer()
+                Text(minutesPerRound, format: .number.precision(.fractionLength(0)))
+                    .foregroundStyle(.secondary)
             }
         } header: {
             Text("Simulation Parameters")
@@ -191,6 +204,12 @@ struct SimulationConfigView: View {
 
     private var canLaunch: Bool {
         (useTwitter || useReddit) && !isCheckingEnvironment
+    }
+
+    private func selectRandomEntities() {
+        let pool = filteredNodes.compactMap(\.id)
+        let count = min(maxAgents, pool.count)
+        selectedNodeIds = Set(pool.shuffled().prefix(count))
     }
 
     private func buildConfig() -> SimulationConfig {
