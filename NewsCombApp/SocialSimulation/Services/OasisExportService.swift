@@ -364,9 +364,10 @@ final class OasisExportService: Sendable {
                             except KeyError as e:
                                 # OASIS recsys bug: 'post_id' KeyError in rec_sys_personalized_twh
                                 # Fall back to random recsys for this platform
-                                if str(e) == "'post_id'" and platform.recsys_type != "random":
+                                from oasis.social_platform.typing import RecsysType
+                                if str(e) == "'post_id'" and platform.recsys_type != RecsysType.RANDOM:
                                     print(f"  Round {round_num}: switching to random recsys (twitter recsys bug)", file=sys.stderr)
-                                    platform.recsys_type = "random"
+                                    platform.recsys_type = RecsysType.RANDOM
                                     try:
                                         await env.step(actions)
                                     except Exception as e2:
