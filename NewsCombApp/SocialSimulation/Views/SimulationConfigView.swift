@@ -107,17 +107,14 @@ struct SimulationConfigView: View {
 
     private var agentSection: some View {
         Section {
-            LabeledContent("Max Agents") {
-                TextField("Max Agents", value: $maxAgents, format: .number)
-                    .multilineTextAlignment(.trailing)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-                    .frame(width: 80)
-                    .onChange(of: maxAgents) {
-                        maxAgents = max(3, min(100, maxAgents))
-                    }
-            }
+            TextField("Max Agents", value: $maxAgents, format: .number)
+                .multilineTextAlignment(.trailing)
+                #if os(iOS)
+                .keyboardType(.numberPad)
+                #endif
+                .onChange(of: maxAgents) {
+                    maxAgents = max(3, min(100, maxAgents))
+                }
 
             if !availableNodes.isEmpty {
                 DisclosureGroup("Select Entities (\(selectedNodeIds.count) selected)") {
@@ -174,17 +171,14 @@ struct SimulationConfigView: View {
 
     private var simulationParamsSection: some View {
         Section {
-            LabeledContent("Rounds") {
-                TextField("Rounds", value: $maxRounds, format: .number)
-                    .multilineTextAlignment(.trailing)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-                    .frame(width: 80)
-                    .onChange(of: maxRounds) {
-                        maxRounds = max(5, min(500, maxRounds))
-                    }
-            }
+            TextField("Rounds", value: $maxRounds, format: .number)
+                .multilineTextAlignment(.trailing)
+                #if os(iOS)
+                .keyboardType(.numberPad)
+                #endif
+                .onChange(of: maxRounds) {
+                    maxRounds = max(5, min(500, maxRounds))
+                }
 
             HStack {
                 Text("Minutes per round")
