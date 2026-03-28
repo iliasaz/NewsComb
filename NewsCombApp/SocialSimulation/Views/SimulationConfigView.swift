@@ -112,9 +112,6 @@ struct SimulationConfigView: View {
                 #if os(iOS)
                 .keyboardType(.numberPad)
                 #endif
-                .onChange(of: maxAgents) {
-                    maxAgents = max(3, min(100, maxAgents))
-                }
 
             if !availableNodes.isEmpty {
                 HStack {
@@ -179,9 +176,6 @@ struct SimulationConfigView: View {
                 #if os(iOS)
                 .keyboardType(.numberPad)
                 #endif
-                .onChange(of: maxRounds) {
-                    maxRounds = max(5, min(500, maxRounds))
-                }
 
             HStack {
                 Text("Minutes per round")
