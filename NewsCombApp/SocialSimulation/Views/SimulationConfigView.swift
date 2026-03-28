@@ -117,32 +117,35 @@ struct SimulationConfigView: View {
                 }
 
             if !availableNodes.isEmpty {
-                DisclosureGroup("Select Entities (\(selectedNodeIds.count) selected)") {
-                    Button("Randomly Select", systemImage: "dice") {
-                        selectRandomEntities()
-                    }
-
-                    ForEach(filteredNodes) { node in
-                        Toggle(isOn: Binding(
-                            get: { selectedNodeIds.contains(node.id!) },
-                            set: { isOn in
-                                if isOn {
-                                    selectedNodeIds.insert(node.id!)
-                                } else {
-                                    selectedNodeIds.remove(node.id!)
+                HStack {
+                    DisclosureGroup("Select Entities (\(selectedNodeIds.count) selected)") {
+                        ForEach(filteredNodes) { node in
+                            Toggle(isOn: Binding(
+                                get: { selectedNodeIds.contains(node.id!) },
+                                set: { isOn in
+                                    if isOn {
+                                        selectedNodeIds.insert(node.id!)
+                                    } else {
+                                        selectedNodeIds.remove(node.id!)
+                                    }
                                 }
-                            }
-                        )) {
-                            VStack(alignment: .leading) {
-                                Text(node.label)
-                                if let type = node.nodeType {
-                                    Text(type)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                            )) {
+                                VStack(alignment: .leading) {
+                                    Text(node.label)
+                                    if let type = node.nodeType {
+                                        Text(type)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
                         }
                     }
+
+                    Button("Randomly Select", systemImage: "dice") {
+                        selectRandomEntities()
+                    }
+                    .labelStyle(.iconOnly)
                 }
             } else {
                 Text("No persona entities found in the knowledge graph.")
