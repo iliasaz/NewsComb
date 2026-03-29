@@ -185,7 +185,7 @@ final class SimulationReportService: Sendable {
                 throw ReportError.invalidConfiguration
             }
             let model = settings.analysisOpenRouterModel ?? settings.openRouterModel ?? "meta-llama/llama-4-maverick"
-            let openRouter = try OpenRouterService(apiKey: apiKey, model: model)
+            let openRouter = try OpenRouterService(apiKey: apiKey, model: model, timeout: .seconds(600))
             if let tokenCallback {
                 return try await openRouter.chatStream(
                     systemPrompt: systemPrompt,

@@ -7,6 +7,7 @@ struct AgentDetailView: View {
     @State private var posts: [SocialPost] = []
     @State private var followingAgents: [SocialAgent] = []
     @State private var followerAgents: [SocialAgent] = []
+    @State private var actionSummary: [String: Int] = [:]
 
     private let graphService = SocialGraphService()
 
@@ -22,6 +23,7 @@ struct AgentDetailView: View {
                 }
             }
 
+            actionsSection
             postsSection
             connectionsSection
         }
@@ -78,6 +80,19 @@ struct AgentDetailView: View {
             }
         } header: {
             Text("Persona")
+        }
+    }
+
+    @ViewBuilder
+    private var actionsSection: some View {
+        if !actionSummary.isEmpty {
+            Section {
+                ForEach(actionSummary.sorted(by: { $0.value > $1.value }), id: \.key) { action, count in
+                    LabeledContent(action.replacing("_", with: " ").capitalized, value: "\(count)")
+                }
+            } header: {
+                Text("Actions")
+            }
         }
     }
 
@@ -144,6 +159,7 @@ struct AgentDetailView: View {
             posts = try graphService.posts(byAgentId: agentId)
             followingAgents = try graphService.following(agentId: agentId, simulationId: agent.simulationId)
             followerAgents = try graphService.followers(agentId: agentId, simulationId: agent.simulationId)
+            actionSummary = try graphService.agentInteractionSummary(agentId: agentId, simulationId: agent.simulationId)
         } catch {
             // Silently handle — data will show as empty
         }

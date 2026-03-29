@@ -20,11 +20,11 @@ final class AgentProfileService: Sendable {
 
     // MARK: - Persona Node Types
 
-    /// Node types that represent persona entities suitable for social simulation.
+    /// Node types that represent actor entities suitable for social simulation.
+    /// Excludes "non-actor" nodes (products, concepts, events, etc.) which provide
+    /// context for agents but do not act on the platform themselves.
     static let personaNodeTypes: Set<String> = [
-        "person", "organization", "company", "government",
-        "government_body", "institution", "agency", "political_party",
-        "ngo", "media", "media_outlet", "group"
+        "person", "organization", "company", "government_entity", "institution"
     ]
 
     // MARK: - Public API
@@ -130,17 +130,19 @@ final class AgentProfileService: Sendable {
 
     // MARK: - Node Selection
 
+    /// Proportion of "person" nodes in the agent selection (0.0–1.0).
+    /// The remainder is filled with organization, company, government_entity, and institution nodes.
+    private static let personRatio: Double = 0.8
+
     /// Selects hypergraph nodes that represent personas with sufficient context.
     ///
-    /// First tries to find nodes with persona-type labels (person, organization, etc.).
-    /// If none found (e.g., node_type is NULL), falls back to selecting the most
-    /// connected nodes regardless of type.
+    /// Targets ~80% individuals and ~20% organizations/companies/government/institutions,
+    /// filling each bucket from the most-connected nodes of that type.
+    /// Falls back to most-connected nodes regardless of type if no typed nodes exist.
     private func selectPersonaNodes(maxCount: Int) throws -> [HypergraphNode] {
         try database.read { db in
             let personaTypes = Self.personaNodeTypes.map { "'\($0)'" }.joined(separator: ", ")
-
-            // Try persona-type nodes first
-            let typedSQL = """
+            let connectedSQL = """
                 SELECT n.*
                 FROM hypergraph_node n
                 JOIN hypergraph_incidence i ON i.node_id = n.id
@@ -148,28 +150,47 @@ final class AgentProfileService: Sendable {
                 GROUP BY n.id
                 HAVING COUNT(DISTINCT i.edge_id) >= 2
                 ORDER BY COUNT(DISTINCT i.edge_id) DESC
-                LIMIT ?
                 """
-            let typed = try HypergraphNode.fetchAll(db, sql: typedSQL, arguments: [maxCount])
+            let allTyped = try HypergraphNode.fetchAll(db, sql: connectedSQL)
 
-            if !typed.isEmpty {
-                return typed
+            guard !allTyped.isEmpty else {
+                // Fallback: select most connected nodes regardless of type.
+                logger.info("No typed persona nodes found, falling back to most connected nodes")
+                let fallbackSQL = """
+                    SELECT n.*
+                    FROM hypergraph_node n
+                    JOIN hypergraph_incidence i ON i.node_id = n.id
+                    WHERE LENGTH(n.label) <= 80
+                    GROUP BY n.id
+                    HAVING COUNT(DISTINCT i.edge_id) >= 1
+                    ORDER BY COUNT(DISTINCT i.edge_id) DESC
+                    LIMIT ?
+                    """
+                return try HypergraphNode.fetchAll(db, sql: fallbackSQL, arguments: [maxCount])
             }
 
-            // Fallback: select most connected nodes regardless of type.
-            // Filter out very long labels (likely sentence fragments, not entities).
-            logger.info("No typed persona nodes found, falling back to most connected nodes")
-            let fallbackSQL = """
-                SELECT n.*
-                FROM hypergraph_node n
-                JOIN hypergraph_incidence i ON i.node_id = n.id
-                WHERE LENGTH(n.label) <= 80
-                GROUP BY n.id
-                HAVING COUNT(DISTINCT i.edge_id) >= 1
-                ORDER BY COUNT(DISTINCT i.edge_id) DESC
-                LIMIT ?
-                """
-            return try HypergraphNode.fetchAll(db, sql: fallbackSQL, arguments: [maxCount])
+            // Split into persons vs organizations/companies/etc.
+            let persons = allTyped.filter { $0.nodeType?.lowercased() == "person" }
+            let orgs = allTyped.filter { $0.nodeType?.lowercased() != "person" }
+
+            let personTarget = Int(ceil(Double(maxCount) * Self.personRatio))
+            let orgTarget = maxCount - personTarget
+
+            var selected: [HypergraphNode] = []
+            selected.append(contentsOf: persons.prefix(personTarget))
+
+            let remainingSlots = maxCount - selected.count
+            selected.append(contentsOf: orgs.prefix(max(orgTarget, remainingSlots)))
+
+            // If we still haven't filled maxCount, top up from whichever pool has more
+            if selected.count < maxCount {
+                let usedIds = Set(selected.compactMap(\.id))
+                let remaining = allTyped.filter { !usedIds.contains($0.id!) }
+                selected.append(contentsOf: remaining.prefix(maxCount - selected.count))
+            }
+
+            logger.info("Selected \(selected.count) persona nodes: \(selected.filter { $0.nodeType?.lowercased() == "person" }.count) persons, \(selected.filter { $0.nodeType?.lowercased() != "person" }.count) orgs")
+            return Array(selected.prefix(maxCount))
         }
     }
 

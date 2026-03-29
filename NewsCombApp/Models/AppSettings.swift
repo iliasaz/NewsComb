@@ -228,14 +228,22 @@ extension AppSettings {
     static let simClassificationThreads = "sim_classification_threads"
     static let defaultSimClassificationThreads = 8
     static let defaultSimClassificationPrompt = """
-        Classify each entity into one of these types: person, organization, company, \
-        government, institution, product, concept, event, location, media, other.
+        You are classifying entities for a social media simulation. Each entity is \
+        either an "actor" (someone who could act on a social platform) or a "non-actor" \
+        (a thing, concept, or event that provides context but does not act).
 
-        For each entity, consider its name and the relationship context provided. \
-        Respond with a JSON array where each element has "node_id" and "type" fields.
+        Actor types: person, organization, company, government_entity, institution.
+        Non-actor type: non-actor (products, concepts, events, locations, etc.)
+
+        IMPORTANT: An actor must be a specific, concrete entity — e.g. "Apple", \
+        "John Smith", "NIH", "European Commission". Generic or categorical terms like \
+        "developers", "IT companies", "government agency", or "scientists" are non-actors.
+
+        For each entity, consider its name and relationship context. Respond with a \
+        JSON array where each element has "node_id" and "type" fields.
 
         Example response:
-        [{"node_id": 1, "type": "person"}, {"node_id": 2, "type": "organization"}]
+        [{"node_id": 1, "type": "person"}, {"node_id": 2, "type": "non-actor"}]
         """
 
     // MARK: - Social Simulation Configuration

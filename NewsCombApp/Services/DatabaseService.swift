@@ -516,6 +516,37 @@ public final class Database: Sendable {
                 CREATE INDEX IF NOT EXISTS idx_social_connection_follower ON social_connection(follower_id);
                 CREATE INDEX IF NOT EXISTS idx_social_connection_followee ON social_connection(followee_id);
 
+                CREATE TABLE IF NOT EXISTS social_group (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    oasis_group_id INTEGER,
+                    name TEXT NOT NULL,
+                    creator_agent_id INTEGER NOT NULL REFERENCES social_agent(id) ON DELETE CASCADE,
+                    round_num INTEGER NOT NULL,
+                    simulation_id TEXT NOT NULL,
+                    UNIQUE(oasis_group_id, simulation_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_social_group_sim ON social_group(simulation_id);
+
+                CREATE TABLE IF NOT EXISTS social_group_member (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    group_id INTEGER NOT NULL REFERENCES social_group(id) ON DELETE CASCADE,
+                    agent_id INTEGER NOT NULL REFERENCES social_agent(id) ON DELETE CASCADE,
+                    round_num INTEGER NOT NULL,
+                    simulation_id TEXT NOT NULL,
+                    UNIQUE(group_id, agent_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_social_group_member_group ON social_group_member(group_id);
+
+                CREATE TABLE IF NOT EXISTS social_group_message (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    group_id INTEGER NOT NULL REFERENCES social_group(id) ON DELETE CASCADE,
+                    agent_id INTEGER NOT NULL REFERENCES social_agent(id) ON DELETE CASCADE,
+                    content TEXT NOT NULL,
+                    round_num INTEGER NOT NULL,
+                    simulation_id TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_social_group_message_group ON social_group_message(group_id);
+
                 CREATE TABLE IF NOT EXISTS agent_interview (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     agent_id INTEGER NOT NULL REFERENCES social_agent(id) ON DELETE CASCADE,

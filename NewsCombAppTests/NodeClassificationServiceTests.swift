@@ -38,9 +38,9 @@ final class NodeClassificationServiceTests: XCTestCase {
 
         XCTAssertEqual(result.count, 2)
         XCTAssertEqual(result[0].nodeId, 10)
-        XCTAssertEqual(result[0].type, "government")
+        XCTAssertEqual(result[0].type, "government_entity")
         XCTAssertEqual(result[1].nodeId, 20)
-        XCTAssertEqual(result[1].type, "location")
+        XCTAssertEqual(result[1].type, "non-actor")
     }
 
     func testParseClassifications_invalidType() {
@@ -76,9 +76,9 @@ final class NodeClassificationServiceTests: XCTestCase {
 
         XCTAssertEqual(result.count, 2)
         XCTAssertEqual(result[0].nodeId, 5)
-        XCTAssertEqual(result[0].type, "media")
+        XCTAssertEqual(result[0].type, "organization")
         XCTAssertEqual(result[1].nodeId, 6)
-        XCTAssertEqual(result[1].type, "product")
+        XCTAssertEqual(result[1].type, "non-actor")
     }
 
     func testParseClassifications_allValidTypes() {
@@ -87,19 +87,47 @@ final class NodeClassificationServiceTests: XCTestCase {
                 {"node_id": 1, "type": "person"},
                 {"node_id": 2, "type": "organization"},
                 {"node_id": 3, "type": "company"},
-                {"node_id": 4, "type": "government"},
+                {"node_id": 4, "type": "government_entity"},
                 {"node_id": 5, "type": "institution"},
-                {"node_id": 6, "type": "product"},
-                {"node_id": 7, "type": "concept"},
-                {"node_id": 8, "type": "event"},
-                {"node_id": 9, "type": "location"},
-                {"node_id": 10, "type": "media"},
-                {"node_id": 11, "type": "other"}
+                {"node_id": 6, "type": "non-actor"}
             ]
             """
 
         let result = service.parseClassifications(from: response)
-        XCTAssertEqual(result.count, 11)
+        XCTAssertEqual(result.count, 6)
+    }
+
+    func testParseClassifications_aliasesMapCorrectly() {
+        let response = """
+            [
+                {"node_id": 1, "type": "government"},
+                {"node_id": 2, "type": "government body"},
+                {"node_id": 3, "type": "agency"},
+                {"node_id": 4, "type": "media"},
+                {"node_id": 5, "type": "ngo"},
+                {"node_id": 6, "type": "product"},
+                {"node_id": 7, "type": "concept"},
+                {"node_id": 8, "type": "event"},
+                {"node_id": 9, "type": "location"},
+                {"node_id": 10, "type": "other"}
+            ]
+            """
+
+        let result = service.parseClassifications(from: response)
+        XCTAssertEqual(result.count, 10)
+        // government variants -> government_entity
+        XCTAssertEqual(result[0].type, "government_entity")
+        XCTAssertEqual(result[1].type, "government_entity")
+        XCTAssertEqual(result[2].type, "government_entity")
+        // media, ngo -> organization
+        XCTAssertEqual(result[3].type, "organization")
+        XCTAssertEqual(result[4].type, "organization")
+        // product, concept, event, location, other -> non-actor
+        XCTAssertEqual(result[5].type, "non-actor")
+        XCTAssertEqual(result[6].type, "non-actor")
+        XCTAssertEqual(result[7].type, "non-actor")
+        XCTAssertEqual(result[8].type, "non-actor")
+        XCTAssertEqual(result[9].type, "non-actor")
     }
 
     func testParseClassifications_normalizesCase() {

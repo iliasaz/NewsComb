@@ -23,7 +23,8 @@ struct SimulationReportView: View {
                     reportSection(title: "Insights", content: viewModel.insightsText)
                 }
 
-                if !viewModel.hasReport && !viewModel.isGenerating {
+                if !viewModel.hasReport && !viewModel.isGenerating
+                    && viewModel.analysisText.isEmpty && viewModel.insightsText.isEmpty {
                     emptyState
                 }
             }

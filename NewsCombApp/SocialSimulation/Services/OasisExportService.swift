@@ -336,6 +336,21 @@ final class OasisExportService: Sendable {
                             start_time=start_time,
                             recsys_type="twitter",
                             twitter=platform,
+                            available_actions=[
+                                ActionType.CREATE_POST,
+                                ActionType.CREATE_COMMENT,
+                                ActionType.LIKE_POST,
+                                ActionType.REPOST,
+                                ActionType.FOLLOW,
+                                ActionType.REFRESH,
+                                ActionType.SEARCH_POSTS,
+                                ActionType.DO_NOTHING,
+                                ActionType.LIKE_COMMENT,
+                                ActionType.TREND,
+                                ActionType.CREATE_GROUP,
+                                ActionType.JOIN_GROUP,
+                                ActionType.SEND_TO_GROUP,
+                            ],
                         )
 
                         env = OasisEnv(
@@ -397,6 +412,8 @@ final class OasisExportService: Sendable {
                                         action_type=action_type,
                                         content=args_dict.get("content", ""),
                                         target_post_id=args_dict.get("post_id"),
+                                        group_id=args_dict.get("group_id"),
+                                        group_name=args_dict.get("group_name", ""),
                                         success=True,
                                     )
                                     trace_offset = max(trace_offset, rowid)

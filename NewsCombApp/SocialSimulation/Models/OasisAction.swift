@@ -12,9 +12,15 @@ struct OasisAction: Codable, Sendable, Equatable {
     var content: String?
     var targetPostId: Int?
     var targetCommentId: Int?
+    var groupId: Int?
+    var groupName: String?
     var result: String?
     var success: Bool?
     var timestamp: Double?
+
+    /// The OASIS post ID for actions that create a new post (quote_post, repost).
+    /// Used during re-ingestion to set `oasisPostId` on the created SocialPost.
+    var oasisNewPostId: Int?
 
     /// Event entries (round_start, round_end, simulation_end) use this field.
     var eventType: String?
@@ -26,6 +32,8 @@ struct OasisAction: Codable, Sendable, Equatable {
         case actionType = "action_type"
         case targetPostId = "target_post_id"
         case targetCommentId = "target_comment_id"
+        case groupId = "group_id"
+        case groupName = "group_name"
         case eventType = "event_type"
     }
 

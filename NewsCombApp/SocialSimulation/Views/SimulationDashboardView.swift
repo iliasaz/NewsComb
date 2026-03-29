@@ -238,6 +238,16 @@ struct SimulationDashboardView: View {
             } header: {
                 Text("Statistics")
             }
+
+            if !viewModel.actionBreakdown.isEmpty {
+                Section {
+                    ForEach(viewModel.actionBreakdown.sorted(by: { $0.value > $1.value }), id: \.key) { action, count in
+                        LabeledContent(action.replacing("_", with: " ").capitalized, value: "\(count)")
+                    }
+                } header: {
+                    Text("Actions Breakdown")
+                }
+            }
         }
     }
 
@@ -248,6 +258,7 @@ struct SimulationDashboardView: View {
             Picker("View", selection: $selectedTab) {
                 Text("Feed").tag("feed")
                 Text("Agents").tag("agents")
+                Text("Groups").tag("groups")
             }
             .pickerStyle(.segmented)
 
@@ -262,6 +273,8 @@ struct SimulationDashboardView: View {
                     agents: viewModel.agents,
                     simulationId: viewModel.simulation.id
                 )
+            case "groups":
+                SimulationGroupsView(simulationId: viewModel.simulation.id)
             default:
                 EmptyView()
             }
@@ -285,6 +298,10 @@ struct SimulationDashboardView: View {
                     SimulationReportView(simulationId: viewModel.simulation.id)
                 } label: {
                     Label("Generate Report", systemImage: "doc.text.magnifyingglass")
+                }
+
+                Button("Re-ingest Data", systemImage: "arrow.trianglehead.2.clockwise") {
+                    viewModel.reingestData()
                 }
             } header: {
                 Text("Tools")

@@ -61,6 +61,11 @@ class MainViewModel {
     // Graph simplification state (set during auto-simplify at end of processing)
     var isSimplifyingGraph = false
 
+    // Entity classification state
+    var isClassifying = false
+    var classificationProgress: Double = 0
+    var classificationStatus: String = ""
+
     private let database = Database.shared
 
     @ObservationIgnored
@@ -735,6 +740,44 @@ class MainViewModel {
         } catch {
             embeddingDimensionMismatch = false
         }
+    }
+
+    // MARK: - Entity Classification
+
+    /// Classifies only untyped nodes in the knowledge graph.
+    func classifyEntities() async {
+        isClassifying = true
+        classificationProgress = 0
+
+        let service = NodeClassificationService()
+        do {
+            let count = try await service.classifyUntypedNodes(
+                statusCallback: { [weak self] msg in self?.classificationStatus = msg },
+                progressCallback: { [weak self] p in self?.classificationProgress = p }
+            )
+            classificationStatus = "Classified \(count) entities"
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isClassifying = false
+    }
+
+    /// Re-classifies all nodes, overwriting existing types.
+    func reclassifyEntities() async {
+        isClassifying = true
+        classificationProgress = 0
+
+        let service = NodeClassificationService()
+        do {
+            let count = try await service.reclassifyAllNodes(
+                statusCallback: { [weak self] msg in self?.classificationStatus = msg },
+                progressCallback: { [weak self] p in self?.classificationProgress = p }
+            )
+            classificationStatus = "Re-classified \(count) entities"
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isClassifying = false
     }
 
     // MARK: - Graph Simplification

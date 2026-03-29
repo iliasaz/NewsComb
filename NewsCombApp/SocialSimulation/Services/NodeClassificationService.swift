@@ -139,6 +139,11 @@ final class NodeClassificationService: Sendable {
             \(nodeDescriptions)
             """
 
+        // Log one example node from this batch for debugging prompt/response quality
+        if let firstLine = nodeDescriptions.split(separator: "\n").first {
+            logger.debug("Batch \(batchIndex) sample input: \(String(firstLine), privacy: .public)")
+        }
+
         // Call LLM using the shared client
         let response = try await llmClient.chat(
             systemPrompt: config.prompt,
@@ -146,6 +151,12 @@ final class NodeClassificationService: Sendable {
             model: config.model,
             temperature: 0.1
         )
+
+        // Log one example classification from the response
+        if let firstEntry = response.split(separator: "},").first {
+            let sample = String(firstEntry).trimmingCharacters(in: .whitespacesAndNewlines)
+            logger.debug("Batch \(batchIndex) sample output: \(sample, privacy: .public)")
+        }
 
         // Parse response: extract JSON array of {node_id, type}
         let classifications = parseClassifications(from: response)
@@ -191,14 +202,33 @@ final class NodeClassificationService: Sendable {
             return []
         }
 
-        // Validate types
+        // Validate types — actor types + non-actor
         let validTypes: Set<String> = [
-            "person", "organization", "company", "government", "institution",
-            "product", "concept", "event", "location", "media", "other"
+            "person", "organization", "company", "government_entity", "institution",
+            "non-actor"
+        ]
+
+        // Normalize common LLM variations to canonical types
+        let aliases: [String: String] = [
+            "government": "government_entity",
+            "government body": "government_entity",
+            "government agency": "government_entity",
+            "agency": "government_entity",
+            "political_party": "organization",
+            "ngo": "organization",
+            "media": "organization",
+            "media_outlet": "organization",
+            "group": "organization",
+            "product": "non-actor",
+            "concept": "non-actor",
+            "event": "non-actor",
+            "location": "non-actor",
+            "other": "non-actor",
         ]
 
         return items.compactMap { item in
-            let normalized = item.type.lowercased().trimmingCharacters(in: .whitespaces)
+            let raw = item.type.lowercased().trimmingCharacters(in: .whitespaces)
+            let normalized = aliases[raw] ?? raw
             guard validTypes.contains(normalized) else { return nil }
             return (nodeId: item.node_id, type: normalized)
         }
@@ -234,6 +264,25 @@ final class NodeClassificationService: Sendable {
                 openRouterKey: apiKey
             )
         }
+    }
+
+    // MARK: - Re-classification
+
+    /// Clears all existing node_type values and re-classifies every node.
+    func reclassifyAllNodes(
+        statusCallback: StatusCallback? = nil,
+        progressCallback: ProgressCallback? = nil
+    ) async throws -> Int {
+        await statusCallback?("Resetting existing classifications\u{2026}")
+        try database.write { db in
+            try db.execute(sql: "UPDATE hypergraph_node SET node_type = NULL WHERE node_type IS NOT NULL")
+        }
+        logger.info("Reset all node classifications for re-classification")
+
+        return try await classifyUntypedNodes(
+            statusCallback: statusCallback,
+            progressCallback: progressCallback
+        )
     }
 
     // MARK: - LLM

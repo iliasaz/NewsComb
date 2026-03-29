@@ -16,6 +16,7 @@ final class SimulationDashboardViewModel {
     private(set) var stats: SocialGraphService.SimulationStats?
     private(set) var agents: [SocialAgent] = []
     private(set) var recentPosts: [SocialPost] = []
+    private(set) var actionBreakdown: [String: Int] = [:]
 
     private(set) var isGeneratingProfiles = false
     private(set) var profileProgress: Double = 0
@@ -82,6 +83,7 @@ final class SimulationDashboardViewModel {
             agents = try graphService.agents(for: simulation.id)
             stats = try graphService.stats(simulationId: simulation.id)
             recentPosts = try graphService.posts(simulationId: simulation.id, limit: 50)
+            actionBreakdown = try graphService.interactionSummary(simulationId: simulation.id)
 
             if let updated = try database.read({ db in
                 try SocialSimulation.fetchOne(db, key: simulation.id)
@@ -270,6 +272,50 @@ final class SimulationDashboardViewModel {
             errorMessage = error.localizedDescription
         }
         isClassifying = false
+    }
+
+    // MARK: - Re-ingestion
+
+    /// Re-ingests simulation data directly from the OASIS trace database.
+    func reingestData() {
+        guard let simDir = simulation.simDirectory else {
+            logError("No simulation directory found")
+            return
+        }
+
+        let oasisDBPath = URL(fileURLWithPath: simDir)
+            .appending(path: "twitter/twitter.db").path
+
+        guard FileManager.default.fileExists(atPath: oasisDBPath) else {
+            logError("OASIS database not found at \(oasisDBPath)")
+            return
+        }
+
+        // Build agent mapping: OASIS user_id → NewsComb agent ID
+        var agentMapping: [Int: Int64] = [:]
+        for agent in agents {
+            if let agentId = agent.id, let oasisId = agent.oasisUserId {
+                agentMapping[oasisId] = agentId
+            }
+        }
+
+        guard !agentMapping.isEmpty else {
+            logError("No agent mapping available for re-ingestion")
+            return
+        }
+
+        let ingestionService = ActionIngestionService()
+        do {
+            let result = try ingestionService.reingestFromOasisDB(
+                simulationId: simulation.id,
+                oasisDBPath: oasisDBPath,
+                agentMapping: agentMapping
+            )
+            log("Re-ingested: \(result.postsCreated) posts, \(result.interactionsCreated) interactions, \(result.connectionsCreated) connections")
+            loadData()
+        } catch {
+            logError("Re-ingestion failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Computed

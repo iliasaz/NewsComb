@@ -490,6 +490,25 @@ struct MainView: View {
                             .foregroundStyle(.teal)
                     }
                 }
+
+                if viewModel.isClassifying {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ProgressView(value: viewModel.classificationProgress)
+                        Text(viewModel.classificationStatus)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    HStack {
+                        Button("Classify Entities", systemImage: "tag") {
+                            Task { await viewModel.classifyEntities() }
+                        }
+
+                        Button("Re-classify Existing", systemImage: "arrow.trianglehead.2.clockwise") {
+                            Task { await viewModel.reclassifyEntities() }
+                        }
+                    }
+                }
             } header: {
                 Text("Social Simulation")
             }
