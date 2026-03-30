@@ -257,9 +257,12 @@ final class HypergraphService: Sendable {
 
                     group.addTask {
                         do {
-                            try await self.processArticle(feedItemId: articleId, detailCallback: detailCallback)
+                            try await withRetry(logger: self.logger) {
+                                try await self.processArticle(feedItemId: articleId, detailCallback: detailCallback)
+                            }
                             return (articleId, title, true)
                         } catch {
+                            self.logger.error("Article failed after retries: \(title, privacy: .public) — \(error.localizedDescription, privacy: .public)")
                             return (articleId, title, false)
                         }
                     }

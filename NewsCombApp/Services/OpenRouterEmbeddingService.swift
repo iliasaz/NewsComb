@@ -34,11 +34,19 @@ final class OpenRouterEmbeddingService: Sendable {
         return first
     }
 
-    /// Embeds multiple text strings in a single request.
+    /// Embeds multiple text strings in a single request, with retry on transient failures.
     @concurrent
     func embed(_ texts: [String]) async throws -> [[Float]] {
         guard !texts.isEmpty else { return [] }
 
+        return try await withRetry(logger: logger) {
+            try await self.embedRequest(texts)
+        }
+    }
+
+    /// Performs the actual embedding HTTP request.
+    @concurrent
+    private func embedRequest(_ texts: [String]) async throws -> [[Float]] {
         let url = baseURL.appending(path: "api/v1/embeddings")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
