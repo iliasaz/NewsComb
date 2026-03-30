@@ -112,9 +112,9 @@ actor NomicEmbeddingService {
         }
     }
 
-    /// Maximum batch size for GPU encoding. Larger batches are more efficient
-    /// but use more memory. 32 is a good balance for on-device inference.
-    private static let maxBatchSize = 32
+    /// Maximum batch size for GPU encoding. Benchmarked on M5: throughput plateaus
+    /// at 64 (287 emb/s vs 191 at 32). Beyond 64, gains are negligible (<2%).
+    private static let maxBatchSize = 64
 
     /// Drains the encode queue one request at a time, serializing all
     /// GPU work. Uses `batchEncode` to process multiple texts in a single
