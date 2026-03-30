@@ -339,8 +339,10 @@ class MainViewModel {
     func clearAllArticles() {
         do {
             try database.write { db in
-                // Clear all dependent tables first (respect foreign key constraints)
-                // Order matters: delete from dependent tables first
+                // Defer FK checks to commit — existing databases have NO ACTION FKs
+                // (SQLite can't alter FK constraints after table creation), so cascade
+                // doesn't fire. Deferring lets us delete in any order within the txn.
+                try db.execute(sql: "PRAGMA defer_foreign_keys = ON")
 
                 // 1. Clustering / themes (reference edges as event IDs)
                 try db.execute(sql: "DELETE FROM cluster_exemplars")
@@ -374,7 +376,17 @@ class MainViewModel {
                 // 9. Clear edges
                 try db.execute(sql: "DELETE FROM hypergraph_edge")
 
-                // 10. Clear nodes
+                // 10. Clear social agents that reference nodes (must precede node deletion)
+                try db.execute(sql: "DELETE FROM social_group_message")
+                try db.execute(sql: "DELETE FROM social_group_member")
+                try db.execute(sql: "DELETE FROM social_group")
+                try db.execute(sql: "DELETE FROM agent_interview")
+                try db.execute(sql: "DELETE FROM social_interaction")
+                try db.execute(sql: "DELETE FROM social_connection")
+                try db.execute(sql: "DELETE FROM social_post")
+                try db.execute(sql: "DELETE FROM social_agent")
+
+                // 11. Clear nodes
                 try db.execute(sql: "DELETE FROM hypergraph_node")
 
                 // 11. Clear article chunks
@@ -405,6 +417,10 @@ class MainViewModel {
         Task.detached { [database] in
             do {
                 try database.write { db in
+                    // Defer FK checks to commit — existing databases have NO ACTION
+                    // FKs, so we must handle cascade order manually or defer checks.
+                    try db.execute(sql: "PRAGMA defer_foreign_keys = ON")
+
                     // Drop FTS triggers first — they fire on DELETE from content
                     // tables and corrupt the index if it has already been cleared.
                     try db.execute(sql: "DROP TRIGGER IF EXISTS fts_node_ai")
@@ -465,6 +481,16 @@ class MainViewModel {
                         """,
                         arguments: [AppSettings.activeEmbeddingDimension, String(embDim)]
                     )
+
+                    // Social agents that reference nodes (must precede node deletion)
+                    try db.execute(sql: "DELETE FROM social_group_message")
+                    try db.execute(sql: "DELETE FROM social_group_member")
+                    try db.execute(sql: "DELETE FROM social_group")
+                    try db.execute(sql: "DELETE FROM agent_interview")
+                    try db.execute(sql: "DELETE FROM social_interaction")
+                    try db.execute(sql: "DELETE FROM social_connection")
+                    try db.execute(sql: "DELETE FROM social_post")
+                    try db.execute(sql: "DELETE FROM social_agent")
 
                     // Hypergraph structure
                     try db.execute(sql: "DELETE FROM hypergraph_incidence")
