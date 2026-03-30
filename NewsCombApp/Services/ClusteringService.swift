@@ -22,6 +22,7 @@ final class ClusteringService: Sendable {
     private let eventVectorService = EventVectorService()
     private let pcaService = PCAService()
     private let umapService = UMAPService()
+    private let vpTreeService = VPTreeService()
     private let hdbscanService = HDBSCANService()
     private let clusterLabelingService = ClusterLabelingService()
     private let logger = Logger(subsystem: "com.newscomb", category: "ClusteringService")
@@ -108,15 +109,29 @@ final class ClusteringService: Sendable {
             logger.info("Skipping UMAP: dimension (\(pcaReduced[0].count)) <= target (\(umapTargetDim)) or too few points")
         }
 
-        // Step 4: Run HDBSCAN on reduced vectors
-        await statusCallback?("Running HDBSCAN clustering (\(vectors.count) events, \(umapReduced[0].count)D)\u{2026}")
+        // Step 4: Run HDBSCAN on reduced vectors.
+        // Compute kNN on the UMAP embedding for sparse HDBSCAN — avoids the
+        // N² distance matrix that would OOM at 89K vectors (128 GB).
+        await statusCallback?("Computing kNN for HDBSCAN (\(umapReduced.count) events, \(umapReduced[0].count)D)\u{2026}")
         await progressCallback?(0.50)
 
-        let params = HDBSCANService.Parameters(
+        let hdbscanParams = HDBSCANService.Parameters(
             minClusterSize: minClusterSize,
             minSamples: minSamples
         )
-        let result = hdbscanService.cluster(vectors: umapReduced, params: params)
+        let validatedParams = hdbscanParams.validated(forDataSize: umapReduced.count)
+        // kNN k must be at least minSamples for core distance computation
+        let hdbscanK = max(validatedParams.minSamples, umapNeighbors)
+        let hdbscanKNN = await vpTreeService.findAllKNN(
+            vectors: umapReduced, k: hdbscanK, metric: .cosine
+        )
+
+        await statusCallback?("Running HDBSCAN clustering (\(vectors.count) events, \(umapReduced[0].count)D)\u{2026}")
+        await progressCallback?(0.55)
+
+        let result = hdbscanService.clusterWithKNN(
+            knn: hdbscanKNN, vectors: umapReduced, params: hdbscanParams
+        )
         logger.info("HDBSCAN complete: \(result.clusterCount) clusters found")
 
         // Step 5: Persist assignments

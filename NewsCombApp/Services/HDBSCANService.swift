@@ -108,6 +108,183 @@ final class HDBSCANService: Sendable {
         return ClusterResult(labels: labels, memberships: memberships, clusterCount: clusterCount)
     }
 
+    // MARK: - Sparse kNN-Based Clustering
+
+    /// Runs HDBSCAN using a pre-computed kNN graph, avoiding the N² distance matrix.
+    ///
+    /// This is the large-scale path: instead of computing all pairwise distances
+    /// (which requires N²×4 bytes — 32 GB at N=89K), it uses the kNN graph to:
+    /// 1. Derive core distances directly (k-th neighbor distance per point)
+    /// 2. Build the MST on the sparse mutual reachability graph (kNN edges only)
+    ///
+    /// The condensed tree and EOM cluster selection are identical to the dense path.
+    func clusterWithKNN(
+        knn: VPTreeService.KNNResult,
+        vectors: [[Float]],
+        params: Parameters = Parameters()
+    ) -> ClusterResult {
+        let n = vectors.count
+        guard n >= 2 else {
+            return ClusterResult(labels: Array(repeating: -1, count: n), memberships: Array(repeating: 0, count: n), clusterCount: 0)
+        }
+
+        let params = params.validated(forDataSize: n)
+        logger.info("Running HDBSCAN (sparse kNN): n=\(n), minClusterSize=\(params.minClusterSize), minSamples=\(params.minSamples)")
+        let pipelineStart = ContinuousClock.now
+
+        // Step 1: Core distances from kNN (the minSamples-th neighbor distance)
+        let k = min(params.minSamples, knn.distances[0].count)
+        var coreDistances = [Float](repeating: .infinity, count: n)
+        for i in 0..<n {
+            if k - 1 < knn.distances[i].count {
+                coreDistances[i] = knn.distances[i][k - 1]
+            }
+        }
+        logger.info("Step 1: Core distances computed from kNN in \(ContinuousClock.now - pipelineStart)")
+
+        // Step 2: Build sparse adjacency from kNN graph (bidirectional)
+        // For each point, its kNN neighbors form the sparse graph edges.
+        // We need bidirectional edges for Prim's: if A→B is a kNN edge, also add B→A.
+        var adjacency: [[Int]] = Array(repeating: [], count: n)
+        var edgeDistances: [Int64: Float] = [:] // packed (min,max) → distance
+
+        for i in 0..<n {
+            for (jIdx, j) in knn.indices[i].enumerated() {
+                let dist = knn.distances[i][jIdx]
+                let lo = min(i, j)
+                let hi = max(i, j)
+                let key = Int64(lo) * Int64(n) + Int64(hi)
+
+                if edgeDistances[key] == nil {
+                    adjacency[i].append(j)
+                    adjacency[j].append(i)
+                    edgeDistances[key] = dist
+                }
+            }
+        }
+        logger.info("Step 2: Sparse adjacency built (\(edgeDistances.count) edges) in \(ContinuousClock.now - pipelineStart)")
+
+        // Step 3: Build MST via Prim's on the sparse mutual reachability graph.
+        // Uses a priority-queue approach: for each non-MST vertex, track the best
+        // known edge weight from any MST vertex (via kNN adjacency).
+        let mstStart = ContinuousClock.now
+        let mst = buildSparseMST(
+            adjacency: adjacency,
+            edgeDistances: edgeDistances,
+            coreDistances: coreDistances,
+            vectors: vectors,
+            n: n
+        )
+        logger.info("Step 3: Sparse MST built (\(mst.count) edges) in \(ContinuousClock.now - mstStart)")
+
+        // Steps 4-5: Condensed tree + EOM (identical to dense path)
+        logger.info("Step 4: Building condensed cluster tree...")
+        let treeInfo = buildCondensedTree(mst: mst, n: n, minClusterSize: params.minClusterSize)
+
+        logger.info("Step 5: Selecting clusters via EOM...")
+        let (labels, memberships, clusterCount) = selectClusters(treeInfo: treeInfo)
+
+        logger.info("HDBSCAN found \(clusterCount) clusters with \(labels.filter { $0 == -1 }.count) noise points in \(ContinuousClock.now - pipelineStart)")
+        return ClusterResult(labels: labels, memberships: memberships, clusterCount: clusterCount)
+    }
+
+    /// Builds the MST via Prim's algorithm on the sparse kNN mutual reachability graph.
+    ///
+    /// When the best kNN edge would leave disconnected components, computes the
+    /// exact distance on-demand for the nearest non-MST vertex (lazy fallback).
+    private func buildSparseMST(
+        adjacency: [[Int]],
+        edgeDistances: [Int64: Float],
+        coreDistances: [Float],
+        vectors: [[Float]],
+        n: Int
+    ) -> [MSTEdge] {
+        var inMST = [Bool](repeating: false, count: n)
+        var minEdge = [Float](repeating: .infinity, count: n)
+        var bestNeighbor = [Int](repeating: -1, count: n)
+        var edges: [MSTEdge] = []
+        edges.reserveCapacity(n - 1)
+
+        // Start from vertex 0 — initialize from its kNN neighbors
+        inMST[0] = true
+        for j in adjacency[0] {
+            let dist = lookupDistance(i: 0, j: j, n: n, edgeDistances: edgeDistances)
+            let mr = max(coreDistances[0], coreDistances[j], dist)
+            if mr < minEdge[j] {
+                minEdge[j] = mr
+                bestNeighbor[j] = 0
+            }
+        }
+
+        for step in 1..<n {
+            // Find the minimum edge to a non-MST vertex
+            var bestVertex = -1
+            var bestWeight: Float = .infinity
+
+            for j in 0..<n {
+                if !inMST[j] && minEdge[j] < bestWeight {
+                    bestWeight = minEdge[j]
+                    bestVertex = j
+                }
+            }
+
+            // If no reachable vertex found, compute distances on-demand
+            // to the nearest unreachable vertex (handles disconnected kNN graph)
+            if bestVertex == -1 || bestWeight == .infinity {
+                for j in 0..<n where !inMST[j] {
+                    // Find the nearest MST vertex by computing exact distance
+                    for mstV in 0..<n where inMST[mstV] {
+                        let dist = cosineDistance(vectors[mstV], vectors[j])
+                        let mr = max(coreDistances[mstV], coreDistances[j], dist)
+                        if mr < minEdge[j] {
+                            minEdge[j] = mr
+                            bestNeighbor[j] = mstV
+                        }
+                    }
+                    if minEdge[j] < bestWeight {
+                        bestWeight = minEdge[j]
+                        bestVertex = j
+                    }
+                }
+            }
+
+            guard bestVertex >= 0 else { break }
+
+            inMST[bestVertex] = true
+            edges.append(MSTEdge(u: bestNeighbor[bestVertex], v: bestVertex, weight: bestWeight))
+
+            // Update neighbors via sparse adjacency
+            for j in adjacency[bestVertex] where !inMST[j] {
+                let dist = lookupDistance(i: bestVertex, j: j, n: n, edgeDistances: edgeDistances)
+                let mr = max(coreDistances[bestVertex], coreDistances[j], dist)
+                if mr < minEdge[j] {
+                    minEdge[j] = mr
+                    bestNeighbor[j] = bestVertex
+                }
+            }
+
+            if step % 10000 == 0 {
+                logger.info("Sparse MST progress: \(step)/\(n - 1)")
+            }
+        }
+
+        return edges.sorted()
+    }
+
+    /// Looks up a distance from the sparse edge dictionary.
+    @inline(__always)
+    private func lookupDistance(i: Int, j: Int, n: Int, edgeDistances: [Int64: Float]) -> Float {
+        let lo = min(i, j)
+        let hi = max(i, j)
+        let key = Int64(lo) * Int64(n) + Int64(hi)
+        return edgeDistances[key] ?? .infinity
+    }
+
+    /// Computes cosine distance between two vectors (on-demand fallback).
+    private func cosineDistance(_ a: [Float], _ b: [Float]) -> Float {
+        1.0 - AccelerateVectorOps.cosineSimilarity(a, b)
+    }
+
     // MARK: - Step 1: Distance Matrix & Core Distances
 
     /// Flattens vectors and computes the NxN dot-product matrix A·Aᵀ using
