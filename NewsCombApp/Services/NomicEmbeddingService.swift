@@ -112,11 +112,18 @@ actor NomicEmbeddingService {
         }
     }
 
+    /// Maximum batch size for GPU encoding. Larger batches are more efficient
+    /// but use more memory. 32 is a good balance for on-device inference.
+    private static let maxBatchSize = 32
+
     /// Drains the encode queue one request at a time, serializing all
-    /// GPU work. When this method suspends at `await shapedArray()`,
-    /// the actor can be re-entered by `enqueueEncode()` — but the
-    /// re-entrant call sees `isProcessingQueue == true` and does not
-    /// start a second processing loop.
+    /// GPU work. Uses `batchEncode` to process multiple texts in a single
+    /// forward pass (shared padding + attention mask), which is significantly
+    /// faster than encoding one text at a time.
+    ///
+    /// When this method suspends at `await shapedArray()`, the actor can be
+    /// re-entered by `enqueueEncode()` — but the re-entrant call sees
+    /// `isProcessingQueue == true` and does not start a second processing loop.
     private func processEncodeQueue() async {
         while !encodeQueue.isEmpty {
             let request = encodeQueue.removeFirst()
@@ -124,16 +131,40 @@ actor NomicEmbeddingService {
             do {
                 let bundle = try await modelBundle()
 
-                var results: [[Float]] = []
-                results.reserveCapacity(request.texts.count)
-
-                for text in request.texts {
-                    let tensor = try bundle.encode(text, postProcess: .meanPoolAndNormalize)
+                if request.texts.count == 1 {
+                    // Single text — use the simpler non-batched path (no padding overhead)
+                    let tensor = try bundle.encode(request.texts[0], postProcess: .meanPoolAndNormalize)
                     let scalars = await tensor.cast(to: Float.self).shapedArray(of: Float.self).scalars
-                    results.append(scalars)
-                }
+                    request.continuation.resume(returning: [scalars])
+                } else {
+                    // Multiple texts — batch encode for GPU efficiency.
+                    // Process in sub-batches to limit peak memory usage.
+                    var allResults: [[Float]] = []
+                    allResults.reserveCapacity(request.texts.count)
 
-                request.continuation.resume(returning: results)
+                    for batchStart in stride(from: 0, to: request.texts.count, by: Self.maxBatchSize) {
+                        let batchEnd = min(batchStart + Self.maxBatchSize, request.texts.count)
+                        let batch = Array(request.texts[batchStart..<batchEnd])
+
+                        let tensor = try bundle.batchEncode(batch, postProcess: .meanPoolAndNormalize)
+                        let shaped = await tensor.cast(to: Float.self).shapedArray(of: Float.self)
+
+                        // shaped is [batchSize, embeddingDim] — split into individual vectors
+                        let shape = shaped.shape
+                        let scalars = shaped.scalars
+                        let embDim = shape.count >= 2 ? shape[1] : Self.embeddingDimension
+
+                        for i in 0..<batch.count {
+                            let start = i * embDim
+                            let end = start + embDim
+                            if end <= scalars.count {
+                                allResults.append(Array(scalars[start..<end]))
+                            }
+                        }
+                    }
+
+                    request.continuation.resume(returning: allResults)
+                }
             } catch {
                 request.continuation.resume(throwing: error)
             }
