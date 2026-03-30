@@ -651,23 +651,26 @@ class MainViewModel {
         }
 
         isProcessingHypergraph = true
-        hypergraphProgress = (0, 0)
-        hypergraphProcessingStatus = "Starting..."
         currentProcessingArticle = ""
         recentlyExtractedEntities = []
 
         do {
+            // Set initial progress with total article count so the bar shows immediately
+            let totalArticles = getUnprocessedArticleCount()
+            hypergraphProgress = (0, totalArticles)
+            hypergraphProcessingStatus = "Starting\u{2026}"
+
             // Repair provenance for articles affected by the chunk_index=0 bug.
             // This is a lightweight in-place fix (no LLM calls) that re-chunks
             // articles and maps edges to their correct source chunks.
-            hypergraphProcessingStatus = "Repairing provenance…"
+            // Only show status if there's actually something to repair.
             let repaired = try await hypergraphService.repairProvenance(
-                progressCallback: { [weak self] done, total, status in
-                    self?.hypergraphProcessingStatus = "Repairing provenance \(done)/\(total)…"
+                progressCallback: { [weak self] done, total, _ in
+                    self?.hypergraphProcessingStatus = "Repairing provenance \(done)/\(total)\u{2026}"
                 }
             )
             if repaired > 0 {
-                hypergraphProcessingStatus = "Repaired \(repaired) articles, processing…"
+                hypergraphProcessingStatus = "Repaired \(repaired) articles, processing\u{2026}"
             }
 
             let processedCount = try await hypergraphService.processUnprocessedArticles(
