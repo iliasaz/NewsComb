@@ -58,7 +58,7 @@ final class VPTreeService: Sendable {
         // while vDSP_mmul leverages the AMX coprocessor for massive throughput.
         if d >= 20 && metric == .cosine {
             logger.info("Vectorized kNN: n=\(n), d=\(d), k=\(effectiveK)")
-            return vectorizedCosineKNN(vectors: vectors, k: effectiveK)
+            return await vectorizedCosineKNN(vectors: vectors, k: effectiveK)
         }
 
         logger.info("VP-tree kNN: n=\(n), k=\(effectiveK), metric=\(String(describing: metric))")
@@ -122,22 +122,18 @@ final class VPTreeService: Sendable {
 
     // MARK: - Vectorized Brute-Force kNN
 
-    /// Computes k-nearest neighbors using Accelerate matrix multiply.
+    /// Computes k-nearest neighbors using Accelerate matrix multiply + parallel top-k.
     ///
     /// For cosine distance on normalized vectors, similarity = dot product.
-    /// Computes the full similarity matrix in tiles using `vDSP_mmul` (which
-    /// leverages the AMX coprocessor on Apple Silicon), then extracts top-k
-    /// per row using a streaming insertion-sort heap.
-    ///
-    /// At N=89K, D=50: ~3-5 seconds total vs ~15 minutes with VP-tree.
-    private func vectorizedCosineKNN(vectors: [[Float]], k: Int) -> KNNResult {
+    /// 1. Normalize all vectors
+    /// 2. Compute similarity matrix in tiles via `vDSP_mmul` (AMX coprocessor)
+    /// 3. Extract top-k per row in parallel across all CPU cores
+    private func vectorizedCosineKNN(vectors: [[Float]], k: Int) async -> KNNResult {
         let n = vectors.count
         let d = vectors[0].count
         let startTime = ContinuousClock.now
 
         // Step 1: Flatten and L2-normalize all vectors.
-        // For normalized vectors, cosine_similarity = dot_product,
-        // so cosine_distance = 1 - dot_product.
         var flat = [Float](repeating: 0, count: n * d)
         for i in 0..<n {
             let normalized = AccelerateVectorOps.normalize(vectors[i])
@@ -145,17 +141,14 @@ final class VPTreeService: Sendable {
         }
         logger.info("Vectorized kNN: step 1 normalized \(n) vectors in \(ContinuousClock.now - startTime)")
 
-        // Step 2: Compute similarity matrix in tiles to limit memory usage.
-        // Each tile: Q queries × N targets = Q×N floats.
-        // Tile size chosen to keep memory ~400MB per tile.
-        let tileSize = max(1, min(n, 400_000_000 / (n * 4)))
-
-        // Transpose of full matrix for vDSP_mmul: B = flatᵀ (D×N)
+        // Step 2: Transpose for vDSP_mmul
         var flatTransposed = [Float](repeating: 0, count: d * n)
         vDSP_mtrans(flat, 1, &flatTransposed, 1, vDSP_Length(d), vDSP_Length(n))
         logger.info("Vectorized kNN: step 2 transposed in \(ContinuousClock.now - startTime)")
 
-        // Process tiles and extract top-k
+        // Use larger tiles to reduce overhead — ~1.5GB per tile.
+        let tileSize = max(1, min(n, 1_500_000_000 / (n * 4)))
+
         var allIndices: [[Int]] = Array(repeating: [], count: n)
         var allDistances: [[Float]] = Array(repeating: [], count: n)
 
@@ -163,7 +156,7 @@ final class VPTreeService: Sendable {
             let tileEnd = min(tileStart + tileSize, n)
             let q = tileEnd - tileStart
 
-            // Compute Q×N similarity matrix: S = queries[Q×D] × flatᵀ[D×N]
+            // Compute Q×N similarity matrix via vDSP_mmul (AMX-accelerated)
             var similarities = [Float](repeating: 0, count: q * n)
             flat.withUnsafeBufferPointer { flatBuf in
                 vDSP_mmul(
@@ -175,46 +168,79 @@ final class VPTreeService: Sendable {
                     vDSP_Length(d)
                 )
             }
-            logger.info("Vectorized kNN: step 2 tile \(tileStart/tileSize + 1) mmul (\(q)×\(n)) in \(ContinuousClock.now - startTime)")
+            logger.info("Vectorized kNN: tile \(tileStart/tileSize + 1) mmul (\(q)×\(n)) in \(ContinuousClock.now - startTime)")
 
-            // Step 3: Extract top-k per row using pointer-based streaming heap.
-            // This is the hot loop — operates directly on contiguous memory
-            // with a fixed-size sorted buffer (insertion sort at k=15 is fast).
-            similarities.withUnsafeMutableBufferPointer { simBuf in
-                for qi in 0..<q {
-                    let globalI = tileStart + qi
-                    let row = simBuf.baseAddress! + qi * n
-
-                    // Exclude self-similarity
-                    row[globalI] = -.infinity
-
-                    // Fixed-size sorted buffer for top-k (descending by similarity).
-                    // At k=15, insertion sort into a 15-element array is faster than
-                    // any heap structure due to cache locality and branch prediction.
-                    var topIndices = [Int](repeating: 0, count: k)
-                    var topSims = [Float](repeating: -.infinity, count: k)
-
-                    for j in 0..<n {
-                        let sim = row[j]
-                        // Quick reject: skip if worse than current k-th best
-                        if sim <= topSims[k - 1] { continue }
-
-                        // Insertion sort into the sorted buffer
-                        var pos = k - 1
-                        while pos > 0 && sim > topSims[pos - 1] {
-                            topSims[pos] = topSims[pos - 1]
-                            topIndices[pos] = topIndices[pos - 1]
-                            pos -= 1
-                        }
-                        topSims[pos] = sim
-                        topIndices[pos] = j
-                    }
-
-                    allIndices[globalI] = topIndices
-                    allDistances[globalI] = topSims.map { 1.0 - $0 }
-                }
+            // Zero out self-similarities before parallel extraction
+            for qi in 0..<q {
+                similarities[qi * n + tileStart + qi] = -.infinity
             }
-            logger.info("Vectorized kNN: step 3 tile top-k extracted in \(ContinuousClock.now - startTime)")
+
+            // Step 3: Extract top-k per row in parallel across all CPU cores.
+            // Each row's extraction is independent — pure read from similarities buffer.
+            let simData = similarities  // copy for sendable capture
+            let tileResults = await withTaskGroup(
+                of: (start: Int, indices: [[Int]], distances: [[Float]]).self
+            ) { group in
+                let coreCount = ProcessInfo.processInfo.activeProcessorCount
+                let rowsPerChunk = max(1, q / (coreCount * 2))
+
+                for chunkStart in stride(from: 0, to: q, by: rowsPerChunk) {
+                    let chunkEnd = min(chunkStart + rowsPerChunk, q)
+
+                    group.addTask { @concurrent in
+                        var chunkIndices: [[Int]] = []
+                        var chunkDistances: [[Float]] = []
+                        chunkIndices.reserveCapacity(chunkEnd - chunkStart)
+                        chunkDistances.reserveCapacity(chunkEnd - chunkStart)
+
+                        simData.withUnsafeBufferPointer { simBuf in
+                            for qi in chunkStart..<chunkEnd {
+                                let row = simBuf.baseAddress! + qi * n
+
+                                // Fixed-size sorted buffer for top-k
+                                var topIndices = [Int](repeating: 0, count: k)
+                                var topSims = [Float](repeating: -.infinity, count: k)
+
+                                for j in 0..<n {
+                                    let sim = row[j]
+                                    if sim <= topSims[k - 1] { continue }
+
+                                    var pos = k - 1
+                                    while pos > 0 && sim > topSims[pos - 1] {
+                                        topSims[pos] = topSims[pos - 1]
+                                        topIndices[pos] = topIndices[pos - 1]
+                                        pos -= 1
+                                    }
+                                    topSims[pos] = sim
+                                    topIndices[pos] = j
+                                }
+
+                                chunkIndices.append(topIndices)
+                                chunkDistances.append(topSims.map { 1.0 - $0 })
+                            }
+                        }
+
+                        return (start: chunkStart, indices: chunkIndices, distances: chunkDistances)
+                    }
+                }
+
+                var tileIndices: [[Int]] = Array(repeating: [], count: q)
+                var tileDistances: [[Float]] = Array(repeating: [], count: q)
+                for await (start, chunkIndices, chunkDistances) in group {
+                    for (offset, idx) in chunkIndices.enumerated() {
+                        tileIndices[start + offset] = idx
+                        tileDistances[start + offset] = chunkDistances[offset]
+                    }
+                }
+                return (tileIndices, tileDistances)
+            }
+
+            // Copy tile results into the global arrays
+            for qi in 0..<q {
+                allIndices[tileStart + qi] = tileResults.0[qi]
+                allDistances[tileStart + qi] = tileResults.1[qi]
+            }
+            logger.info("Vectorized kNN: tile top-k extracted in \(ContinuousClock.now - startTime)")
         }
 
         let elapsed = ContinuousClock.now - startTime
