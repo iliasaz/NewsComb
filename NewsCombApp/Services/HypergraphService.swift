@@ -236,94 +236,101 @@ final class HypergraphService: Sendable {
 
         logger.info("Starting parallel processing with max \(maxConcurrent) concurrent tasks")
 
-        // Process articles in batches with limited concurrency
-        let batches = articles.chunked(into: maxConcurrent)
+        // Process articles in batches. Failed articles are collected and retried
+        // in subsequent passes with increasing delay, so they don't block the
+        // main processing queue during backoff waits.
+        var pendingArticles = articles
         var completedSoFar = 0
+        let maxRetryPasses = 3
+        let retryDelays: [Duration] = [.seconds(10), .seconds(30), .seconds(60)]
 
-        for batch in batches {
-            // Check for cancellation before starting each batch
-            if isCancelled {
-                logger.info("Processing cancelled after \(completedSoFar) articles")
-                progressCallback?(completedSoFar, totalCount, "Cancelled")
-                throw HypergraphServiceError.cancelled
+        for pass in 0...maxRetryPasses {
+            guard !pendingArticles.isEmpty else { break }
+
+            if pass > 0 {
+                let delay = retryDelays[min(pass - 1, retryDelays.count - 1)]
+                logger.info("Retry pass \(pass)/\(maxRetryPasses): \(pendingArticles.count) articles after \(delay) delay")
+                progressCallback?(completedSoFar, totalCount, "Retrying \(pendingArticles.count) failed articles\u{2026}")
+                try await Task.sleep(for: delay)
             }
 
-            // Process each batch in parallel, with per-task cancellation
-            // Use withThrowingTaskGroup so that throwing CancellationError
-            // immediately cancels all in-flight tasks and stops waiting for them.
-            // A non-throwing TaskGroup would wait for all tasks to finish even after break.
-            let results: [(Int64, String, Bool)]
-            do {
-                results = try await withThrowingTaskGroup(of: (Int64, String, Bool).self, returning: [(Int64, String, Bool)].self) { group in
-                    for article in batch {
-                        guard let articleId = article.id else { continue }
-                        let title = article.title
+            let batches = pendingArticles.chunked(into: maxConcurrent)
+            var failedThisPass: [FeedItem] = []
 
-                        group.addTask {
-                            do {
-                                try await withRetry(
-                                    initialDelay: .seconds(5),
-                                    maxDelay: .seconds(60),
-                                    logger: self.logger
-                                ) {
-                                    try await self.processArticle(feedItemId: articleId, detailCallback: detailCallback)
+            for batch in batches {
+                if isCancelled {
+                    logger.info("Processing cancelled after \(completedSoFar) articles")
+                    progressCallback?(completedSoFar, totalCount, "Cancelled")
+                    throw HypergraphServiceError.cancelled
+                }
+
+                // Use ThrowingTaskGroup so CancellationError exits immediately
+                // without waiting for in-flight HTTP requests to time out.
+                let results: [(FeedItem, Bool)]
+                do {
+                    results = try await withThrowingTaskGroup(
+                        of: (FeedItem, Bool).self,
+                        returning: [(FeedItem, Bool)].self
+                    ) { group in
+                        for article in batch {
+                            guard article.id != nil else { continue }
+                            group.addTask {
+                                do {
+                                    try await self.processArticle(
+                                        feedItemId: article.id!,
+                                        detailCallback: detailCallback
+                                    )
+                                    return (article, true)
+                                } catch is CancellationError {
+                                    throw CancellationError()
+                                } catch {
+                                    self.logger.warning("Article failed: \(article.title, privacy: .public) — \(error.localizedDescription, privacy: .public)")
+                                    return (article, false)
                                 }
-                                return (articleId, title, true)
-                            } catch is CancellationError {
-                                throw CancellationError()
-                            } catch {
-                                self.logger.error("Article failed after retries: \(title, privacy: .public) — \(error.localizedDescription, privacy: .public)")
-                                return (articleId, title, false)
                             }
                         }
-                    }
 
-                    var batchResults: [(Int64, String, Bool)] = []
-                    for try await result in group {
-                        batchResults.append(result)
-                        if self.isCancelled {
-                            throw CancellationError()
+                        var batchResults: [(FeedItem, Bool)] = []
+                        for try await result in group {
+                            batchResults.append(result)
+                            if self.isCancelled {
+                                throw CancellationError()
+                            }
                         }
+                        return batchResults
                     }
-                    return batchResults
-                }
-            } catch is CancellationError {
-                logger.info("Processing cancelled after \(completedSoFar) articles")
-                progressCallback?(completedSoFar, totalCount, "Cancelled")
-                throw HypergraphServiceError.cancelled
-            }
-
-            // Exit immediately if cancelled mid-batch
-            if isCancelled {
-                logger.info("Processing cancelled after \(completedSoFar + results.count) articles")
-                progressCallback?(completedSoFar + results.count, totalCount, "Cancelled")
-                throw HypergraphServiceError.cancelled
-            }
-
-            // Process batch results
-            for (_, title, success) in results {
-                completedSoFar += 1
-
-                if success {
-                    processedCount += 1
-                    logger.info("Completed \(completedSoFar)/\(totalCount): \(title, privacy: .public) - SUCCESS")
-                } else {
-                    failedCount += 1
-                    logger.warning("Completed \(completedSoFar)/\(totalCount): \(title, privacy: .public) - FAILED")
+                } catch is CancellationError {
+                    logger.info("Processing cancelled after \(completedSoFar) articles")
+                    progressCallback?(completedSoFar, totalCount, "Cancelled")
+                    throw HypergraphServiceError.cancelled
                 }
 
-                progressCallback?(completedSoFar, totalCount, title)
+                for (article, success) in results {
+                    completedSoFar += 1
+                    if success {
+                        processedCount += 1
+                        logger.info("Completed \(completedSoFar)/\(totalCount): \(article.title, privacy: .public) - SUCCESS")
+                    } else {
+                        failedCount += 1
+                        failedThisPass.append(article)
+                        logger.warning("Completed \(completedSoFar)/\(totalCount): \(article.title, privacy: .public) - FAILED")
+                    }
+                    progressCallback?(completedSoFar, totalCount, article.title)
+                }
             }
 
-            // Check for cancellation after each batch
-            if isCancelled {
-                logger.info("Processing cancelled after \(completedSoFar) articles")
-                progressCallback?(completedSoFar, totalCount, "Cancelled")
-                throw HypergraphServiceError.cancelled
+            // Set up next retry pass with only the failures
+            pendingArticles = failedThisPass
+
+            if !failedThisPass.isEmpty && pass < maxRetryPasses {
+                // Subtract failures from completedSoFar so they count again on retry
+                completedSoFar -= failedThisPass.count
+                failedCount -= failedThisPass.count
+                logger.info("Pass \(pass) complete: \(failedThisPass.count) articles will be retried")
             }
         }
 
-        logger.info("Batch processing complete: \(processedCount) succeeded, \(failedCount) failed out of \(totalCount) total")
+        logger.info("Processing complete: \(processedCount) succeeded, \(failedCount) failed out of \(totalCount) total")
         return processedCount
     }
 
