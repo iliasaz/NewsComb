@@ -257,38 +257,48 @@ final class HypergraphService: Sendable {
             }
 
             // Process each batch in parallel, with per-task cancellation
-            let results = await withTaskGroup(of: (Int64, String, Bool).self, returning: [(Int64, String, Bool)].self) { group in
-                for article in batch {
-                    guard let articleId = article.id else { continue }
-                    let title = article.title
+            // Use withThrowingTaskGroup so that throwing CancellationError
+            // immediately cancels all in-flight tasks and stops waiting for them.
+            // A non-throwing TaskGroup would wait for all tasks to finish even after break.
+            let results: [(Int64, String, Bool)]
+            do {
+                results = try await withThrowingTaskGroup(of: (Int64, String, Bool).self, returning: [(Int64, String, Bool)].self) { group in
+                    for article in batch {
+                        guard let articleId = article.id else { continue }
+                        let title = article.title
 
-                    group.addTask {
-                        do {
-                            try await withRetry(
-                                initialDelay: .seconds(5),
-                                maxDelay: .seconds(60),
-                                logger: self.logger
-                            ) {
-                                try await self.processArticle(feedItemId: articleId, detailCallback: detailCallback)
+                        group.addTask {
+                            do {
+                                try await withRetry(
+                                    initialDelay: .seconds(5),
+                                    maxDelay: .seconds(60),
+                                    logger: self.logger
+                                ) {
+                                    try await self.processArticle(feedItemId: articleId, detailCallback: detailCallback)
+                                }
+                                return (articleId, title, true)
+                            } catch is CancellationError {
+                                throw CancellationError()
+                            } catch {
+                                self.logger.error("Article failed after retries: \(title, privacy: .public) — \(error.localizedDescription, privacy: .public)")
+                                return (articleId, title, false)
                             }
-                            return (articleId, title, true)
-                        } catch {
-                            self.logger.error("Article failed after retries: \(title, privacy: .public) — \(error.localizedDescription, privacy: .public)")
-                            return (articleId, title, false)
                         }
                     }
-                }
 
-                var batchResults: [(Int64, String, Bool)] = []
-                for await result in group {
-                    batchResults.append(result)
-                    // Cancel remaining tasks as soon as the flag is set
-                    if self.isCancelled {
-                        group.cancelAll()
-                        break
+                    var batchResults: [(Int64, String, Bool)] = []
+                    for try await result in group {
+                        batchResults.append(result)
+                        if self.isCancelled {
+                            throw CancellationError()
+                        }
                     }
+                    return batchResults
                 }
-                return batchResults
+            } catch is CancellationError {
+                logger.info("Processing cancelled after \(completedSoFar) articles")
+                progressCallback?(completedSoFar, totalCount, "Cancelled")
+                throw HypergraphServiceError.cancelled
             }
 
             // Exit immediately if cancelled mid-batch

@@ -24,13 +24,17 @@ func withRetry<T: Sendable>(
     var delay = initialDelay
 
     for attempt in 1...maxAttempts {
+        // Check for task cancellation before each attempt
+        try Task.checkCancellation()
+
         do {
             return try await operation()
         } catch {
             lastError = error
 
-            // Don't retry on cancellation
+            // Don't retry on cancellation (CancellationError or URLError.cancelled)
             if error is CancellationError { throw error }
+            if let urlError = error as? URLError, urlError.code == .cancelled { throw error }
 
             // Don't retry on non-retryable errors
             guard isRetryable(error) else { throw error }
@@ -40,6 +44,7 @@ func withRetry<T: Sendable>(
 
             logger?.warning("Attempt \(attempt)/\(maxAttempts) failed, retrying in \(delay): \(error.localizedDescription, privacy: .public)")
 
+            // Task.sleep respects cancellation — throws CancellationError immediately
             try await Task.sleep(for: delay)
 
             // Exponential backoff with jitter
