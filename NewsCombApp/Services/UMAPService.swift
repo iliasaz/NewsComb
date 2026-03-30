@@ -54,7 +54,7 @@ final class UMAPService: Sendable {
     ///   - vectors: Array of N vectors (typically PCA-reduced to ~50D).
     ///   - params: UMAP configuration.
     /// - Returns: Array of N vectors, each of `params.targetDimension` dimensions.
-    func reduce(vectors: [[Float]], params: Parameters = Parameters()) -> [[Float]] {
+    func reduce(vectors: [[Float]], params: Parameters = Parameters()) async -> [[Float]] {
         let n = vectors.count
         guard n >= 2 else { return vectors }
 
@@ -64,7 +64,7 @@ final class UMAPService: Sendable {
 
         // Stage 1: kNN graph via VP-tree
         logger.info("UMAP Stage 1: Computing kNN graph (k=\(k))...")
-        let knn = vpTreeService.findAllKNN(vectors: vectors, k: k, metric: .cosine)
+        let knn = await vpTreeService.findAllKNN(vectors: vectors, k: k, metric: .cosine)
 
         // Stage 2: Fuzzy simplicial set
         logger.info("UMAP Stage 2: Computing fuzzy simplicial set...")

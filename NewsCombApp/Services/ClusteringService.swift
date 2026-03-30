@@ -101,7 +101,7 @@ final class ClusteringService: Sendable {
                 targetDimension: umapTargetDim,
                 nNeighbors: umapNeighbors
             )
-            umapReduced = umapService.reduce(vectors: pcaReduced, params: umapParams)
+            umapReduced = await umapService.reduce(vectors: pcaReduced, params: umapParams)
             logger.info("UMAP: \(pcaReduced[0].count)D → \(umapTargetDim)D")
         } else {
             umapReduced = pcaReduced

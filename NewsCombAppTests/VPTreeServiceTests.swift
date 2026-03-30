@@ -7,21 +7,21 @@ final class VPTreeServiceTests: XCTestCase {
 
     // MARK: - Basic Behavior
 
-    func testEmptyInput() {
-        let result = service.findAllKNN(vectors: [], k: 5)
+    func testEmptyInput() async {
+        let result = await service.findAllKNN(vectors: [], k: 5)
         XCTAssertTrue(result.indices.isEmpty)
         XCTAssertTrue(result.distances.isEmpty)
     }
 
-    func testSingleVector() {
-        let result = service.findAllKNN(vectors: [[1, 2, 3]], k: 5)
+    func testSingleVector() async {
+        let result = await service.findAllKNN(vectors: [[1, 2, 3]], k: 5)
         XCTAssertEqual(result.indices.count, 1)
         XCTAssertTrue(result.indices[0].isEmpty, "Single vector has no neighbors")
     }
 
     // MARK: - Correctness
 
-    func testBruteForceAgreement() {
+    func testBruteForceAgreement() async {
         // Verify VP-tree kNN matches brute-force for small data
         let vectors: [[Float]] = [
             [1.0, 0.0, 0.0],
@@ -32,7 +32,7 @@ final class VPTreeServiceTests: XCTestCase {
         ]
 
         let k = 2
-        let result = service.findAllKNN(vectors: vectors, k: k, metric: .euclidean)
+        let result = await service.findAllKNN(vectors: vectors, k: k, metric: .euclidean)
 
         // Verify each point's neighbors via brute force
         for i in 0..<vectors.count {
@@ -49,7 +49,7 @@ final class VPTreeServiceTests: XCTestCase {
         }
     }
 
-    func testCosineMetric() {
+    func testCosineMetric() async {
         // Vectors with different magnitudes but similar directions
         let vectors: [[Float]] = [
             [1.0, 0.0],   // direction 0°
@@ -58,7 +58,7 @@ final class VPTreeServiceTests: XCTestCase {
             [0.0, 10.0],  // direction 90° (same direction, different magnitude)
         ]
 
-        let result = service.findAllKNN(vectors: vectors, k: 1, metric: .cosine)
+        let result = await service.findAllKNN(vectors: vectors, k: 1, metric: .cosine)
 
         // Under cosine distance, [1,0] should be nearest to [10,0]
         XCTAssertEqual(result.indices[0].first, 1,
@@ -67,7 +67,7 @@ final class VPTreeServiceTests: XCTestCase {
                        "[0,1] nearest neighbor under cosine should be [0,10]")
     }
 
-    func testCorrectNumberOfNeighbors() {
+    func testCorrectNumberOfNeighbors() async {
         // Use diverse directions to avoid collinear vectors (cosine distance = 0)
         var vectors: [[Float]] = []
         for i in 0..<20 {
@@ -76,7 +76,7 @@ final class VPTreeServiceTests: XCTestCase {
         }
 
         let k = 5
-        let result = service.findAllKNN(vectors: vectors, k: k, metric: .euclidean)
+        let result = await service.findAllKNN(vectors: vectors, k: k, metric: .euclidean)
 
         for i in 0..<vectors.count {
             XCTAssertEqual(result.indices[i].count, k,
@@ -100,9 +100,9 @@ final class VPTreeServiceTests: XCTestCase {
 
     // MARK: - K Clamping
 
-    func testKClampedToDataSize() {
+    func testKClampedToDataSize() async {
         let vectors: [[Float]] = [[1, 0], [0, 1], [1, 1]]
-        let result = service.findAllKNN(vectors: vectors, k: 10)
+        let result = await service.findAllKNN(vectors: vectors, k: 10)
 
         // With 3 vectors, max k = 2 (n - 1)
         for i in 0..<3 {

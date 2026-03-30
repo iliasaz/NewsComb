@@ -7,13 +7,13 @@ final class UMAPServiceTests: XCTestCase {
 
     // MARK: - Basic Behavior
 
-    func testEmptyInput() {
-        let result = service.reduce(vectors: [])
+    func testEmptyInput() async {
+        let result = await service.reduce(vectors: [])
         XCTAssertTrue(result.isEmpty)
     }
 
-    func testSingleVector() {
-        let result = service.reduce(vectors: [[1, 2, 3]])
+    func testSingleVector() async {
+        let result = await service.reduce(vectors: [[1, 2, 3]])
         // With only 1 vector, UMAP returns unchanged (n < 2)
         XCTAssertEqual(result.count, 1)
         XCTAssertEqual(result[0], [1, 2, 3])
@@ -21,7 +21,7 @@ final class UMAPServiceTests: XCTestCase {
 
     // MARK: - Output Dimensions
 
-    func testOutputDimension() {
+    func testOutputDimension() async {
         // 30 vectors of 10 dimensions → reduce to 3D
         var vectors: [[Float]] = []
         for i in 0..<30 {
@@ -33,7 +33,7 @@ final class UMAPServiceTests: XCTestCase {
             nNeighbors: 5,
             nEpochs: 50  // Fewer epochs for test speed
         )
-        let result = service.reduce(vectors: vectors, params: params)
+        let result = await service.reduce(vectors: vectors, params: params)
 
         XCTAssertEqual(result.count, 30, "Should return same number of vectors")
         for vec in result {
@@ -43,7 +43,7 @@ final class UMAPServiceTests: XCTestCase {
 
     // MARK: - Cluster Separation
 
-    func testClustersSeparated() {
+    func testClustersSeparated() async {
         // Two well-separated clusters of normalized vectors (different directions)
         var vectors: [[Float]] = []
 
@@ -70,7 +70,7 @@ final class UMAPServiceTests: XCTestCase {
             nNeighbors: 5,
             nEpochs: 100
         )
-        let result = service.reduce(vectors: vectors, params: params)
+        let result = await service.reduce(vectors: vectors, params: params)
 
         // Compute mean position of each cluster in the embedding
         let meanA = meanVector(Array(result[0..<15]))
@@ -84,7 +84,7 @@ final class UMAPServiceTests: XCTestCase {
 
     // MARK: - Determinism
 
-    func testNeighborhoodPreservation() {
+    func testNeighborhoodPreservation() async {
         // Verify that UMAP preserves local structure: points that are nearest neighbors
         // in the input should remain relatively close in the output embedding.
         var vectors: [[Float]] = []
@@ -105,7 +105,7 @@ final class UMAPServiceTests: XCTestCase {
             nNeighbors: 5,
             nEpochs: 100
         )
-        let result = service.reduce(vectors: vectors, params: params)
+        let result = await service.reduce(vectors: vectors, params: params)
 
         // Within-cluster distances should generally be smaller than between-cluster
         var withinDistances: [Float] = []
@@ -131,19 +131,19 @@ final class UMAPServiceTests: XCTestCase {
 
     // MARK: - Edge Cases
 
-    func testTwoVectors() {
+    func testTwoVectors() async {
         let vectors: [[Float]] = [[1, 0, 0], [0, 1, 0]]
         let params = UMAPService.Parameters(
             targetDimension: 2,
             nNeighbors: 1,
             nEpochs: 20
         )
-        let result = service.reduce(vectors: vectors, params: params)
+        let result = await service.reduce(vectors: vectors, params: params)
         XCTAssertEqual(result.count, 2)
         XCTAssertEqual(result[0].count, 2)
     }
 
-    func testFewNeighborsClampedToDataSize() {
+    func testFewNeighborsClampedToDataSize() async {
         // 5 vectors but requesting 10 neighbors → should clamp to 4
         var vectors: [[Float]] = []
         for i in 0..<5 {
@@ -155,7 +155,7 @@ final class UMAPServiceTests: XCTestCase {
             nNeighbors: 10,
             nEpochs: 20
         )
-        let result = service.reduce(vectors: vectors, params: params)
+        let result = await service.reduce(vectors: vectors, params: params)
         XCTAssertEqual(result.count, 5)
     }
 

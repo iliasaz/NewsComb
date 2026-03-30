@@ -43,7 +43,7 @@ final class VPTreeService: Sendable {
     ///   - k: Number of neighbors to find per point.
     ///   - metric: Distance metric to use.
     /// - Returns: A `KNNResult` with indices and distances for each point.
-    func findAllKNN(vectors: [[Float]], k: Int, metric: Metric = .cosine) -> KNNResult {
+    func findAllKNN(vectors: [[Float]], k: Int, metric: Metric = .cosine) async -> KNNResult {
         let n = vectors.count
         guard n > 1 else {
             return KNNResult(indices: Array(repeating: [], count: n),
@@ -54,38 +54,116 @@ final class VPTreeService: Sendable {
         logger.info("VP-tree kNN: n=\(n), k=\(effectiveK), metric=\(String(describing: metric))")
         let startTime = ContinuousClock.now
 
-        // Build the VP-tree
+        // Build the VP-tree (sequential — tree construction is inherently serial)
         let distanceFunc = makeDistanceFunction(metric: metric)
         let indices = Array(0..<n)
         let tree = buildTree(indices: indices, vectors: vectors, distanceFunc: distanceFunc)
+        logger.info("VP-tree built in \(ContinuousClock.now - startTime)")
 
-        // Query each point
-        var allIndices: [[Int]] = Array(repeating: [], count: n)
-        var allDistances: [[Float]] = Array(repeating: [], count: n)
+        // Query all points in parallel. The tree and vectors are read-only during
+        // search, so queries are fully independent with no shared mutable state.
+        // We use nonisolated(unsafe) sendable wrappers to pass the read-only tree
+        // and vectors into concurrent tasks without copying.
+        let searchContext = SearchContext(
+            tree: tree, vectors: vectors, distanceFunc: distanceFunc, k: effectiveK
+        )
 
-        for i in 0..<n {
-            let neighbors = knnSearch(tree: tree, query: vectors[i], queryIndex: i,
-                                      k: effectiveK, vectors: vectors, distanceFunc: distanceFunc)
-            allIndices[i] = neighbors.map(\.index)
-            allDistances[i] = neighbors.map(\.distance)
+        let coreCount = ProcessInfo.processInfo.activeProcessorCount
+        let chunkSize = max(1, n / (coreCount * 2))
 
-            if (i + 1) % 10000 == 0 {
-                let elapsed = ContinuousClock.now - startTime
-                logger.info("VP-tree kNN progress: \(i + 1)/\(n) — \(elapsed)")
+        let results = await withTaskGroup(
+            of: (start: Int, indices: [[Int]], distances: [[Float]]).self
+        ) { group in
+            for chunkStart in stride(from: 0, to: n, by: chunkSize) {
+                let chunkEnd = min(chunkStart + chunkSize, n)
+
+                group.addTask { @concurrent in
+                    var chunkIndices: [[Int]] = []
+                    var chunkDistances: [[Float]] = []
+                    chunkIndices.reserveCapacity(chunkEnd - chunkStart)
+                    chunkDistances.reserveCapacity(chunkEnd - chunkStart)
+
+                    for i in chunkStart..<chunkEnd {
+                        let neighbors = Self.searchTree(
+                            context: searchContext, queryIndex: i
+                        )
+                        chunkIndices.append(neighbors.map(\.index))
+                        chunkDistances.append(neighbors.map(\.distance))
+                    }
+                    return (start: chunkStart, indices: chunkIndices, distances: chunkDistances)
+                }
             }
+
+            var allIndices: [[Int]] = Array(repeating: [], count: n)
+            var allDistances: [[Float]] = Array(repeating: [], count: n)
+
+            for await (start, chunkIndices, chunkDistances) in group {
+                for (offset, idx) in chunkIndices.enumerated() {
+                    allIndices[start + offset] = idx
+                    allDistances[start + offset] = chunkDistances[offset]
+                }
+            }
+
+            return KNNResult(indices: allIndices, distances: allDistances)
         }
 
         let elapsed = ContinuousClock.now - startTime
-        logger.info("VP-tree kNN complete: \(n) queries × k=\(effectiveK) in \(elapsed)")
+        logger.info("VP-tree kNN complete: \(n) queries × k=\(effectiveK) in \(elapsed) (\(coreCount) cores)")
 
-        return KNNResult(indices: allIndices, distances: allDistances)
+        return results
+    }
+
+    // MARK: - Search Context (for concurrent queries)
+
+    /// Read-only context passed to concurrent kNN query tasks.
+    /// Uses `nonisolated(unsafe)` because the tree and vectors are never mutated
+    /// after construction — they're built once then queried in parallel.
+    private struct SearchContext: @unchecked Sendable {
+        let tree: VPNode?
+        let vectors: [[Float]]
+        let distanceFunc: @Sendable ([Float], [Float]) -> Float
+        let k: Int
+    }
+
+    /// Static search method that takes an explicit context — avoids capturing `self`
+    /// in concurrent task closures (which would require Sendable proof for the actor).
+    private static func searchTree(context: SearchContext, queryIndex: Int) -> [Neighbor] {
+        guard let root = context.tree else { return [] }
+        var heap = BoundedMaxHeap(capacity: context.k)
+        var stack: [VPNode] = [root]
+
+        while let node = stack.popLast() {
+            let dist = context.distanceFunc(context.vectors[queryIndex], context.vectors[node.pointIndex])
+
+            if node.pointIndex != queryIndex {
+                heap.insert(Neighbor(index: node.pointIndex, distance: dist))
+            }
+
+            if dist <= node.radius {
+                if let right = node.right, dist + heap.maxDistance > node.radius {
+                    stack.append(right)
+                }
+                if let left = node.left, dist - heap.maxDistance <= node.radius {
+                    stack.append(left)
+                }
+            } else {
+                if let left = node.left, dist - heap.maxDistance <= node.radius {
+                    stack.append(left)
+                }
+                if let right = node.right, dist + heap.maxDistance > node.radius {
+                    stack.append(right)
+                }
+            }
+        }
+
+        return heap.sorted()
     }
 
     // MARK: - VP-Tree Node
 
     /// A node in the VP-tree. Either a leaf (single point) or an internal node
     /// that partitions children by distance to its vantage point.
-    private final class VPNode {
+    private final class VPNode: Sendable {
         let pointIndex: Int
         let radius: Float
         let left: VPNode?   // points with distance <= radius
