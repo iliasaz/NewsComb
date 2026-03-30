@@ -23,7 +23,10 @@ public final class Database: Sendable {
 
             let dbPath = dbDirectory.appending(path: "newscomb.sqlite")
             Self.logger.info("Database path: open '\(dbPath.path(percentEncoded: false), privacy: .public)'")
-            dbQueue = try DatabaseQueue(path: dbPath.path)
+
+            var config = Configuration()
+            config.foreignKeysEnabled = true
+            dbQueue = try DatabaseQueue(path: dbPath.path, configuration: config)
 
             try migrate()
         } catch {

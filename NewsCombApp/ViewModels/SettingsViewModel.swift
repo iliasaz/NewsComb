@@ -431,8 +431,75 @@ class SettingsViewModel {
     }
 
     func deleteSource(_ source: RSSSource) {
+        guard let sourceId = source.id else { return }
         do {
-            _ = try database.write { db in
+            try database.write { db in
+                // Defer FK checks to transaction commit. Unlike `PRAGMA foreign_keys`,
+                // `defer_foreign_keys` CAN be set mid-transaction. This lets us delete
+                // in any order as long as all references are resolved by commit time.
+                // Needed because existing databases have NO ACTION FKs (SQLite can't
+                // alter FK constraints on existing tables).
+                try db.execute(sql: "PRAGMA defer_foreign_keys = ON")
+
+                let feedItemIds = try Int64.fetchAll(db, sql:
+                    "SELECT id FROM feed_item WHERE source_id = ?", arguments: [sourceId])
+
+                guard !feedItemIds.isEmpty else {
+                    try source.delete(db)
+                    return
+                }
+
+                let chunkIds = try Int64.fetchAll(db, sql: """
+                    SELECT id FROM article_chunk WHERE feed_item_id IN
+                    (SELECT id FROM feed_item WHERE source_id = ?)
+                    """, arguments: [sourceId])
+
+                let edgeIds = try Int64.fetchAll(db, sql: """
+                    SELECT id FROM hypergraph_edge WHERE source_chunk_id IN
+                    (SELECT id FROM article_chunk WHERE feed_item_id IN
+                     (SELECT id FROM feed_item WHERE source_id = ?))
+                    """, arguments: [sourceId])
+
+                // Delete edges and their dependents
+                for batch in edgeIds.chunked(into: 500) {
+                    let ph = batch.map { _ in "?" }.joined(separator: ",")
+                    let args = StatementArguments(batch)
+                    try db.execute(sql: "DELETE FROM cluster_exemplars WHERE event_id IN (\(ph))", arguments: args)
+                    try db.execute(sql: "DELETE FROM cluster_members WHERE event_id IN (\(ph))", arguments: args)
+                    try db.execute(sql: "DELETE FROM event_cluster WHERE event_id IN (\(ph))", arguments: args)
+                    try db.execute(sql: "DELETE FROM article_edge_provenance WHERE edge_id IN (\(ph))", arguments: args)
+                    try db.execute(sql: "DELETE FROM hypergraph_incidence WHERE edge_id IN (\(ph))", arguments: args)
+                    try db.execute(sql: "DELETE FROM hypergraph_edge WHERE id IN (\(ph))", arguments: args)
+                }
+                // vec0 virtual tables require individual deletes
+                for edgeId in edgeIds {
+                    try db.execute(sql: "DELETE FROM event_vectors WHERE event_id = ?", arguments: [edgeId])
+                }
+
+                // Delete chunks and their dependents
+                for batch in chunkIds.chunked(into: 500) {
+                    let ph = batch.map { _ in "?" }.joined(separator: ",")
+                    let args = StatementArguments(batch)
+                    try db.execute(sql: "DELETE FROM chunk_embedding_metadata WHERE chunk_id IN (\(ph))", arguments: args)
+                    try db.execute(sql: "DELETE FROM article_chunk WHERE id IN (\(ph))", arguments: args)
+                }
+                // vec0 virtual tables require individual deletes
+                for chunkId in chunkIds {
+                    try db.execute(sql: "DELETE FROM chunk_embedding WHERE chunk_id = ?", arguments: [chunkId])
+                }
+
+                // Delete feed-item-level dependents
+                try db.execute(sql: """
+                    DELETE FROM article_edge_provenance WHERE feed_item_id IN
+                    (SELECT id FROM feed_item WHERE source_id = ?)
+                    """, arguments: [sourceId])
+                try db.execute(sql: """
+                    DELETE FROM article_hypergraph WHERE feed_item_id IN
+                    (SELECT id FROM feed_item WHERE source_id = ?)
+                    """, arguments: [sourceId])
+
+                // Delete feed items and the source
+                try db.execute(sql: "DELETE FROM feed_item WHERE source_id = ?", arguments: [sourceId])
                 try source.delete(db)
             }
             loadRSSSources()
