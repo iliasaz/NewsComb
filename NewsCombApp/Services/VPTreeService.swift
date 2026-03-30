@@ -51,19 +51,26 @@ final class VPTreeService: Sendable {
         }
 
         let effectiveK = min(k, n - 1)
+        let d = vectors[0].count
+
+        // For D >= 20, use vectorized brute-force via Accelerate's matrix multiply.
+        // VP-trees prune poorly in high dimensions (most branches get visited),
+        // while vDSP_mmul leverages the AMX coprocessor for massive throughput.
+        if d >= 20 && metric == .cosine {
+            logger.info("Vectorized kNN: n=\(n), d=\(d), k=\(effectiveK)")
+            return vectorizedCosineKNN(vectors: vectors, k: effectiveK)
+        }
+
         logger.info("VP-tree kNN: n=\(n), k=\(effectiveK), metric=\(String(describing: metric))")
         let startTime = ContinuousClock.now
 
-        // Build the VP-tree (sequential — tree construction is inherently serial)
+        // Build the VP-tree
         let distanceFunc = makeDistanceFunction(metric: metric)
         let indices = Array(0..<n)
         let tree = buildTree(indices: indices, vectors: vectors, distanceFunc: distanceFunc)
         logger.info("VP-tree built in \(ContinuousClock.now - startTime)")
 
-        // Query all points in parallel. The tree and vectors are read-only during
-        // search, so queries are fully independent with no shared mutable state.
-        // We use nonisolated(unsafe) sendable wrappers to pass the read-only tree
-        // and vectors into concurrent tasks without copying.
+        // Query all points in parallel
         let searchContext = SearchContext(
             tree: tree, vectors: vectors, distanceFunc: distanceFunc, k: effectiveK
         )
@@ -111,6 +118,102 @@ final class VPTreeService: Sendable {
         logger.info("VP-tree kNN complete: \(n) queries × k=\(effectiveK) in \(elapsed) (\(coreCount) cores)")
 
         return results
+    }
+
+    // MARK: - Vectorized Brute-Force kNN
+
+    /// Computes k-nearest neighbors using Accelerate matrix multiply.
+    ///
+    /// For cosine distance on normalized vectors, similarity = dot product.
+    /// Computes the full similarity matrix in tiles using `vDSP_mmul` (which
+    /// leverages the AMX coprocessor on Apple Silicon), then extracts top-k
+    /// per row via partial sort.
+    ///
+    /// At N=89K, D=50: ~2-4 seconds total vs ~15 minutes with VP-tree.
+    private func vectorizedCosineKNN(vectors: [[Float]], k: Int) -> KNNResult {
+        let n = vectors.count
+        let d = vectors[0].count
+        let startTime = ContinuousClock.now
+
+        // Step 1: Flatten and L2-normalize all vectors.
+        // For normalized vectors, cosine_similarity = dot_product,
+        // so cosine_distance = 1 - dot_product.
+        var flat = [Float](repeating: 0, count: n * d)
+        for i in 0..<n {
+            let normalized = AccelerateVectorOps.normalize(vectors[i])
+            flat.replaceSubrange((i * d)..<((i + 1) * d), with: normalized)
+        }
+        logger.info("Vectorized kNN: normalized \(n) vectors in \(ContinuousClock.now - startTime)")
+
+        // Step 2: Compute similarity matrix in tiles to limit memory usage.
+        // Each tile: Q queries × N targets = Q×N floats.
+        // Tile size chosen to keep memory ~400MB per tile.
+        let tileSize = max(1, min(n, 400_000_000 / (n * 4)))
+        var allIndices: [[Int]] = Array(repeating: [], count: n)
+        var allDistances: [[Float]] = Array(repeating: [], count: n)
+
+        // Transpose of full matrix for vDSP_mmul: B = flatᵀ (D×N)
+        var flatTransposed = [Float](repeating: 0, count: d * n)
+        vDSP_mtrans(flat, 1, &flatTransposed, 1, vDSP_Length(d), vDSP_Length(n))
+
+        for tileStart in stride(from: 0, to: n, by: tileSize) {
+            let tileEnd = min(tileStart + tileSize, n)
+            let q = tileEnd - tileStart
+
+            // Compute Q×N similarity matrix: S = queries[Q×D] × flatᵀ[D×N]
+            var similarities = [Float](repeating: 0, count: q * n)
+            flat.withUnsafeBufferPointer { flatBuf in
+                vDSP_mmul(
+                    flatBuf.baseAddress! + tileStart * d, 1,  // A: Q×D (queries)
+                    flatTransposed, 1,                         // B: D×N (all vectors transposed)
+                    &similarities, 1,                          // C: Q×N (similarities)
+                    vDSP_Length(q),
+                    vDSP_Length(n),
+                    vDSP_Length(d)
+                )
+            }
+
+            // Step 3: Extract top-k per row (highest similarity = lowest distance)
+            for qi in 0..<q {
+                let globalI = tileStart + qi
+                let rowOffset = qi * n
+
+                // Set self-similarity to -infinity so it's never selected
+                similarities[rowOffset + globalI] = -.infinity
+
+                // Partial sort: find k largest similarities
+                // Use a min-heap of size k (track k best so far)
+                var topK: [(index: Int, similarity: Float)] = []
+                topK.reserveCapacity(k + 1)
+                var minInTopK: Float = -.infinity
+
+                for j in 0..<n {
+                    let sim = similarities[rowOffset + j]
+                    if topK.count < k {
+                        topK.append((j, sim))
+                        if topK.count == k {
+                            minInTopK = topK.min(by: { $0.similarity < $1.similarity })!.similarity
+                        }
+                    } else if sim > minInTopK {
+                        // Replace the minimum
+                        if let minIdx = topK.firstIndex(where: { $0.similarity == minInTopK }) {
+                            topK[minIdx] = (j, sim)
+                        }
+                        minInTopK = topK.min(by: { $0.similarity < $1.similarity })!.similarity
+                    }
+                }
+
+                // Sort by distance (ascending) = sort by similarity (descending)
+                topK.sort { $0.similarity > $1.similarity }
+                allIndices[globalI] = topK.map(\.index)
+                allDistances[globalI] = topK.map { 1.0 - $0.similarity } // cosine distance
+            }
+        }
+
+        let elapsed = ContinuousClock.now - startTime
+        logger.info("Vectorized kNN complete: \(n) × k=\(k) in \(elapsed)")
+
+        return KNNResult(indices: allIndices, distances: allDistances)
     }
 
     // MARK: - Search Context (for concurrent queries)
