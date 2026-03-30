@@ -220,9 +220,16 @@ final class HypergraphService: Sendable {
             return 0
         }
 
-        // Load max concurrent setting
+        // Load max concurrent setting. Cap cloud providers to avoid overwhelming
+        // rate limits — each article generates multiple LLM calls (one per chunk).
         let settings = try loadSettings()
-        let maxConcurrent = settings.maxConcurrentProcessing
+        let isCloudProvider = settings.provider == "openrouter"
+        let maxConcurrent = isCloudProvider
+            ? min(settings.maxConcurrentProcessing, 5)
+            : settings.maxConcurrentProcessing
+        if isCloudProvider && settings.maxConcurrentProcessing > 5 {
+            logger.info("Capping concurrency to 5 for cloud provider (was \(settings.maxConcurrentProcessing))")
+        }
 
         // Pre-download the embedding model before spawning concurrent tasks.
         // This avoids a race where multiple tasks try to download simultaneously.
@@ -257,7 +264,11 @@ final class HypergraphService: Sendable {
 
                     group.addTask {
                         do {
-                            try await withRetry(logger: self.logger) {
+                            try await withRetry(
+                                initialDelay: .seconds(5),
+                                maxDelay: .seconds(60),
+                                logger: self.logger
+                            ) {
                                 try await self.processArticle(feedItemId: articleId, detailCallback: detailCallback)
                             }
                             return (articleId, title, true)
