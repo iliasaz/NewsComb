@@ -66,3 +66,12 @@ fastlane/test_output
 
 # Build artifacts
 build/
+
+# Simulation logs
+log/
+
+# SQLite database files
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm

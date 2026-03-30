@@ -285,7 +285,7 @@ final class HypergraphService: Sendable {
             }
 
             // Process batch results
-            for (articleId, title, success) in results {
+            for (_, title, success) in results {
                 completedSoFar += 1
 
                 if success {

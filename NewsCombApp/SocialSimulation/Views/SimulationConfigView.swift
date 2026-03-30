@@ -116,7 +116,7 @@ struct SimulationConfigView: View {
             if !availableNodes.isEmpty {
                 HStack {
                     DisclosureGroup("Select Entities (\(selectedNodeIds.count) selected)") {
-                        ForEach(filteredNodes) { node in
+                        ForEach(availableNodes) { node in
                             Toggle(isOn: Binding(
                                 get: { selectedNodeIds.contains(node.id!) },
                                 set: { isOn in
@@ -198,7 +198,7 @@ struct SimulationConfigView: View {
     }
 
     private func selectRandomEntities() {
-        let pool = filteredNodes.compactMap(\.id)
+        let pool = availableNodes.compactMap(\.id)
         let count = min(maxAgents, pool.count)
         selectedNodeIds = Set(pool.shuffled().prefix(count))
     }

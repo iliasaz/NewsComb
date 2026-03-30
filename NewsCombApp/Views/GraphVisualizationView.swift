@@ -65,7 +65,7 @@ struct GraphVisualizationView: View {
                         singleTapTask = Task {
                             try? await Task.sleep(for: singleTapDelay)
                             guard !Task.isCancelled else { return }
-                            await handleSingleTap(at: location, in: geometry.size)
+                            handleSingleTap(at: location, in: geometry.size)
                         }
                     }
                     .onContinuousHover { phase in

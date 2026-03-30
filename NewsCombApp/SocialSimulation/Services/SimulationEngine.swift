@@ -246,7 +246,7 @@ actor SimulationEngine {
                         agentMapping: agentMapping
                     )
                 } catch {
-                    await self.logger.error("Action ingestion failed: \(error.localizedDescription, privacy: .public)")
+                    self.logger.error("Action ingestion failed: \(error.localizedDescription, privacy: .public)")
                 }
 
                 // Update round progress

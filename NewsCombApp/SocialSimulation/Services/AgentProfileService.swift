@@ -90,7 +90,7 @@ final class AgentProfileService: Sendable {
             let personaData = try JSONEncoder().encode(persona)
             let personaJson = String(data: personaData, encoding: .utf8)
 
-            var agent = SocialAgent(
+            let agent = SocialAgent(
                 nodeId: node.id!,
                 displayName: persona.profession != nil
                     ? "\(node.label)"
@@ -392,7 +392,7 @@ final class AgentProfileService: Sendable {
                 }
 
                 // Bidirectional follow
-                var conn1 = SocialConnection(
+                let conn1 = SocialConnection(
                     followerId: id1,
                     followeeId: id2,
                     source: "initial",
@@ -400,7 +400,7 @@ final class AgentProfileService: Sendable {
                 )
                 try conn1.insert(db)
 
-                var conn2 = SocialConnection(
+                let conn2 = SocialConnection(
                     followerId: id2,
                     followeeId: id1,
                     source: "initial",

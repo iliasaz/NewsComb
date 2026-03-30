@@ -65,7 +65,7 @@ final class AgentInterviewService: Sendable {
         let messagesJson = String(data: messagesData, encoding: .utf8) ?? "[]"
 
         try database.write { db in
-            var interview = AgentInterview(
+            let interview = AgentInterview(
                 agentId: agentId,
                 messagesJson: messagesJson,
                 simulationId: simulationId

@@ -87,7 +87,7 @@ struct ChunkEmbeddingMetadata: Identifiable, Equatable, Codable, FetchableRecord
 
     /// Marks an embedding as computed for a chunk.
     static func markEmbeddingComputed(_ db: GRDB.Database, chunkId: Int64, modelName: String?) throws {
-        var metadata = ChunkEmbeddingMetadata(chunkId: chunkId, modelName: modelName)
+        let metadata = ChunkEmbeddingMetadata(chunkId: chunkId, modelName: modelName)
         try metadata.insert(db, onConflict: .replace)
     }
 }

@@ -47,7 +47,7 @@ final class ActionIngestionService: Sendable {
                 switch action.actionType {
                 case "create_post", "CREATE_POST":
                     guard let content = action.content, !content.isEmpty else { continue }
-                    var post = SocialPost(
+                    let post = SocialPost(
                         agentId: agentId,
                         content: content,
                         simTimestamp: simTimestamp,
@@ -63,7 +63,7 @@ final class ActionIngestionService: Sendable {
                     guard let content = action.content else { continue }
                     let parentId = resolvePostId(oasisPostId: action.targetPostId, simulationId: simulationId, db: db)
                     // targetCommentId is the comment's own OASIS ID (from comment_id in trace)
-                    var post = SocialPost(
+                    let post = SocialPost(
                         agentId: agentId,
                         content: content,
                         parentPostId: parentId,
@@ -80,7 +80,7 @@ final class ActionIngestionService: Sendable {
                     let repostOfId = resolvePostId(oasisPostId: action.targetPostId, simulationId: simulationId, db: db)
                     let content = action.content ?? ""
                     // oasisNewPostId is the new post's OASIS ID (from new_post_id in trace)
-                    var post = SocialPost(
+                    let post = SocialPost(
                         agentId: agentId,
                         content: content,
                         repostOfId: repostOfId,
@@ -95,7 +95,7 @@ final class ActionIngestionService: Sendable {
 
                 case "like_post", "LIKE_POST", "like_comment", "LIKE_COMMENT":
                     let postId = resolvePostId(oasisPostId: action.targetPostId, simulationId: simulationId, db: db)
-                    var interaction = SocialInteraction(
+                    let interaction = SocialInteraction(
                         agentId: agentId,
                         postId: postId,
                         actionType: "like",
@@ -181,7 +181,7 @@ final class ActionIngestionService: Sendable {
                 default:
                     // Unknown action type — record as interaction
                     if let actionType = action.actionType {
-                        var interaction = SocialInteraction(
+                        let interaction = SocialInteraction(
                             agentId: agentId,
                             actionType: actionType,
                             simTimestamp: simTimestamp,

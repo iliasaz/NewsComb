@@ -34,7 +34,7 @@ struct UserRoleService {
     /// - Returns: The created role with its assigned ID
     @discardableResult
     func create(name: String, prompt: String) throws -> UserRole {
-        var role = UserRole(name: name, prompt: prompt)
+        let role = UserRole(name: name, prompt: prompt)
 
         try database.write { db in
             try role.insert(db)
@@ -64,24 +64,26 @@ struct UserRoleService {
 
     /// Deletes a user role.
     /// - Parameter role: The role to delete
-    func delete(_ role: UserRole) throws {
-        try database.write { db in
+    @discardableResult
+    func delete(_ role: UserRole) throws -> Bool {
+        let deleted = try database.write { db in
             try role.delete(db)
         }
-
         logger.info("Deleted user role: \(role.name, privacy: .public)")
+        return deleted
     }
 
     /// Deletes a user role by ID.
     /// - Parameter id: The ID of the role to delete
-    func delete(id: Int64) throws {
-        try database.write { db in
+    @discardableResult
+    func delete(id: Int64) throws -> Int {
+        let count = try database.write { db in
             try UserRole
                 .filter(UserRole.Columns.id == id)
                 .deleteAll(db)
         }
-
         logger.info("Deleted user role with ID: \(id)")
+        return count
     }
 
     // MARK: - Activation

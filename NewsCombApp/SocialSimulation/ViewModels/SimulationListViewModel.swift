@@ -38,7 +38,7 @@ final class SimulationListViewModel {
 
     /// Creates a new simulation record in "configuring" status.
     func createSimulation(name: String) -> SocialSimulation? {
-        var simulation = SocialSimulation(name: name)
+        let simulation = SocialSimulation(name: name)
         do {
             try database.write { db in
                 try simulation.insert(db)

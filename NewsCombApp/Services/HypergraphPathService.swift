@@ -267,7 +267,6 @@ final class HypergraphPathService: Sendable {
 
             for neighborEdge in neighbors {
                 let wasVisited = visited[neighborEdge] != nil
-                let previousDepth = visited[neighborEdge] ?? Int.max
 
                 if !wasVisited {
                     // First visit to this edge

@@ -52,7 +52,7 @@ actor ActionLogMonitor {
 
                         // Check for simulation end
                         if actions.contains(where: \.isSimulationEnd) {
-                            await monitor.logger.info("Detected simulation_end event")
+                            monitor.logger.info("Detected simulation_end event")
                             break
                         }
                     }
@@ -61,7 +61,7 @@ actor ActionLogMonitor {
                 }
 
                 continuation.finish()
-                await monitor.logger.info("Action log monitoring stopped")
+                monitor.logger.info("Action log monitoring stopped")
             }
         }
     }
@@ -114,7 +114,8 @@ actor ActionLogMonitor {
         defer { try? handle.close() }
 
         handle.seek(toFileOffset: offset)
-        guard let data = try? handle.availableData, !data.isEmpty else {
+        let data = handle.availableData
+        guard !data.isEmpty else {
             return ([], offset)
         }
 

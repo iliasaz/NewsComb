@@ -17,7 +17,7 @@ actor NomicEmbeddingService {
     /// The fixed embedding dimension produced by nomic-embed-text-v1.5.
     nonisolated static let embeddingDimension = 768
 
-    nonisolated(unsafe) private let logger = Logger(subsystem: "com.newscomb.app", category: "NomicEmbedding")
+    private let logger = Logger(subsystem: "com.newscomb.app", category: "NomicEmbedding")
 
     /// Shared singleton — safe to reuse across the app.
     static let shared = NomicEmbeddingService()

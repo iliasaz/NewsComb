@@ -9,7 +9,7 @@ struct QueryHistoryService {
 
     /// Saves a GraphRAGResponse to the query history.
     func save(_ response: GraphRAGResponse) throws {
-        var item = QueryHistoryItem(from: response)
+        let item = QueryHistoryItem(from: response)
         try database.write { db in
             try item.insert(db)
         }

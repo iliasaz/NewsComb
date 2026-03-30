@@ -137,28 +137,19 @@ final class ThemeClusterViewModel {
         rebuildProgress = 0
         rebuildStatus = "Regenerating summaries\u{2026}"
 
-        do {
-            await clusterLabelingService.labelClusters(
-                buildId: buildId,
-                statusCallback: { [weak self] status in
-                    self?.rebuildStatus = status
-                },
-                progressCallback: { [weak self] progress in
-                    self?.rebuildProgress = progress
-                }
-            )
+        await clusterLabelingService.labelClusters(
+            buildId: buildId,
+            statusCallback: { [weak self] status in
+                self?.rebuildStatus = status
+            },
+            progressCallback: { [weak self] progress in
+                self?.rebuildProgress = progress
+            }
+        )
 
-            loadClusters()
-            rebuildStatus = ""
-            logger.info("Summary regeneration completed")
-
-        } catch is CancellationError {
-            rebuildStatus = ""
-            logger.info("Summary regeneration cancelled")
-        } catch {
-            logger.error("Summary regeneration failed: \(error.localizedDescription, privacy: .public)")
-            rebuildError = error.localizedDescription
-        }
+        loadClusters()
+        rebuildStatus = ""
+        logger.info("Summary regeneration completed")
 
         isRebuilding = false
     }
