@@ -7,6 +7,7 @@ enum LLMProviderOption: String, CaseIterable, Identifiable {
     case none = ""
     case ollama = "ollama"
     case openrouter = "openrouter"
+    case onDevice = "on_device"
 
     var id: String { rawValue }
 
@@ -15,6 +16,22 @@ enum LLMProviderOption: String, CaseIterable, Identifiable {
         case .none: return "None"
         case .ollama: return "Ollama (Local)"
         case .openrouter: return "OpenRouter (Cloud)"
+        case .onDevice: return "On-Device (Apple Intelligence)"
+        }
+    }
+}
+
+/// Classification LLM provider options.
+enum ClassificationProviderOption: String, CaseIterable, Identifiable {
+    case openrouter = "openrouter"
+    case onDevice = "on_device"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .openrouter: return "OpenRouter (Cloud)"
+        case .onDevice: return "On-Device (Apple Intelligence)"
         }
     }
 }
@@ -101,7 +118,12 @@ class SettingsViewModel {
     var engineerAgentPrompt: String = AppSettings.defaultEngineerAgentPrompt
     var hypothesizerAgentPrompt: String = AppSettings.defaultHypothesizerAgentPrompt
 
+    // On-Device (Foundation Models)
+    var onDeviceChunkSize: Int = AppSettings.defaultOnDeviceChunkSize
+    var onDeviceAvailabilityStatus: String = "Not checked"
+
     // Entity Classification
+    var classificationProvider: ClassificationProviderOption = .openrouter
     var simClassificationModel: String = AppSettings.defaultSimClassificationModel
     var simClassificationBatchSize: Int = AppSettings.defaultSimClassificationBatchSize
     var simClassificationThreads: Int = AppSettings.defaultSimClassificationThreads
@@ -133,11 +155,17 @@ class SettingsViewModel {
         loadRSSSources()
         loadAPIKeys()
         checkEmbeddingDimensionMismatch()
+        refreshOnDeviceAvailability()
 
         // Auto-check OASIS environment if not already known
         if simPythonDetectedPath.isEmpty || simPythonDetectedPath == "Not found" {
             Task { await checkOasisEnvironment() }
         }
+    }
+
+    /// Refreshes the cached on-device model availability status string.
+    func refreshOnDeviceAvailability() {
+        onDeviceAvailabilityStatus = FoundationModelAvailability.check().statusDescription
     }
 
     private func loadRSSSources() {
@@ -328,6 +356,17 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simProfilePrompt).fetchOne(db) {
                     simProfilePrompt = setting.value
+                }
+
+                // Load on-device settings
+                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.onDeviceChunkSize).fetchOne(db),
+                   let v = Int(s.value) {
+                    onDeviceChunkSize = v
+                }
+
+                // Load classification provider
+                if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationProvider).fetchOne(db) {
+                    classificationProvider = ClassificationProviderOption(rawValue: s.value) ?? .openrouter
                 }
 
                 // Load entity classification settings
@@ -676,8 +715,13 @@ class SettingsViewModel {
         saveSimProfilePrompt()
     }
 
+    // MARK: - On-Device Save Methods
+
+    func saveOnDeviceChunkSize() { saveAPIKey(key: AppSettings.onDeviceChunkSize, value: String(onDeviceChunkSize)) }
+
     // MARK: - Entity Classification Save Methods
 
+    func saveClassificationProvider() { saveAPIKey(key: AppSettings.simClassificationProvider, value: classificationProvider.rawValue) }
     func saveSimClassificationModel() { saveAPIKey(key: AppSettings.simClassificationModel, value: simClassificationModel) }
     func saveSimClassificationBatchSize() { saveAPIKey(key: AppSettings.simClassificationBatchSize, value: String(simClassificationBatchSize)) }
     func saveSimClassificationThreads() { saveAPIKey(key: AppSettings.simClassificationThreads, value: String(simClassificationThreads)) }

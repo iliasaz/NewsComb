@@ -66,6 +66,16 @@ final class HypergraphService: Sendable {
                     return true
                 }
 
+                // Check for on-device Foundation Models provider
+                if let providerSetting = try AppSettings
+                    .filter(AppSettings.Columns.key == AppSettings.llmProvider)
+                    .fetchOne(db),
+                   providerSetting.value == "on_device" {
+                    if case .available = FoundationModelAvailability.check() {
+                        return true
+                    }
+                }
+
                 return false
             }
         } catch {
@@ -397,6 +407,26 @@ final class HypergraphService: Sendable {
                 distillationSystemPrompt: settings.distillationSystemPrompt
             )
 
+        case "on_device":
+            guard case .available = FoundationModelAvailability.check() else {
+                logger.error("On-device Foundation Model is not available")
+                throw HypergraphServiceError.noProviderConfigured
+            }
+            let service = FoundationModelService()
+            let extractionPrompt = settings.extractionSystemPrompt
+                ?? AppSettings.defaultOnDeviceExtractionPrompt
+            let chunkSize = settings.onDeviceChunkSize
+            logger.info("Configuring on-device Foundation Model: chunkSize=\(chunkSize)")
+
+            return DocumentProcessor(
+                llmProvider: service,
+                ollamaService: embeddingOllama,
+                chatModel: "apple-on-device",
+                chunkSize: chunkSize,
+                extractionSystemPrompt: extractionPrompt,
+                distillationSystemPrompt: settings.distillationSystemPrompt
+            )
+
         default:
             logger.error("No LLM provider configured (provider value: '\(settings.provider, privacy: .public)')")
             throw HypergraphServiceError.noProviderConfigured
@@ -517,6 +547,14 @@ final class HypergraphService: Sendable {
                 .fetchOne(db),
                let value = Int(setting.value) {
                 settings.maxConcurrentProcessing = value
+            }
+
+            // On-device chunk size
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.onDeviceChunkSize)
+                .fetchOne(db),
+               let value = Int(setting.value) {
+                settings.onDeviceChunkSize = value
             }
 
             // Custom prompts
@@ -1224,6 +1262,9 @@ struct LLMSettings: Sendable {
 
     // Processing configuration
     var maxConcurrentProcessing: Int = AppSettings.defaultMaxConcurrentProcessing
+
+    // On-device chunk size (smaller for 4096-token context window)
+    var onDeviceChunkSize: Int = AppSettings.defaultOnDeviceChunkSize
 
     // Custom prompts (nil means use defaults)
     var extractionSystemPrompt: String?

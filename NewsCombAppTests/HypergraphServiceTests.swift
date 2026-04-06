@@ -215,10 +215,11 @@ final class HypergraphServiceTests: XCTestCase {
     }
 
     func testLLMProviderOptionAllCases() {
-        XCTAssertEqual(LLMProviderOption.allCases.count, 3)
+        XCTAssertEqual(LLMProviderOption.allCases.count, 4)
         XCTAssertTrue(LLMProviderOption.allCases.contains(.none))
         XCTAssertTrue(LLMProviderOption.allCases.contains(.ollama))
         XCTAssertTrue(LLMProviderOption.allCases.contains(.openrouter))
+        XCTAssertTrue(LLMProviderOption.allCases.contains(.onDevice))
     }
 
     // MARK: - EmbeddingProviderOption Tests

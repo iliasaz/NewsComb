@@ -67,6 +67,9 @@ struct SettingsView: View {
             }
             .onChange(of: viewModel.llmProvider) {
                 viewModel.saveLLMProvider()
+                if viewModel.llmProvider == .onDevice {
+                    viewModel.refreshOnDeviceAvailability()
+                }
             }
 
             if viewModel.llmProvider == .ollama {
@@ -93,6 +96,23 @@ struct SettingsView: View {
                     .onChange(of: viewModel.openRouterModel) {
                         viewModel.saveOpenRouterModel()
                     }
+            }
+
+            if viewModel.llmProvider == .onDevice {
+                LabeledContent("Model Status", value: viewModel.onDeviceAvailabilityStatus)
+                    .foregroundStyle(.secondary)
+
+                Stepper(value: $viewModel.onDeviceChunkSize, in: 200...1200, step: 100) {
+                    HStack {
+                        Text("Chunk Size")
+                        Spacer()
+                        Text("\(viewModel.onDeviceChunkSize)")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .onChange(of: viewModel.onDeviceChunkSize) {
+                    viewModel.saveOnDeviceChunkSize()
+                }
             }
 
             Divider()
@@ -573,10 +593,26 @@ struct SettingsView: View {
             Text("Entity Classification")
                 .font(.headline)
 
-            TextField("Classification Model", text: $viewModel.simClassificationModel)
-                .onChange(of: viewModel.simClassificationModel) {
-                    viewModel.saveSimClassificationModel()
+            Picker("Classification Provider", selection: $viewModel.classificationProvider) {
+                ForEach(ClassificationProviderOption.allCases) { option in
+                    Text(option.displayName).tag(option)
                 }
+            }
+            .onChange(of: viewModel.classificationProvider) {
+                viewModel.saveClassificationProvider()
+            }
+
+            if viewModel.classificationProvider == .openrouter {
+                TextField("Classification Model", text: $viewModel.simClassificationModel)
+                    .onChange(of: viewModel.simClassificationModel) {
+                        viewModel.saveSimClassificationModel()
+                    }
+            }
+
+            if viewModel.classificationProvider == .onDevice {
+                LabeledContent("Model Status", value: viewModel.onDeviceAvailabilityStatus)
+                    .foregroundStyle(.secondary)
+            }
 
             Stepper(value: $viewModel.simClassificationBatchSize, in: 5...100) {
                 HStack {

@@ -3,6 +3,10 @@ import GRDB
 import HyperGraphReasoning
 import OSLog
 
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
+
 /// Classifies untyped hypergraph nodes by sending batches to a fast LLM.
 ///
 /// Uses configurable batch size and concurrent task groups for throughput.
@@ -37,13 +41,21 @@ final class NodeClassificationService: Sendable {
         }
 
         await statusCallback?("Classifying \(untypedNodes.count) untyped nodes...")
-        logger.info("Starting classification of \(untypedNodes.count) untyped nodes")
+        logger.info("Starting classification of \(untypedNodes.count) untyped nodes (provider: \(config.provider))")
 
-        // Create a single shared LLM client (OpenRouterService is an actor, safe to share)
-        guard !config.openRouterKey.isEmpty else {
-            throw ClassificationError.noApiKey
+        // For OpenRouter, validate the API key and create a shared client
+        let llmClient: OpenRouterService?
+        if config.provider == "on_device" {
+            guard case .available = FoundationModelAvailability.check() else {
+                throw ClassificationError.onDeviceUnavailable
+            }
+            llmClient = nil
+        } else {
+            guard !config.openRouterKey.isEmpty else {
+                throw ClassificationError.noApiKey
+            }
+            llmClient = try OpenRouterService(apiKey: config.openRouterKey, model: config.model)
         }
-        let llmClient = try OpenRouterService(apiKey: config.openRouterKey, model: config.model)
 
         // Split into batches
         let batches = untypedNodes.chunked(into: config.batchSize)
@@ -51,20 +63,33 @@ final class NodeClassificationService: Sendable {
         var processedBatches = 0
 
         // Process batches with concurrent task group limited by thread count.
+        // On-device uses serial processing (1 thread) to avoid concurrent session errors.
+        let effectiveThreads = config.provider == "on_device" ? 1 : config.threads
+
         try await withThrowingTaskGroup(of: Int.self) { group in
             var running = 0
             var batchIterator = batches.makeIterator()
 
             // Seed initial tasks
-            while running < config.threads, let batch = batchIterator.next() {
+            while running < effectiveThreads, let batch = batchIterator.next() {
                 let batchIndex = processedBatches + running
-                group.addTask { @concurrent [self] in
-                    try await self.classifyBatch(
-                        batch,
-                        batchIndex: batchIndex,
-                        config: config,
-                        llmClient: llmClient
-                    )
+                if config.provider == "on_device" {
+                    group.addTask { @concurrent [self] in
+                        await self.classifyBatchOnDevice(
+                            batch,
+                            batchIndex: batchIndex,
+                            config: config
+                        )
+                    }
+                } else {
+                    group.addTask { @concurrent [self] in
+                        try await self.classifyBatch(
+                            batch,
+                            batchIndex: batchIndex,
+                            config: config,
+                            llmClient: llmClient!
+                        )
+                    }
                 }
                 running += 1
             }
@@ -81,13 +106,23 @@ final class NodeClassificationService: Sendable {
 
                 if let batch = batchIterator.next() {
                     let batchIndex = processedBatches + running
-                    group.addTask { @concurrent [self] in
-                        try await self.classifyBatch(
-                            batch,
-                            batchIndex: batchIndex,
-                            config: config,
-                            llmClient: llmClient
-                        )
+                    if config.provider == "on_device" {
+                        group.addTask { @concurrent [self] in
+                            await self.classifyBatchOnDevice(
+                                batch,
+                                batchIndex: batchIndex,
+                                config: config
+                            )
+                        }
+                    } else {
+                        group.addTask { @concurrent [self] in
+                            try await self.classifyBatch(
+                                batch,
+                                batchIndex: batchIndex,
+                                config: config,
+                                llmClient: llmClient!
+                            )
+                        }
                     }
                     running += 1
                 }
@@ -237,6 +272,7 @@ final class NodeClassificationService: Sendable {
     // MARK: - Config
 
     struct ClassificationConfig: Sendable {
+        let provider: String
         let model: String
         let prompt: String
         let batchSize: Int
@@ -246,17 +282,22 @@ final class NodeClassificationService: Sendable {
 
     private func loadConfig() throws -> ClassificationConfig {
         try database.read { db in
+            let provider = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationProvider).fetchOne(db)?.value
+                ?? AppSettings.defaultSimClassificationProvider
             let model = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationModel).fetchOne(db)?.value
                 ?? AppSettings.defaultSimClassificationModel
             let prompt = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationPrompt).fetchOne(db)?.value
                 ?? AppSettings.defaultSimClassificationPrompt
-            let batchSize = (try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationBatchSize).fetchOne(db)?.value)
+            let configuredBatchSize = (try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationBatchSize).fetchOne(db)?.value)
                 .flatMap { Int($0) } ?? AppSettings.defaultSimClassificationBatchSize
+            // Use smaller batches for on-device model due to limited context window
+            let batchSize = provider == "on_device" ? min(configuredBatchSize, 8) : configuredBatchSize
             let threads = (try AppSettings.filter(AppSettings.Columns.key == AppSettings.simClassificationThreads).fetchOne(db)?.value)
                 .flatMap { Int($0) } ?? AppSettings.defaultSimClassificationThreads
             let apiKey = try AppSettings.filter(AppSettings.Columns.key == AppSettings.openRouterKey).fetchOne(db)?.value ?? ""
 
             return ClassificationConfig(
+                provider: provider,
                 model: model,
                 prompt: prompt,
                 batchSize: batchSize,
@@ -285,6 +326,82 @@ final class NodeClassificationService: Sendable {
         )
     }
 
+    // MARK: - On-Device Classification
+
+    /// Classifies a batch of nodes using the on-device Foundation Model.
+    ///
+    /// Uses structured generation (`@Generable`) for type-safe results without
+    /// manual JSON parsing. Returns 0 on error instead of throwing, so a single
+    /// failed batch does not abort the entire classification run.
+    @concurrent
+    private func classifyBatchOnDevice(
+        _ nodes: [HypergraphNode],
+        batchIndex: Int,
+        config: ClassificationConfig
+    ) async -> Int {
+        #if canImport(FoundationModels)
+        guard #available(macOS 26.0, iOS 26.0, *) else {
+            logger.error("Foundation Models requires macOS 26.0 or iOS 26.0")
+            return 0
+        }
+        do {
+            // Build context for each node: label + edge relationships
+            let nodeDescriptions = try nodes.map { node -> String in
+                let edges = try database.read { db -> String in
+                    let sql = """
+                        SELECT e.label AS edge_label,
+                               src.label AS source_label,
+                               tgt.label AS target_label
+                        FROM hypergraph_incidence i
+                        JOIN hypergraph_edge e ON e.id = i.edge_id
+                        LEFT JOIN hypergraph_incidence si ON si.edge_id = e.id AND si.role = 'source'
+                        LEFT JOIN hypergraph_node src ON src.id = si.node_id
+                        LEFT JOIN hypergraph_incidence ti ON ti.edge_id = e.id AND ti.role = 'target'
+                        LEFT JOIN hypergraph_node tgt ON tgt.id = ti.node_id
+                        WHERE i.node_id = ?
+                        LIMIT 5
+                        """
+                    let rows = try Row.fetchAll(db, sql: sql, arguments: [node.id])
+                    return rows.map { row in
+                        let src: String = row["source_label"] ?? "?"
+                        let rel: String = row["edge_label"] ?? "?"
+                        let tgt: String = row["target_label"] ?? "?"
+                        return "\(src) -> \(rel) -> \(tgt)"
+                    }.joined(separator: "; ")
+                }
+                return "ID \(node.id!): \"\(node.label)\" [relationships: \(edges.isEmpty ? "none" : edges)]"
+            }.joined(separator: "\n")
+
+            let session = LanguageModelSession(instructions: Instructions(config.prompt))
+            let response = try await session.respond(
+                to: Prompt("Classify these entities:\n\(nodeDescriptions)"),
+                generating: GenerableClassificationBatch.self
+            )
+
+            // No manual JSON parsing needed -- result is already typed
+            var classified = 0
+            try database.write { db in
+                for item in response.content.classifications {
+                    try db.execute(
+                        sql: "UPDATE hypergraph_node SET node_type = ? WHERE id = ? AND node_type IS NULL",
+                        arguments: [item.type, Int64(item.node_id)]
+                    )
+                    classified += 1
+                }
+            }
+
+            logger.info("Batch \(batchIndex): classified \(classified)/\(nodes.count) nodes (on-device)")
+            return classified
+        } catch {
+            logger.error("On-device batch \(batchIndex) failed: \(error.localizedDescription, privacy: .public)")
+            return 0
+        }
+        #else
+        logger.error("Foundation Models not available -- cannot classify on-device")
+        return 0
+        #endif
+    }
+
     // MARK: - LLM
 
     // LLM calls use the shared OpenRouterService instance passed to classifyBatch
@@ -293,11 +410,13 @@ final class NodeClassificationService: Sendable {
 enum ClassificationError: LocalizedError {
     case noApiKey
     case noUntypedNodes
+    case onDeviceUnavailable
 
     var errorDescription: String? {
         switch self {
         case .noApiKey: "OpenRouter API key not configured."
         case .noUntypedNodes: "All nodes are already classified."
+        case .onDeviceUnavailable: "On-device Foundation Model is not available. Check Apple Intelligence settings."
         }
     }
 }

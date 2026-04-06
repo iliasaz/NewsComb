@@ -219,6 +219,20 @@ extension AppSettings {
     Preserve technical terms, product names, and company names exactly as written.
     """
 
+    // MARK: - On-Device (Foundation Models) Settings
+    static let onDeviceChunkSize = "on_device_chunk_size"
+    static let defaultOnDeviceChunkSize = 600
+    static let onDeviceExtractionPrompt = "on_device_extraction_prompt"
+    static let defaultOnDeviceExtractionPrompt = """
+        Extract entity relationships as Subject-Verb-Object triples from the text. \
+        Use full entity names, never pronouns. Focus on companies, products, people, \
+        and their actions.
+        """
+
+    // MARK: - Classification Provider
+    static let simClassificationProvider = "sim_classification_provider"
+    static let defaultSimClassificationProvider = "openrouter"
+
     // MARK: - Entity Classification
     static let simClassificationModel = "sim_classification_model"
     static let defaultSimClassificationModel = "openai/gpt-4.1-nano"
