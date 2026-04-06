@@ -63,6 +63,7 @@ fastlane/test_output
 
 # Claude Code local settings
 .claude/
+.mcp.json
 
 # Build artifacts
 build/
