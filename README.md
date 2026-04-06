@@ -54,15 +54,9 @@ After this one-time setup, the app will open normally.
 
 ## Setup
 
-### Embeddings (Required)
+### Embeddings
 
-NewsComb uses local embeddings for the knowledge graph. You need to install Ollama and download the nomic-embed-text model:
-
-1. Install [Ollama](https://ollama.com/download)
-2. Open Terminal and run:
-   ```bash
-   ollama pull nomic-embed-text:v1.5
-   ```
+NewsComb uses on-device Nomic embeddings by default for the knowledge graph — no external service required. Alternatively, you can select an OpenRouter embeddings model in Settings.
 
 ### LLM Providers
 
@@ -167,12 +161,11 @@ Add the same configuration to your Claude Desktop settings file:
 1. **NewsComb must be running** — launch the app before starting Claude Code. The MCP HTTP server starts automatically on app launch.
 2. The app must have RSS sources configured and articles fetched
 3. The knowledge extraction pipeline must have processed at least some articles (check Settings for extraction status)
-4. Ollama with `nomic-embed-text:v1.5` must be running for `query_knowledge_graph` (vector search)
 
 ### Limitations
 
 - All access is read-only — the MCP server cannot modify your knowledge graph or RSS sources
-- `query_knowledge_graph` requires Ollama to be running for on-device embeddings; other tools work without it
+- `query_knowledge_graph` uses on-device Nomic embeddings by default (or OpenRouter if configured in Settings); other tools work without embeddings
 - The bridge exits with an error if the app is not running
 
 ## Credits & Acknowledgements
