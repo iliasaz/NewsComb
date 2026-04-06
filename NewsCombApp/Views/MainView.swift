@@ -431,7 +431,7 @@ struct MainView: View {
                 NavigationLink(value: "graphrag") {
                     Label {
                         VStack(alignment: .leading) {
-                            Text("Ask Your News")
+                            Text("Ask Your Knowledge Graph")
                                 .font(.headline)
                             Text("Query your knowledge graph")
                                 .font(.caption)

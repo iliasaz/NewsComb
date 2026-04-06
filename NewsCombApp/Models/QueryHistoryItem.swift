@@ -6,6 +6,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     var id: Int64?
     let query: String
     let answer: String
+    var title: String?
     let relatedNodesJson: String?
     let reasoningPathsJson: String?
     let graphPathsJson: String?
@@ -19,7 +20,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     static let databaseTableName = "query_history"
 
     enum Columns: String, ColumnExpression {
-        case id, query, answer
+        case id, query, answer, title
         case relatedNodesJson = "related_nodes_json"
         case reasoningPathsJson = "reasoning_paths_json"
         case graphPathsJson = "graph_paths_json"
@@ -32,7 +33,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, query, answer
+        case id, query, answer, title
         case relatedNodesJson = "related_nodes_json"
         case reasoningPathsJson = "reasoning_paths_json"
         case graphPathsJson = "graph_paths_json"
@@ -48,6 +49,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         id: Int64? = nil,
         query: String,
         answer: String,
+        title: String? = nil,
         relatedNodesJson: String? = nil,
         reasoningPathsJson: String? = nil,
         graphPathsJson: String? = nil,
@@ -61,6 +63,7 @@ struct QueryHistoryItem: Identifiable, Hashable, Codable, FetchableRecord, Persi
         self.id = id
         self.query = query
         self.answer = answer
+        self.title = title
         self.relatedNodesJson = relatedNodesJson
         self.reasoningPathsJson = reasoningPathsJson
         self.graphPathsJson = graphPathsJson

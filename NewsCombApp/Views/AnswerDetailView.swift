@@ -1,8 +1,11 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// View for displaying a question/answer, either from history or from a live progressive query.
 struct AnswerDetailView: View {
     @State private var viewModel: AnswerDetailViewModel
+    @State private var exportDocument: MarkdownExportDocument?
+    @State private var isExporting = false
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
@@ -69,6 +72,23 @@ struct AnswerDetailView: View {
             .animation(.easeInOut(duration: 0.3), value: viewModel.isCompleted)
         }
         .navigationTitle("Answer")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Export", systemImage: "square.and.arrow.up") {
+                    exportDocument = MarkdownExportDocument(text: viewModel.exportMarkdown())
+                    isExporting = true
+                }
+                .disabled(viewModel.answerText.isEmpty)
+            }
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: MarkdownExportDocument.markdownType,
+            defaultFilename: MarkdownExportService.sanitizeFilename(viewModel.questionTitle ?? viewModel.question) + ".md"
+        ) { _ in
+            exportDocument = nil
+        }
         .task {
             await viewModel.startPipeline()
         }
@@ -303,13 +323,15 @@ struct AnswerDetailView: View {
                         DeepAnalysisResultView(result: result)
                     }
 
-                    // Always show the analyze button when LLM is configured
+                    // Question input and analyze button
                     VStack(alignment: .leading, spacing: 12) {
-                        if !viewModel.hasExistingAnalysis {
-                            Text("Use AI agents to synthesize insights with academic citations and generate hypotheses.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text("Ask a follow-up question to dive deeper, or leave empty to analyze the full answer.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        TextField("e.g. How does this relate to\u{2026}", text: $viewModel.diveDeepQuestion, axis: .vertical)
+                            .lineLimit(2...6)
+                            .textFieldStyle(.roundedBorder)
 
                         if viewModel.hasExistingAnalysis {
                             Button(viewModel.analyzeButtonLabel, systemImage: "sparkles") {
@@ -654,6 +676,32 @@ private struct FlowLayout: Layout {
         }
 
         return LayoutResult(size: CGSize(width: maxWidth, height: totalHeight), placements: placements)
+    }
+}
+
+// MARK: - Markdown Export Document
+
+/// A lightweight `FileDocument` wrapper for exporting a markdown string.
+struct MarkdownExportDocument: FileDocument {
+    static let markdownType = UTType(filenameExtension: "md") ?? .plainText
+    static var readableContentTypes: [UTType] { [markdownType] }
+
+    let text: String
+
+    init(text: String) {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        if let data = configuration.file.regularFileContents {
+            text = String(decoding: data, as: UTF8.self)
+        } else {
+            text = ""
+        }
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }
 

@@ -69,7 +69,7 @@ NewsComb uses local embeddings for the knowledge graph. You need to install Olla
 NewsComb uses two separate LLM configurations:
 
 1. **Knowledge Extraction LLM** — Used to extract entities and relationships from articles when building the knowledge graph
-2. **Analysis LLM** — Used for answering questions ("Ask Your News") and deep analysis ("Dive Deeper")
+2. **Analysis LLM** — Used for answering questions ("Ask Your Knowledge Graph") and deep analysis ("Dive Deeper")
 
 Both can be configured independently in Settings, allowing you to use different models for each task.
 

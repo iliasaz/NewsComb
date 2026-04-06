@@ -118,6 +118,31 @@ final class DeepAnalysisService: Sendable {
         )
     }
 
+    /// Generates a succinct short title suitable for a filename from the question and answer.
+    @MainActor
+    func generateTitle(question: String, answer: String) async throws -> String {
+        let systemPrompt = """
+            You are a concise title generator. Given a question and its answer, produce a single \
+            short title (maximum 8 words) that captures the main topic. Output ONLY the title text, \
+            nothing else. Do not use quotes, colons, or special characters.
+            """
+        let userPrompt = """
+            Question: \(question)
+
+            Answer (excerpt): \(String(answer.prefix(500)))
+            """
+
+        let raw = try await generateWithLLM(
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt
+        )
+        // Clean up: trim whitespace, remove any surrounding quotes the LLM might add
+        let cleaned = raw
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+        return cleaned
+    }
+
     // MARK: - Agent Prompts
 
     private struct AgentPrompts {

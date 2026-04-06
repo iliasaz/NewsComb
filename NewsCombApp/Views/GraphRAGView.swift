@@ -13,7 +13,7 @@ struct GraphRAGView: View {
 
             emptyStateSection
         }
-        .navigationTitle("Ask Your News")
+        .navigationTitle("Ask Your Knowledge Graph")
         .navigationDestination(item: Binding<LiveQueryNavigation?>(
             get: { viewModel.pendingLiveQuery },
             set: { viewModel.pendingLiveQuery = $0 }

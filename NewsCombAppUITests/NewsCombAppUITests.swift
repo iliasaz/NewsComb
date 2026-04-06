@@ -113,33 +113,33 @@ final class NewsCombAppUITests: XCTestCase {
     }
 
     @MainActor
-    func testNavigationToAskYourNews() throws {
-        // "Ask Your News" only appears when knowledge graph has data
+    func testNavigationToAskYourKnowledgeGraph() throws {
+        // "Ask Your Knowledge Graph" only appears when knowledge graph has data
         // Look for the text if it exists
-        let askYourNewsText = app.staticTexts["Ask Your News"].firstMatch
+        let askYourKnowledgeGraphText = app.staticTexts["Ask Your Knowledge Graph"].firstMatch
 
         // If it exists, test navigation
-        if askYourNewsText.waitForExistence(timeout: 3) {
-            askYourNewsText.tap()
+        if askYourKnowledgeGraphText.waitForExistence(timeout: 3) {
+            askYourKnowledgeGraphText.tap()
 
-            // Should navigate to the Ask Your News view - look for back button
+            // Should navigate to the Ask Your Knowledge Graph view - look for back button
             let backButton = app.navigationBars.buttons.element(boundBy: 0)
-            XCTAssertTrue(backButton.waitForExistence(timeout: 5), "Back button should appear after navigating to Ask Your News")
+            XCTAssertTrue(backButton.waitForExistence(timeout: 5), "Back button should appear after navigating to Ask Your Knowledge Graph")
 
-            // Verify we're on the Ask Your News page by checking for the Ask button
+            // Verify we're on the Ask Your Knowledge Graph page by checking for the Ask button
             let askButton = app.buttons["Ask"]
-            XCTAssertTrue(askButton.waitForExistence(timeout: 3), "Ask button should exist on Ask Your News view")
+            XCTAssertTrue(askButton.waitForExistence(timeout: 3), "Ask button should exist on Ask Your Knowledge Graph view")
         }
-        // If Ask Your News doesn't exist (no knowledge graph), test passes
+        // If Ask Your Knowledge Graph doesn't exist (no knowledge graph), test passes
     }
 
     @MainActor
-    func testNavigationBackFromAskYourNews() throws {
-        // "Ask Your News" only appears when knowledge graph has data
-        let askYourNewsText = app.staticTexts["Ask Your News"].firstMatch
+    func testNavigationBackFromAskYourKnowledgeGraph() throws {
+        // "Ask Your Knowledge Graph" only appears when knowledge graph has data
+        let askYourKnowledgeGraphText = app.staticTexts["Ask Your Knowledge Graph"].firstMatch
 
-        if askYourNewsText.waitForExistence(timeout: 3) {
-            askYourNewsText.tap()
+        if askYourKnowledgeGraphText.waitForExistence(timeout: 3) {
+            askYourKnowledgeGraphText.tap()
 
             // Wait for navigation
             let backButton = app.navigationBars.buttons.element(boundBy: 0)
@@ -149,7 +149,7 @@ final class NewsCombAppUITests: XCTestCase {
             backButton.tap()
 
             // Verify we're back at main view
-            XCTAssertTrue(askYourNewsText.waitForExistence(timeout: 5), "Should be back at main view with Ask Your News visible")
+            XCTAssertTrue(askYourKnowledgeGraphText.waitForExistence(timeout: 5), "Should be back at main view with Ask Your Knowledge Graph visible")
         }
     }
 

@@ -32,6 +32,9 @@ final class AnswerDetailViewModel {
     /// When the answer was generated.
     private(set) var generatedAt: Date?
 
+    /// LLM-generated short title for the question, used as the export filename.
+    private(set) var questionTitle: String?
+
     // MARK: - Pipeline State
 
     /// Whether this view model is running a live query pipeline.
@@ -66,6 +69,10 @@ final class AnswerDetailViewModel {
     /// Streaming text from the Hypothesizer agent (hypotheses).
     private(set) var streamingHypotheses: String = ""
 
+    /// The user's custom question for the Dive Deeper analysis.
+    /// When empty, the original question is used.
+    var diveDeepQuestion: String = ""
+
     // MARK: - Internal
 
     /// The persisted history item (set after history init or after pipeline completion).
@@ -97,6 +104,7 @@ final class AnswerDetailViewModel {
         self.sourceArticles = response.sourceArticles
         self.generatedAt = response.generatedAt
         self.isCompleted = true
+        self.questionTitle = historyItem.title
         self.deepAnalysisResult = historyItem.toDeepAnalysisResult()
     }
 
@@ -176,7 +184,7 @@ final class AnswerDetailViewModel {
 
     // MARK: - History Persistence
 
-    /// Persists the completed response to query history.
+    /// Persists the completed response to query history, then generates a title in the background.
     private func persistToHistory(_ response: GraphRAGResponse) {
         do {
             try queryHistoryService.save(response)
@@ -186,8 +194,37 @@ final class AnswerDetailViewModel {
                 historyItem = saved
             }
             logger.info("Pipeline result saved to history")
+
+            // Generate a short title in the background
+            Task {
+                await generateAndSaveTitle()
+            }
         } catch {
             logger.error("Failed to save pipeline result: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Asks the LLM to produce a short title for the question/answer and persists it.
+    private func generateAndSaveTitle() async {
+        guard let itemId = historyItem?.id else { return }
+
+        do {
+            let title = try await deepAnalysisService.generateTitle(
+                question: question,
+                answer: answerText
+            )
+            questionTitle = title
+
+            try database.write { db in
+                try db.execute(
+                    sql: "UPDATE query_history SET title = ? WHERE id = ?",
+                    arguments: [title, itemId]
+                )
+            }
+            historyItem?.title = title
+            logger.info("Generated title: \(title, privacy: .public)")
+        } catch {
+            logger.warning("Title generation failed (non-critical): \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -219,7 +256,11 @@ final class AnswerDetailViewModel {
         streamingSynthesis = ""
         streamingHypotheses = ""
 
-        logger.info("Starting deep analysis for query: \(self.question, privacy: .public)")
+        let effectiveQuestion = diveDeepQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? question
+            : diveDeepQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        logger.info("Starting deep analysis for query: \(effectiveQuestion, privacy: .public)")
 
         // Load the active user role
         let activeRole = try? userRoleService.fetchActive()
@@ -229,7 +270,7 @@ final class AnswerDetailViewModel {
 
         do {
             let result = try await deepAnalysisService.analyze(
-                question: question,
+                question: effectiveQuestion,
                 initialAnswer: answerText,
                 relatedNodes: relatedNodes,
                 reasoningPaths: reasoningPaths,
@@ -261,6 +302,39 @@ final class AnswerDetailViewModel {
         }
 
         isAnalyzing = false
+    }
+
+    // MARK: - Export
+
+    /// Builds a Markdown representation of the answer, deep analysis, and sources.
+    func exportMarkdown() -> String {
+        var md = "# \(question)\n\n"
+
+        // Answer
+        if !answerText.isEmpty {
+            md += "## Answer\n\n\(answerText)\n\n"
+        }
+
+        // Deep Analysis
+        if let result = deepAnalysisResult {
+            md += "## Synthesized Analysis\n\n\(result.synthesizedAnswer)\n\n"
+            md += "## Hypotheses & Experiments\n\n\(result.hypotheses)\n\n"
+        }
+
+        // Sources
+        if !sourceArticles.isEmpty {
+            md += "## Sources\n\n"
+            for article in sourceArticles {
+                if let link = article.link, !link.isEmpty {
+                    md += "- [\(article.title)](\(link))\n"
+                } else {
+                    md += "- \(article.title)\n"
+                }
+            }
+            md += "\n"
+        }
+
+        return md
     }
 
     /// Saves the deep analysis result to the database.

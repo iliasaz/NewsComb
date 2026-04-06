@@ -300,6 +300,18 @@ public final class Database: Sendable {
                 // Column might already exist, ignore error
             }
 
+            // Add title column to query_history for LLM-generated short titles
+            do {
+                let titleExists = try db.columns(in: "query_history").contains { $0.name == "title" }
+                if !titleExists {
+                    try db.execute(sql: """
+                        ALTER TABLE query_history ADD COLUMN title TEXT;
+                    """)
+                }
+            } catch {
+                // Column might already exist, ignore error
+            }
+
             // Add df and idf columns to hypergraph_node for TF-IDF weighting
             do {
                 let dfExists = try db.columns(in: "hypergraph_node").contains { $0.name == "df" }
