@@ -2,7 +2,18 @@
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that exposes NewsComb's knowledge intelligence features to AI assistants like Claude Code, Claude Work, and Codex.
 
-Use the NewsComb app for the GUI experience — feed management, visual graph exploration, theme browsing — and the MCP server for agent-powered research workflows. Both run simultaneously, sharing the same knowledge graph.
+Use the NewsComb app for the GUI experience — feed management, visual graph exploration, theme browsing — and the MCP server for agent-powered research workflows. Both run simultaneously in the same process, sharing all services.
+
+## Architecture
+
+The MCP server runs **inside the NewsComb app process** alongside the SwiftUI GUI. When the app launches, it starts a stdio MCP server on a background task. This means:
+
+- **Zero code duplication** — the MCP tools use the same `NomicEmbeddingService.shared`, `HypergraphPathService`, `Database.shared`, and `ContextCollector` that the GUI uses
+- **Shared Nomic model** — the 768-dim embedding model is loaded once and shared between the GUI's GraphRAG queries and MCP tool calls
+- **Live data** — MCP tools always see the latest ingested articles, embeddings, and clusters
+- **The app must be running** for the MCP server to be available
+
+The MCP server source lives in `NewsCombApp/MCP/` within the main app target.
 
 ## Features
 
@@ -21,56 +32,46 @@ Use the NewsComb app for the GUI experience — feed management, visual graph ex
 ## Prerequisites
 
 - macOS 26+ with Swift 6.2+ (Apple Silicon recommended for GPU-accelerated embeddings)
-- **The NewsComb app must be running** — it manages RSS ingestion, knowledge extraction, and keeps the database up to date. Launch the app first, then connect your MCP client.
-- The Nomic Embed Text v1.5 model is downloaded automatically from Hugging Face Hub on first use of `query_knowledge_graph`
+- The NewsComb app built and running (it manages RSS ingestion, knowledge extraction, and hosts the MCP server)
+- The Nomic Embed Text v1.5 model is downloaded automatically from Hugging Face Hub on first use
 
-## Quick Start
+## Setup
 
-### 1. Build the server
+### 1. Build and run the NewsComb app
+
+Open `NewsCombApp.xcodeproj` in Xcode and run the app. The MCP server starts automatically on launch.
+
+### 2. Find the app binary path
+
+The app binary is inside the built `.app` bundle. To find it:
 
 ```bash
-cd /path/to/NewsComb/NewsCombMCP
-swift build -c release
+# After building in Xcode (Debug):
+find ~/Library/Developer/Xcode/DerivedData -name "NewsCombApp" -type f -path "*/Build/Products/Debug/*" 2>/dev/null | head -1
 ```
 
-The binary is at `.build/release/newscomb-mcp`.
-
-### 2. Launch the NewsComb app
-
-Open NewsComb.app and ensure your feeds are ingested and knowledge extraction has run. The MCP server reads the same database the app writes to.
+Or for a Release build, archive and export the app, then the binary is at:
+```
+/path/to/NewsCombApp.app/Contents/MacOS/NewsCombApp
+```
 
 ### 3. Configure your MCP client
 
 #### Claude Code
 
-Create or edit `.mcp.json` in your project root (recommended for project-scoped access):
+Create or edit `.mcp.json` in your project root:
 
 ```json
 {
   "mcpServers": {
     "newscomb": {
-      "command": "/path/to/NewsComb/NewsCombMCP/.build/release/newscomb-mcp"
+      "command": "/path/to/NewsCombApp.app/Contents/MacOS/NewsCombApp"
     }
   }
 }
 ```
 
 Or add to `~/.claude/settings.json` for global access across all projects.
-
-If your database is in a non-default location:
-
-```json
-{
-  "mcpServers": {
-    "newscomb": {
-      "command": "/path/to/NewsComb/NewsCombMCP/.build/release/newscomb-mcp",
-      "env": {
-        "NEWSCOMB_DB_PATH": "/path/to/newscomb.sqlite"
-      }
-    }
-  }
-}
-```
 
 #### Claude Desktop
 
@@ -80,7 +81,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "newscomb": {
-      "command": "/path/to/NewsComb/NewsCombMCP/.build/release/newscomb-mcp"
+      "command": "/path/to/NewsCombApp.app/Contents/MacOS/NewsCombApp"
     }
   }
 }
@@ -90,20 +91,11 @@ Restart Claude Desktop to pick up the new server.
 
 ### 4. Verify
 
-After restarting your MCP client, the tools should appear automatically. Try:
+After configuring, try:
 
 > "What tools do you have from newscomb?"
 
 > "Use query_knowledge_graph to tell me about recent AI chip developments"
-
-## Database Location
-
-The server automatically looks for the database at:
-```
-~/Library/Application Support/NewsComb/newscomb.sqlite
-```
-
-This is the default location used by the NewsComb app. The server opens it in **read-only** mode, so it runs safely alongside the app with no risk of conflicts. Override with `NEWSCOMB_DB_PATH` if needed.
 
 ## Example Workflows
 
@@ -134,22 +126,15 @@ For more targeted research, the assistant can use the individual tools:
 1. `get_statistics` — knowledge graph overview
 2. `get_recent_articles` — latest ingested content
 
-## Architecture
+## Standalone Executable (Legacy)
 
-The MCP server is currently a **standalone CLI executable** that communicates via stdio transport. It reads the same SQLite database that the NewsComb app writes to.
+The `NewsCombMCP/` directory contains a standalone SPM executable that was the original MCP server implementation. It duplicates app services (embedding, BFS, SQL queries) and is no longer the recommended approach. It may be removed in a future release.
 
-### Current design
+## Dependencies
 
-The server reimplements some app components (embedding service, BFS path finding, SQL queries) to operate independently. This means the Nomic model is loaded separately in the MCP process.
-
-### Future direction
-
-The plan is to move the MCP server into the main app process itself — the app would host a stdio MCP server alongside its SwiftUI GUI, similar to how Xcode exposes MCP tools. This eliminates all code duplication and lets the MCP server use the app's services directly (shared Nomic model, `GraphRAGService`, `HypergraphPathService`, etc.). A command-line flag (e.g., `--mcp-stdio`) would let MCP clients launch the app in headless server mode when it isn't already running.
-
-### Dependencies
+The MCP server uses these frameworks (all part of the main app):
 
 - **GRDBCustom** — GRDB with **sqlite-vec** compiled in for `vec_distance_cosine()` vector similarity search
 - **swift-embeddings** — on-device Nomic Embed Text v1.5 (768-dim) embeddings via Apple MLTensor/GPU
 - **MCP Swift SDK** — Model Context Protocol server implementation with stdio transport
-- **FTS5** — SQLite full-text search indexes for concept and chunk search
-- **BFS** — breadth-first search over hypergraph edge adjacency for multi-hop reasoning paths
+- **HyperGraphReasoning** — BFS path finding over the hypergraph
