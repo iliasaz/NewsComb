@@ -5,6 +5,10 @@ struct NewsCombApp: App {
     init() {
         // Database is initialized lazily via Database.shared
         _ = Database.shared
+
+        // Start the MCP stdio server on a background task.
+        // AI assistants (Claude Code, Claude Desktop) can connect via stdio transport.
+        MCPServerService.shared.start()
     }
 
     var body: some Scene {

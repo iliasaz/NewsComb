@@ -14,6 +14,7 @@
 		491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000021 /* FeedKit */; };
 		491E2BE42F16EC2300D1840C /* PostlightSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000050 /* PostlightSwift */; };
 		8A0000000000000000000062 /* OPML in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000061 /* OPML */; };
+		490FA3962F1C8A0000BAEBFC /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3952F1C8A0000BAEBFC /* MCP */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -95,6 +96,7 @@
 				490FA38E2F1B7D1200BAEBFC /* SQLiteExtensions in Frameworks */,
 				491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */,
 				8A0000000000000000000062 /* OPML in Frameworks */,
+				490FA3962F1C8A0000BAEBFC /* MCP in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -171,6 +173,7 @@
 				490FA3902F1B7E1000BAEBFC /* HyperGraphReasoning */,
 				490FA3932F1B7E2000BAEBFC /* Embeddings */,
 				8A0000000000000000000061 /* OPML */,
+				490FA3952F1C8A0000BAEBFC /* MCP */,
 			);
 			productName = NewsCombApp;
 			productReference = 8A0000000000000000000001 /* NewsCombApp.app */;
@@ -257,6 +260,7 @@
 				490FA38F2F1B7E1000BAEBFC /* XCLocalSwiftPackageReference "../HyperGraphReasoning/hypergraph-reasoning-swift" */,
 				490FA3922F1B7E2000BAEBFC /* XCRemoteSwiftPackageReference "swift-embeddings" */,
 				8A0000000000000000000060 /* XCRemoteSwiftPackageReference "swift-opml" */,
+				490FA3942F1C8A0000BAEBFC /* XCRemoteSwiftPackageReference "swift-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8A0000000000000000000005 /* Products */;
@@ -692,6 +696,14 @@
 				minimumVersion = 1.0.0;
 			};
 		};
+		490FA3942F1C8A0000BAEBFC /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/modelcontextprotocol/swift-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.11.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -726,6 +738,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8A0000000000000000000060 /* XCRemoteSwiftPackageReference "swift-opml" */;
 			productName = OPML;
+		};
+		490FA3952F1C8A0000BAEBFC /* MCP */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 490FA3942F1C8A0000BAEBFC /* XCRemoteSwiftPackageReference "swift-sdk" */;
+			productName = MCP;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
