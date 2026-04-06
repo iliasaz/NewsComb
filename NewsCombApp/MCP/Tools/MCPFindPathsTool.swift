@@ -5,7 +5,7 @@ import MCP
 /// Finds multi-hop reasoning paths between two concepts using BFS.
 /// Reuses the app's `HypergraphPathService` for the actual BFS traversal.
 enum MCPFindPathsTool {
-    static func run(arguments: [String: Value]) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
         guard let source = arguments["source"]?.stringValue, !source.isEmpty else {
             throw MCPToolError.missingParameter("source")
         }
@@ -14,8 +14,6 @@ enum MCPFindPathsTool {
         }
         let maxDepth = arguments["max_depth"]?.intValue ?? 4
         let maxPaths = arguments["max_paths"]?.intValue ?? 3
-
-        let database = Database.shared
 
         // Find source and target node IDs
         let (sourceId, sourceLabel) = try database.read { db -> (Int64, String) in

@@ -4,13 +4,13 @@ import MCP
 
 /// Searches article text chunks using FTS5.
 enum MCPSearchChunksTool {
-    static func run(arguments: [String: Value]) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
         guard let query = arguments["query"]?.stringValue, !query.isEmpty else {
             throw MCPToolError.missingParameter("query")
         }
         let limit = arguments["limit"]?.intValue ?? 10
 
-        let results = try Database.shared.read { db in
+        let results = try database.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT ac.id, ac.chunk_index, ac.content,
                        fi.title AS article_title, fi.link AS article_link,

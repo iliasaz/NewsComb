@@ -4,8 +4,8 @@ import MCP
 
 /// Returns knowledge graph statistics.
 enum MCPGetStatisticsTool {
-    static func run(arguments: [String: Value]) throws -> String {
-        try Database.shared.read { db in
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
+        try database.read { db in
             let nodeCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM hypergraph_node") ?? 0
             let edgeCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM hypergraph_edge") ?? 0
             let processedArticles = try Int.fetchOne(db, sql: """

@@ -4,13 +4,13 @@ import MCP
 
 /// Gets all edges (relationships) connected to a node, showing neighbors and provenance.
 enum MCPGetNodeNeighborsTool {
-    static func run(arguments: [String: Value]) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
         guard let nodeLabel = arguments["node_label"]?.stringValue, !nodeLabel.isEmpty else {
             throw MCPToolError.missingParameter("node_label")
         }
         let limit = arguments["limit"]?.intValue ?? 30
 
-        let (node, edges) = try Database.shared.read { db -> (Row?, [Row]) in
+        let (node, edges) = try database.read { db -> (Row?, [Row]) in
             let nodeRow = try Row.fetchOne(db, sql: """
                 SELECT id, label, node_type, df
                 FROM hypergraph_node

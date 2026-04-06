@@ -4,13 +4,13 @@ import MCP
 
 /// Searches for entities/concepts in the knowledge graph using FTS5.
 enum MCPSearchConceptsTool {
-    static func run(arguments: [String: Value]) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
         guard let query = arguments["query"]?.stringValue, !query.isEmpty else {
             throw MCPToolError.missingParameter("query")
         }
         let limit = arguments["limit"]?.intValue ?? 20
 
-        let results = try Database.shared.read { db in
+        let results = try database.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT hn.id, hn.label, hn.node_type, hn.df, rank
                 FROM fts_node

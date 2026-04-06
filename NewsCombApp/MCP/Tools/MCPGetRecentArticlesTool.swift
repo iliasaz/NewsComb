@@ -4,11 +4,11 @@ import MCP
 
 /// Lists recently ingested articles from RSS feeds.
 enum MCPGetRecentArticlesTool {
-    static func run(arguments: [String: Value]) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
         let limit = arguments["limit"]?.intValue ?? 20
         let sourceFilter = arguments["source"]?.stringValue
 
-        let results = try Database.shared.read { db -> [Row] in
+        let results = try database.read { db -> [Row] in
             if let sourceFilter, !sourceFilter.isEmpty {
                 return try Row.fetchAll(db, sql: """
                     SELECT fi.id, fi.title, fi.link, fi.pub_date,

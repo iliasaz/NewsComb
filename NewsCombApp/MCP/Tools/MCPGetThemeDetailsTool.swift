@@ -4,12 +4,12 @@ import MCP
 
 /// Gets detailed information about a specific theme cluster.
 enum MCPGetThemeDetailsTool {
-    static func run(arguments: [String: Value]) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
         guard let clusterId = arguments["cluster_id"]?.intValue else {
             throw MCPToolError.missingParameter("cluster_id")
         }
 
-        return try Database.shared.read { db -> String in
+        return try database.read { db -> String in
             guard let cluster = try Row.fetchOne(db, sql: """
                 SELECT cluster_id, label, size, summary,
                        top_entities_json, top_rel_families_json

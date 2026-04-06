@@ -14,7 +14,7 @@ import MCP
 /// Returns assembled context for the MCP client to synthesize — does NOT generate an LLM answer.
 enum MCPQueryKnowledgeGraphTool {
 
-    static func run(arguments: [String: Value]) async throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) async throws -> String {
         guard let question = arguments["question"]?.stringValue, !question.isEmpty else {
             throw MCPToolError.missingParameter("question")
         }
@@ -35,7 +35,7 @@ enum MCPQueryKnowledgeGraphTool {
         for keyword in keywords {
             let embedding = try await NomicEmbeddingService.shared.embed(keyword)
             let embeddingData = embedding.withUnsafeBufferPointer { Data(buffer: $0) }
-            let nodes = try findSimilarNodes(queryEmbedding: embeddingData, limit: maxNodes)
+            let nodes = try findSimilarNodes(queryEmbedding: embeddingData, limit: maxNodes, database: database)
             for node in nodes where !seenNodeIds.contains(node.id) {
                 seenNodeIds.insert(node.id)
                 allNodes.append(node)
@@ -62,19 +62,19 @@ enum MCPQueryKnowledgeGraphTool {
         )
 
         // Step 5: Gather edges for the nodes
-        let edges = try findEdgesForNodes(nodeIds: nodeIds)
+        let edges = try findEdgesForNodes(nodeIds: nodeIds, database: database)
 
         // Step 6: Find similar chunks (with provenance fallback)
-        var chunks = try findSimilarChunks(queryEmbedding: questionEmbeddingData, limit: maxChunks)
+        var chunks = try findSimilarChunks(queryEmbedding: questionEmbeddingData, limit: maxChunks, database: database)
         if chunks.isEmpty {
-            chunks = try findChunksFromProvenance(nodeIds: nodeIds, limit: maxChunks)
+            chunks = try findChunksFromProvenance(nodeIds: nodeIds, limit: maxChunks, database: database)
         }
 
         // Step 7: Find source articles
-        let articles = try findSourceArticles(nodeIds: nodeIds)
+        let articles = try findSourceArticles(nodeIds: nodeIds, database: database)
 
         // Format reasoning paths
-        let reasoningPaths = try formatReasoningPaths(pathReports)
+        let reasoningPaths = try formatReasoningPaths(pathReports, database: database)
 
         return formatContext(
             question: question,
@@ -89,7 +89,7 @@ enum MCPQueryKnowledgeGraphTool {
 
     // MARK: - Keyword Extraction
 
-    private static func extractKeywords(from question: String) -> [String] {
+    static func extractKeywords(from question: String) -> [String] {
         let stopwords: Set<String> = [
             "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
             "have", "has", "had", "do", "does", "did", "will", "would", "could",
@@ -129,8 +129,8 @@ enum MCPQueryKnowledgeGraphTool {
 
     private static let similarityThreshold: Double = 0.5
 
-    private static func findSimilarNodes(queryEmbedding: Data, limit: Int) throws -> [NodeResult] {
-        try Database.shared.read { db in
+    private static func findSimilarNodes(queryEmbedding: Data, limit: Int, database: any MCPDatabaseReader) throws -> [NodeResult] {
+        try database.read { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT hn.id, hn.node_id, hn.label, hn.node_type,
                        vec_distance_cosine(ne.embedding, ?) as distance
@@ -147,8 +147,8 @@ enum MCPQueryKnowledgeGraphTool {
         }
     }
 
-    private static func findSimilarChunks(queryEmbedding: Data, limit: Int) throws -> [ChunkResult] {
-        try Database.shared.read { db in
+    private static func findSimilarChunks(queryEmbedding: Data, limit: Int, database: any MCPDatabaseReader) throws -> [ChunkResult] {
+        try database.read { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT ac.content, fi.title as article_title,
                        vec_distance_cosine(ce.embedding, ?) as distance
@@ -166,9 +166,9 @@ enum MCPQueryKnowledgeGraphTool {
         }
     }
 
-    private static func findChunksFromProvenance(nodeIds: [Int64], limit: Int) throws -> [ChunkResult] {
+    private static func findChunksFromProvenance(nodeIds: [Int64], limit: Int, database: any MCPDatabaseReader) throws -> [ChunkResult] {
         guard !nodeIds.isEmpty else { return [] }
-        return try Database.shared.read { db in
+        return try database.read { db in
             let placeholders = nodeIds.map { _ in "?" }.joined(separator: ", ")
             var args = nodeIds.map { $0 as DatabaseValueConvertible }
             args.append(limit)
@@ -192,9 +192,9 @@ enum MCPQueryKnowledgeGraphTool {
 
     // MARK: - Edge Gathering
 
-    private static func findEdgesForNodes(nodeIds: [Int64]) throws -> [EdgeResult] {
+    private static func findEdgesForNodes(nodeIds: [Int64], database: any MCPDatabaseReader) throws -> [EdgeResult] {
         guard !nodeIds.isEmpty else { return [] }
-        return try Database.shared.read { db in
+        return try database.read { db in
             let placeholders = nodeIds.map { _ in "?" }.joined(separator: ", ")
             let rows = try Row.fetchAll(db, sql: """
                 SELECT he.id, he.edge_id, he.label, aep.chunk_text,
@@ -228,9 +228,9 @@ enum MCPQueryKnowledgeGraphTool {
 
     // MARK: - Source Articles
 
-    private static func findSourceArticles(nodeIds: [Int64]) throws -> [ArticleResult] {
+    private static func findSourceArticles(nodeIds: [Int64], database: any MCPDatabaseReader) throws -> [ArticleResult] {
         guard !nodeIds.isEmpty else { return [] }
-        return try Database.shared.read { db in
+        return try database.read { db in
             let placeholders = nodeIds.map { _ in "?" }.joined(separator: ", ")
             let rows = try Row.fetchAll(db, sql: """
                 SELECT DISTINCT fi.title, fi.link, fi.pub_date, rs.title AS source_name
@@ -252,14 +252,15 @@ enum MCPQueryKnowledgeGraphTool {
     // MARK: - Reasoning Path Formatting
 
     private static func formatReasoningPaths(
-        _ reports: [HypergraphPathService.PathReport]
+        _ reports: [HypergraphPathService.PathReport],
+        database: any MCPDatabaseReader
     ) throws -> [ReasoningPathResult] {
         var allEdgeIds: Set<Int64> = []
         for report in reports {
             for edgeId in report.edgePath { allEdgeIds.insert(edgeId) }
         }
 
-        let edgeRelations: [Int64: String] = try Database.shared.read { db in
+        let edgeRelations: [Int64: String] = try database.read { db in
             guard !allEdgeIds.isEmpty else { return [:] }
             let placeholders = allEdgeIds.map { _ in "?" }.joined(separator: ", ")
             let rows = try Row.fetchAll(db, sql: """
