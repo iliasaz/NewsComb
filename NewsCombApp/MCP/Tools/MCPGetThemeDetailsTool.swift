@@ -38,7 +38,7 @@ enum MCPGetThemeDetailsTool {
                !entities.isEmpty {
                 output += "### Top Entities\n"
                 for entity in entities.prefix(10) {
-                    output += "- \(entity.label) (score: \(entity.score, format: .number.precision(.fractionLength(2))))\n"
+                    output += "- \(entity.label) (score: \(entity.score.formatted(.number.precision(.fractionLength(2)))))\n"
                 }
                 output += "\n"
             }

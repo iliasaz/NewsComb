@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import HyperGraphReasoning
 import MCP
 
 /// Finds multi-hop reasoning paths between two concepts using BFS.
@@ -15,23 +16,19 @@ enum MCPFindPathsTool {
         let maxDepth = arguments["max_depth"]?.intValue ?? 4
         let maxPaths = arguments["max_paths"]?.intValue ?? 3
 
-        // Find source and target node IDs
-        let (sourceId, sourceLabel) = try database.read { db -> (Int64, String) in
-            guard let row = try Row.fetchOne(db, sql: """
+        // Find source and target node IDs in a single read transaction for snapshot consistency
+        let (sourceId, sourceLabel, targetId, targetLabel) = try database.read { db -> (Int64, String, Int64, String) in
+            guard let sourceRow = try Row.fetchOne(db, sql: """
                 SELECT id, label FROM hypergraph_node WHERE LOWER(label) = LOWER(?)
             """, arguments: [source]) else {
                 throw MCPToolError.notFound("Source concept '\(source)' not found. Use search_concepts to find the correct label.")
             }
-            return (row["id"], row["label"])
-        }
-
-        let (targetId, targetLabel) = try database.read { db -> (Int64, String) in
-            guard let row = try Row.fetchOne(db, sql: """
+            guard let targetRow = try Row.fetchOne(db, sql: """
                 SELECT id, label FROM hypergraph_node WHERE LOWER(label) = LOWER(?)
             """, arguments: [target]) else {
                 throw MCPToolError.notFound("Target concept '\(target)' not found. Use search_concepts to find the correct label.")
             }
-            return (row["id"], row["label"])
+            return (sourceRow["id"], sourceRow["label"], targetRow["id"], targetRow["label"])
         }
 
         // Use the app's HypergraphPathService for BFS
@@ -70,7 +67,7 @@ enum MCPFindPathsTool {
             for row in rows {
                 let id: Int64 = row["id"]
                 let edgeIdStr: String = row["edge_id"]
-                let label = extractRelation(from: edgeIdStr) ?? row["label"] ?? "relates to"
+                let label = ContextCollector.extractRelation(from: edgeIdStr) ?? row["label"] ?? "relates to"
                 let nodeNames: String = row["node_names"] ?? ""
                 info[id] = (label, nodeNames.components(separatedBy: ", ").filter { !$0.isEmpty })
             }
@@ -91,7 +88,7 @@ enum MCPFindPathsTool {
 
                 // Show connecting node between consecutive edges
                 if i < report.edgePath.count - 1 {
-                    let hop = report.hops[safe: i]
+                    let hop = i < report.hops.count ? report.hops[i] : nil
                     if let intersections = hop?.intersectionNodes, !intersections.isEmpty {
                         output += "   ↓ via: \(intersections.joined(separator: ", "))\n"
                     }
@@ -101,20 +98,5 @@ enum MCPFindPathsTool {
         }
 
         return output
-    }
-
-    /// Extracts a human-readable relation from an edge_id string.
-    /// Edge ID format: "relation_chunkXXX_N" → "relation" with underscores → spaces.
-    private static func extractRelation(from edgeId: String?) -> String? {
-        guard let edgeId, let range = edgeId.range(of: "_chunk") else { return nil }
-        let prefix = String(edgeId[edgeId.startIndex..<range.lowerBound])
-        guard !prefix.isEmpty else { return nil }
-        return prefix.replacing("_", with: " ")
-    }
-}
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }

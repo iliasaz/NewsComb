@@ -4,6 +4,12 @@ import MCP
 
 /// Lists recently ingested articles from RSS feeds.
 enum MCPGetRecentArticlesTool {
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
     static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
         let limit = arguments["limit"]?.intValue ?? 20
         let sourceFilter = arguments["source"]?.stringValue
@@ -42,13 +48,12 @@ enum MCPGetRecentArticlesTool {
             return "No articles found. Articles are ingested by the NewsComb app's RSS feed refresh."
         }
 
-        var output = sourceFilter != nil
-            ? "Recent articles from '\(sourceFilter!)' (\(results.count)):\n\n"
-            : "Recent \(results.count) article(s):\n\n"
-
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .short
+        var output: String
+        if let sourceFilter {
+            output = "Recent articles from '\(sourceFilter)' (\(results.count)):\n\n"
+        } else {
+            output = "Recent \(results.count) article(s):\n\n"
+        }
 
         for row in results {
             let title: String = row["title"]
@@ -61,7 +66,7 @@ enum MCPGetRecentArticlesTool {
             if let sourceTitle { output += " (\(sourceTitle))" }
             if let pubDate {
                 let date = Date(timeIntervalSince1970: pubDate)
-                output += " — \(dateFormatter.string(from: date))"
+                output += " — \(Self.dateFormatter.string(from: date))"
             }
             if isProcessed == 1 { output += " [processed]" }
             if let link { output += "\n  \(link)" }
