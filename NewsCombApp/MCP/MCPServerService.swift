@@ -32,13 +32,23 @@ final class MCPServerService: Sendable {
     private func runServer() async {
         logger.info("Starting MCP HTTP server")
 
-        // Create transport with no validation — bridge is the only localhost client
-        let transport = StatelessHTTPServerTransport(
-            validationPipeline: StandardValidationPipeline(validators: []),
-            logger: nil
-        )
+        do {
+            let httpServer = try MCPHTTPServer(serverFactory: { transport in
+                await self.createServer(transport: transport)
+            })
+            httpServer.start()
+            logger.info("MCP HTTP server ready on http://127.0.0.1:\(MCPHTTPServer.defaultPort, privacy: .public)")
 
-        // Create MCP server
+            // Keep alive — the HTTP server runs until the app exits
+            try? await Task.sleep(for: .seconds(Double.greatestFiniteMagnitude))
+        } catch {
+            logger.error("MCP HTTP server failed to start: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Creates a new MCP Server instance with all tools registered.
+    /// Called by MCPHTTPServer for each new client session.
+    private func createServer(transport: StatelessHTTPServerTransport) async -> Server {
         let server = Server(
             name: "newscomb",
             version: "1.0.0",
@@ -73,31 +83,9 @@ final class MCPServerService: Sendable {
             )
         )
 
-        // Register tool handlers
         let toolHandler = MCPToolHandler()
         await toolHandler.register(on: server)
 
-        // Start MCP server on the transport
-        do {
-            try await server.start(transport: transport)
-            logger.info("MCP server connected to transport")
-        } catch {
-            logger.error("MCP server failed to start: \(error.localizedDescription, privacy: .public)")
-            return
-        }
-
-        // Start HTTP server that feeds requests to the transport
-        do {
-            let httpServer = try MCPHTTPServer(transport: transport)
-            httpServer.start()
-            logger.info("MCP HTTP server ready on http://127.0.0.1:\(MCPHTTPServer.defaultPort, privacy: .public)")
-
-            // Keep alive until the server completes
-            await server.waitUntilCompleted()
-            httpServer.stop()
-            logger.info("MCP server stopped")
-        } catch {
-            logger.error("MCP HTTP server failed to start: \(error.localizedDescription, privacy: .public)")
-        }
+        return server
     }
 }

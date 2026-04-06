@@ -2,21 +2,35 @@ import Foundation
 import MCP
 import Network
 import OSLog
+import Synchronization
 
 /// Minimal HTTP/1.1 server using Network framework for serving MCP over localhost.
 ///
 /// Listens on a configurable TCP port (default 63548) and forwards HTTP requests
-/// to a `StatelessHTTPServerTransport`. Only supports POST to the `/mcp` endpoint.
+/// to a `StatelessHTTPServerTransport`. Creates a fresh transport and MCP server
+/// for each new client session (detected by `initialize` requests), following the
+/// same pattern as the MCP SDK's reference `HTTPApp`.
 final class MCPHTTPServer: Sendable {
 
     static let defaultPort: UInt16 = 63548
 
+    /// Factory that creates and configures a new MCP `Server` for each client session.
+    typealias ServerFactory = @Sendable (StatelessHTTPServerTransport) async -> Server
+
     private let listener: NWListener
-    private let transport: StatelessHTTPServerTransport
+    private let serverFactory: ServerFactory
     private let logger = Logger(subsystem: "com.newscomb.app", category: "MCPHTTPServer")
 
-    init(transport: StatelessHTTPServerTransport, port: UInt16 = MCPHTTPServer.defaultPort) throws {
-        self.transport = transport
+    /// The current active session — replaced on each new `initialize` request.
+    private let session = Mutex<Session?>(nil)
+
+    private struct Session {
+        let transport: StatelessHTTPServerTransport
+        let server: Server
+    }
+
+    init(serverFactory: @escaping ServerFactory, port: UInt16 = MCPHTTPServer.defaultPort) throws {
+        self.serverFactory = serverFactory
 
         let params = NWParameters.tcp
         params.requiredLocalEndpoint = NWEndpoint.hostPort(
@@ -88,12 +102,71 @@ final class MCPHTTPServer: Sendable {
 
     private func dispatchRequest(_ request: MCP.HTTPRequest, on connection: NWConnection) {
         Task {
-            let response = await self.transport.handleRequest(request)
+            let transport = await self.resolveTransport(for: request)
+            let response = await transport.handleRequest(request)
             let httpData = self.formatHTTPResponse(response)
             connection.send(content: httpData, completion: .contentProcessed { _ in
                 connection.cancel()
             })
         }
+    }
+
+    /// Returns the transport for this request, creating a new session if this is an `initialize` request.
+    private func resolveTransport(for request: MCP.HTTPRequest) async -> StatelessHTTPServerTransport {
+        let isInitialize = request.body.flatMap { Self.isInitializeRequest($0) } ?? false
+
+        if isInitialize {
+            logger.info("New MCP client connecting — creating session")
+
+            // Tear down existing session
+            let oldSession = session.withLock { current -> Session? in
+                let old = current
+                current = nil
+                return old
+            }
+
+            if let oldSession {
+                await oldSession.transport.disconnect()
+            }
+
+            // Create fresh transport + server
+            let transport = StatelessHTTPServerTransport(
+                validationPipeline: StandardValidationPipeline(validators: []),
+                logger: nil
+            )
+            let server = await serverFactory(transport)
+
+            do {
+                try await server.start(transport: transport)
+            } catch {
+                logger.error("Failed to start MCP server for new session: \(error.localizedDescription, privacy: .public)")
+            }
+
+            let newSession = Session(transport: transport, server: server)
+            session.withLock { $0 = newSession }
+
+            return transport
+        }
+
+        // Return existing session's transport
+        if let current = session.withLock({ $0 }) {
+            return current.transport
+        }
+
+        // No session yet and not an initialize — create one anyway so we can return an error
+        logger.warning("Request received before initialize — returning temporary transport")
+        return StatelessHTTPServerTransport(
+            validationPipeline: StandardValidationPipeline(validators: []),
+            logger: nil
+        )
+    }
+
+    /// Checks if a JSON-RPC body contains an `initialize` method.
+    private static func isInitializeRequest(_ body: Data) -> Bool {
+        guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
+            return false
+        }
+        return (json["method"] as? String) == "initialize"
     }
 
     // MARK: - HTTP Parsing
