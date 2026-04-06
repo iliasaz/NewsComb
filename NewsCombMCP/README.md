@@ -2,9 +2,9 @@
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that exposes NewsComb's knowledge intelligence features to AI assistants like Claude Code, Claude Work, and Codex.
 
-## Features
+Use the NewsComb app for the GUI experience — feed management, visual graph exploration, theme browsing — and the MCP server for agent-powered research workflows. Both run simultaneously, sharing the same knowledge graph.
 
-The MCP server provides read-only access to NewsComb's knowledge graph:
+## Features
 
 | Tool | Description |
 |------|-------------|
@@ -21,19 +21,10 @@ The MCP server provides read-only access to NewsComb's knowledge graph:
 ## Prerequisites
 
 - macOS 26+ with Swift 6.2+ (Apple Silicon recommended for GPU-accelerated embeddings)
-- A populated NewsComb database (run the NewsComb app first to ingest feeds and extract knowledge)
-- The Nomic Embed Text v1.5 model will be downloaded automatically from Hugging Face Hub on first use of `query_knowledge_graph`
+- **The NewsComb app must be running** — it manages RSS ingestion, knowledge extraction, and keeps the database up to date. Launch the app first, then connect your MCP client.
+- The Nomic Embed Text v1.5 model is downloaded automatically from Hugging Face Hub on first use of `query_knowledge_graph`
 
-## Build
-
-```bash
-cd NewsCombMCP
-swift build -c release
-```
-
-The built binary will be at `.build/release/newscomb-mcp`.
-
-## Setup with Claude Code
+## Quick Start
 
 ### 1. Build the server
 
@@ -42,9 +33,17 @@ cd /path/to/NewsComb/NewsCombMCP
 swift build -c release
 ```
 
-### 2. Add to Claude Code configuration
+The binary is at `.build/release/newscomb-mcp`.
 
-Create or edit `.mcp.json` in your project root (or `~/.claude/settings.json` for global access):
+### 2. Launch the NewsComb app
+
+Open NewsComb.app and ensure your feeds are ingested and knowledge extraction has run. The MCP server reads the same database the app writes to.
+
+### 3. Configure your MCP client
+
+#### Claude Code
+
+Create or edit `.mcp.json` in your project root (recommended for project-scoped access):
 
 ```json
 {
@@ -56,9 +55,9 @@ Create or edit `.mcp.json` in your project root (or `~/.claude/settings.json` fo
 }
 ```
 
-Replace `/path/to/NewsComb` with the actual path to your NewsComb repository.
+Or add to `~/.claude/settings.json` for global access across all projects.
 
-If your database is in a non-default location, add an `env` block:
+If your database is in a non-default location:
 
 ```json
 {
@@ -73,17 +72,7 @@ If your database is in a non-default location, add an `env` block:
 }
 ```
 
-### 3. Verify in Claude Code
-
-After restarting Claude Code, the tools should appear automatically. You can verify by asking:
-
-> "What tools do you have from newscomb?"
-
-or:
-
-> "Use the newscomb query_knowledge_graph tool to tell me about recent AI developments"
-
-## Setup with Claude Desktop
+#### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -99,6 +88,14 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 Restart Claude Desktop to pick up the new server.
 
+### 4. Verify
+
+After restarting your MCP client, the tools should appear automatically. Try:
+
+> "What tools do you have from newscomb?"
+
+> "Use query_knowledge_graph to tell me about recent AI chip developments"
+
 ## Database Location
 
 The server automatically looks for the database at:
@@ -106,7 +103,7 @@ The server automatically looks for the database at:
 ~/Library/Application Support/NewsComb/newscomb.sqlite
 ```
 
-This is the default location used by the NewsComb app. Override it with the `NEWSCOMB_DB_PATH` environment variable if needed.
+This is the default location used by the NewsComb app. The server opens it in **read-only** mode, so it runs safely alongside the app with no risk of conflicts. Override with `NEWSCOMB_DB_PATH` if needed.
 
 ## Example Workflows
 
@@ -139,17 +136,19 @@ For more targeted research, the assistant can use the individual tools:
 
 ## Architecture
 
-This is a **standalone CLI executable** that communicates via stdio transport. It opens the NewsComb SQLite database in **read-only** mode, so it runs safely alongside the main NewsComb app.
+The MCP server is currently a **standalone CLI executable** that communicates via stdio transport. It reads the same SQLite database that the NewsComb app writes to.
 
-### Why a separate executable?
+### Current design
 
-MCP servers communicate over stdio (stdin/stdout) and run as headless CLI processes. The NewsComb app is a SwiftUI application with a GUI lifecycle, which makes it unsuitable as a stdio server host. The separate executable allows the MCP server to start and stop independently of the app.
+The server reimplements some app components (embedding service, BFS path finding, SQL queries) to operate independently. This means the Nomic model is loaded separately in the MCP process.
 
-The trade-off is some code duplication — the MCP server reimplements the embedding service, BFS path finding, and SQL queries that also exist in the main app. A future improvement would be to extract shared logic into a common Swift library target that both the app and the MCP server depend on.
+### Future direction
+
+The plan is to move the MCP server into the main app process itself — the app would host a stdio MCP server alongside its SwiftUI GUI, similar to how Xcode exposes MCP tools. This eliminates all code duplication and lets the MCP server use the app's services directly (shared Nomic model, `GraphRAGService`, `HypergraphPathService`, etc.). A command-line flag (e.g., `--mcp-stdio`) would let MCP clients launch the app in headless server mode when it isn't already running.
 
 ### Dependencies
 
-- **GRDBCustom** — local package providing GRDB with **sqlite-vec** compiled in for `vec_distance_cosine()` vector similarity search
+- **GRDBCustom** — GRDB with **sqlite-vec** compiled in for `vec_distance_cosine()` vector similarity search
 - **swift-embeddings** — on-device Nomic Embed Text v1.5 (768-dim) embeddings via Apple MLTensor/GPU
 - **MCP Swift SDK** — Model Context Protocol server implementation with stdio transport
 - **FTS5** — SQLite full-text search indexes for concept and chunk search
