@@ -2,11 +2,16 @@ import Foundation
 import MCP
 import OSLog
 
-/// Manages the MCP (Model Context Protocol) stdio server within the app process.
+/// Manages the MCP (Model Context Protocol) HTTP server within the app process.
 ///
-/// Starts automatically when the app launches, providing AI assistants (Claude Code,
-/// Claude Desktop, etc.) with read access to the knowledge graph via stdio transport.
-/// Reuses all existing app services — no code duplication.
+/// Starts an HTTP server on localhost that AI assistants (Claude Code, Claude Desktop)
+/// connect to via a lightweight stdio bridge. The bridge translates stdio ↔ HTTP,
+/// following the same pattern as Xcode's `mcpbridge`.
+///
+/// Architecture:
+/// ```
+/// Claude Code ←stdio→ newscomb-mcp-bridge ←HTTP→ NewsCombApp (localhost:63548)
+/// ```
 final class MCPServerService: Sendable {
 
     static let shared = MCPServerService()
@@ -15,9 +20,8 @@ final class MCPServerService: Sendable {
 
     private init() {}
 
-    /// Starts the MCP server on a background task.
-    /// The server reads stdin and writes stdout using the MCP protocol.
-    /// It runs until stdin closes (i.e., the MCP client disconnects).
+    /// Starts the MCP HTTP server.
+    /// The server listens on localhost:63548 for HTTP POST requests from the bridge CLI.
     func start() {
         Task.detached {
             await self.runServer()
@@ -26,8 +30,15 @@ final class MCPServerService: Sendable {
 
     @concurrent
     private func runServer() async {
-        logger.info("Starting MCP stdio server")
+        logger.info("Starting MCP HTTP server")
 
+        // Create transport with no validation — bridge is the only localhost client
+        let transport = StatelessHTTPServerTransport(
+            validationPipeline: StandardValidationPipeline(validators: []),
+            logger: nil
+        )
+
+        // Create MCP server
         let server = Server(
             name: "newscomb",
             version: "1.0.0",
@@ -66,15 +77,27 @@ final class MCPServerService: Sendable {
         let toolHandler = MCPToolHandler()
         await toolHandler.register(on: server)
 
-        // Start stdio transport
-        let transport = StdioTransport()
+        // Start MCP server on the transport
         do {
             try await server.start(transport: transport)
-            logger.info("MCP server started successfully on stdio")
-            await server.waitUntilCompleted()
-            logger.info("MCP server stopped (client disconnected)")
+            logger.info("MCP server connected to transport")
         } catch {
-            logger.error("MCP server failed: \(error.localizedDescription, privacy: .public)")
+            logger.error("MCP server failed to start: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+
+        // Start HTTP server that feeds requests to the transport
+        do {
+            let httpServer = try MCPHTTPServer(transport: transport)
+            httpServer.start()
+            logger.info("MCP HTTP server ready on http://127.0.0.1:\(MCPHTTPServer.defaultPort, privacy: .public)")
+
+            // Keep alive until the server completes
+            await server.waitUntilCompleted()
+            httpServer.stop()
+            logger.info("MCP server stopped")
+        } catch {
+            logger.error("MCP HTTP server failed to start: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

@@ -93,6 +93,88 @@ ollama pull qwen2.5:14b
 
 Then select Ollama as the provider in Settings and use `qwen2.5:14b` as the model for both extraction and analysis.
 
+## MCP Server (AI Assistant Integration)
+
+NewsComb includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that gives AI assistants read-only access to your knowledge graph. This lets tools like Claude Code and Claude Desktop search concepts, explore relationships, discover reasoning paths, and run full RAG queries — all backed by your local database.
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `query_knowledge_graph` | Full RAG pipeline: keyword extraction, vector search, BFS reasoning paths, context assembly |
+| `search_concepts` | Full-text search for entities/concepts in the knowledge graph |
+| `search_chunks` | Full-text search over article text chunks |
+| `get_node_neighbors` | Explore relationships connected to a concept |
+| `find_paths` | Discover multi-hop reasoning paths between two concepts |
+| `get_themes` | Browse HDBSCAN-discovered story theme clusters |
+| `get_theme_details` | Detailed view of a specific theme (entities, exemplars, articles) |
+| `get_statistics` | Knowledge graph counts (nodes, edges, articles, embeddings) |
+| `get_recent_articles` | List recently ingested articles from RSS feeds |
+
+### Architecture
+
+The MCP server runs inside the app process and listens on `http://127.0.0.1:63548`. A lightweight bridge CLI (`newscomb-mcp-bridge`) translates between Claude Code's stdio protocol and the app's HTTP endpoint — the same pattern Xcode uses with its `mcpbridge`.
+
+```
+Claude Code ←stdio→ newscomb-mcp-bridge ←HTTP→ NewsCombApp (localhost:63548)
+```
+
+The app must be running before Claude Code connects (just like Xcode).
+
+### Building the Bridge
+
+```bash
+cd NewsCombMCPBridge
+swift build -c release
+```
+
+The compiled binary will be at `.build/release/newscomb-mcp-bridge`.
+
+### Setup for Claude Code
+
+Add the following to your project's `.mcp.json` file (create it in the repository root if it doesn't exist):
+
+```json
+{
+  "mcpServers": {
+    "newscomb": {
+      "command": "/path/to/NewsComb/NewsCombMCPBridge/.build/release/newscomb-mcp-bridge",
+      "args": []
+    }
+  }
+}
+```
+
+### Setup for Claude Desktop
+
+Add the same configuration to your Claude Desktop settings file:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "newscomb": {
+      "command": "/path/to/NewsComb/NewsCombMCPBridge/.build/release/newscomb-mcp-bridge",
+      "args": []
+    }
+  }
+}
+```
+
+### Prerequisites
+
+1. **NewsComb must be running** — launch the app before starting Claude Code. The MCP HTTP server starts automatically on app launch.
+2. The app must have RSS sources configured and articles fetched
+3. The knowledge extraction pipeline must have processed at least some articles (check Settings for extraction status)
+4. Ollama with `nomic-embed-text:v1.5` must be running for `query_knowledge_graph` (vector search)
+
+### Limitations
+
+- All access is read-only — the MCP server cannot modify your knowledge graph or RSS sources
+- `query_knowledge_graph` requires Ollama to be running for on-device embeddings; other tools work without it
+- The bridge exits with an error if the app is not running
+
 ## Credits & Acknowledgements
 
 ### Research Foundation
