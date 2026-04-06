@@ -222,101 +222,12 @@ final class GraphRAGService: Sendable {
 
     // MARK: - Keyword Extraction
 
-    /// System prompt for keyword extraction.
-    private static let keywordExtractionPrompt = """
-        You are a strict keyword extractor for a knowledge graph search.
-
-        Rules:
-        - Output EXACTLY one JSON object: {"keywords": [<strings>]} with no extra text.
-        - Extract the key entities, concepts, and domain-specific terms from the question.
-        - Include proper nouns (people, organizations, places), technical terms, and important concepts.
-        - Never include verbs, stopwords, or question words (who, what, how, etc.).
-        - Lowercase all keywords unless they are acronyms or proper nouns.
-        - Return 2-5 keywords maximum.
-        - No explanations, just the JSON.
-
-        Example:
-        Question: "How can hydrogel mechanistically relate to PCL?"
-        {"keywords": ["hydrogel", "PCL"]}
-
-        Example:
-        Question: "What companies are partnering with Google Cloud?"
-        {"keywords": ["Google Cloud", "partnerships", "companies"]}
-        """
-
-    /// Extracts keywords from a question using the LLM.
+    /// Extracts keywords from a question using the shared `KeywordExtractionService`.
+    /// Supports all configured LLM providers (Ollama, OpenRouter, Apple Foundation Model)
+    /// with fallback to rule-based stopword filtering.
     @MainActor
     private func extractKeywords(from question: String) async throws -> [String] {
-        let settings = try loadSettings()
-
-        let userPrompt = "Question: \"\(question)\""
-
-        let response: String
-        switch settings.provider {
-        case "ollama":
-            response = try await generateWithOllama(
-                systemPrompt: Self.keywordExtractionPrompt,
-                userPrompt: userPrompt,
-                settings: settings
-            )
-        case "openrouter":
-            response = try await generateWithOpenRouter(
-                systemPrompt: Self.keywordExtractionPrompt,
-                userPrompt: userPrompt,
-                settings: settings
-            )
-        default:
-            // Fallback: split question into words and filter stopwords
-            return extractKeywordsFallback(from: question)
-        }
-
-        // Parse JSON response
-        return parseKeywordsFromJSON(response) ?? extractKeywordsFallback(from: question)
-    }
-
-    /// Parses keywords from a JSON response like {"keywords": ["a", "b"]}.
-    private func parseKeywordsFromJSON(_ response: String) -> [String]? {
-        // Find JSON in response (handle markdown code blocks)
-        let cleaned = response
-            .replacing("```json", with: "")
-            .replacing("```", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard let data = cleaned.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let keywords = json["keywords"] as? [String],
-              !keywords.isEmpty else {
-            return nil
-        }
-
-        return keywords
-    }
-
-    /// Fallback keyword extraction using simple NLP heuristics.
-    private func extractKeywordsFallback(from question: String) -> [String] {
-        let stopwords: Set<String> = [
-            "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "shall", "can", "need", "dare",
-            "to", "of", "in", "for", "on", "with", "at", "by", "from", "as",
-            "into", "through", "during", "before", "after", "above", "below",
-            "between", "under", "again", "further", "then", "once", "here",
-            "there", "when", "where", "why", "how", "all", "each", "few",
-            "more", "most", "other", "some", "such", "no", "nor", "not",
-            "only", "own", "same", "so", "than", "too", "very", "just",
-            "and", "but", "if", "or", "because", "until", "while", "what",
-            "which", "who", "whom", "this", "that", "these", "those", "am",
-            "about", "it", "its", "they", "their", "them", "we", "us", "our",
-            "you", "your", "he", "she", "him", "her", "his", "i", "me", "my"
-        ]
-
-        let words = question
-            .lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { $0.count > 2 && !stopwords.contains($0) }
-
-        // Return unique keywords, max 5
-        return Array(Set(words)).prefix(5).map { $0 }
+        await KeywordExtractionService.extractKeywords(from: question)
     }
 
     // MARK: - Embedding

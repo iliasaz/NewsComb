@@ -211,10 +211,12 @@ final class MCPToolErrorTests: XCTestCase {
 
 // MARK: - Keyword Extraction Tests
 
-final class MCPKeywordExtractionTests: XCTestCase {
+final class KeywordExtractionTests: XCTestCase {
 
-    func testExtractsKeywordsFromQuestion() {
-        let keywords = MCPQueryKnowledgeGraphTool.extractKeywords(
+    // MARK: - Fallback Extraction Tests
+
+    func testFallbackExtractsKeywordsFromQuestion() {
+        let keywords = KeywordExtractionService.extractKeywordsFallback(
             from: "What are the connections between NVIDIA and the AI chip market?"
         )
         XCTAssertTrue(keywords.contains("nvidia"))
@@ -226,36 +228,87 @@ final class MCPKeywordExtractionTests: XCTestCase {
         XCTAssertFalse(keywords.contains("are"))
     }
 
-    func testMaxFiveKeywords() {
-        let keywords = MCPQueryKnowledgeGraphTool.extractKeywords(
+    func testFallbackMaxFiveKeywords() {
+        let keywords = KeywordExtractionService.extractKeywordsFallback(
             from: "alpha bravo charlie delta echo foxtrot golf hotel india juliet"
         )
         XCTAssertLessThanOrEqual(keywords.count, 5)
     }
 
-    func testFiltersShortWords() {
-        let keywords = MCPQueryKnowledgeGraphTool.extractKeywords(from: "Is AI an OK topic?")
+    func testFallbackFiltersShortWords() {
+        let keywords = KeywordExtractionService.extractKeywordsFallback(from: "Is AI an OK topic?")
         // "is", "ai" (2 chars), "an", "ok" (2 chars) should all be filtered
         XCTAssertFalse(keywords.contains("is"))
         XCTAssertFalse(keywords.contains("an"))
     }
 
-    func testEmptyQuestionReturnsEmpty() {
-        let keywords = MCPQueryKnowledgeGraphTool.extractKeywords(from: "")
+    func testFallbackEmptyQuestionReturnsEmpty() {
+        let keywords = KeywordExtractionService.extractKeywordsFallback(from: "")
         XCTAssertTrue(keywords.isEmpty)
     }
 
-    func testStopwordsOnlyReturnsEmpty() {
-        let keywords = MCPQueryKnowledgeGraphTool.extractKeywords(from: "what is the how and why")
+    func testFallbackStopwordsOnlyReturnsEmpty() {
+        let keywords = KeywordExtractionService.extractKeywordsFallback(from: "what is the how and why")
         XCTAssertTrue(keywords.isEmpty)
     }
 
-    func testDeduplicatesKeywords() {
-        let keywords = MCPQueryKnowledgeGraphTool.extractKeywords(
+    func testFallbackDeduplicatesKeywords() {
+        let keywords = KeywordExtractionService.extractKeywordsFallback(
             from: "NVIDIA NVIDIA NVIDIA market"
         )
         let nvidiaCount = keywords.filter { $0 == "nvidia" }.count
         XCTAssertEqual(nvidiaCount, 1)
+    }
+
+    // MARK: - JSON Parsing Tests
+
+    func testParsesValidKeywordJSON() {
+        let json = """
+            {"keywords": ["Google Cloud", "partners", "AI"]}
+            """
+        let result = KeywordExtractionService.parseKeywordsFromJSON(json)
+        XCTAssertEqual(result, ["Google Cloud", "partners", "AI"])
+    }
+
+    func testParsesKeywordJSONWithCodeBlock() {
+        let json = """
+            ```json
+            {"keywords": ["NVIDIA", "AMD"]}
+            ```
+            """
+        let result = KeywordExtractionService.parseKeywordsFromJSON(json)
+        XCTAssertEqual(result, ["NVIDIA", "AMD"])
+    }
+
+    func testReturnsNilForEmptyKeywords() {
+        let json = """
+            {"keywords": []}
+            """
+        let result = KeywordExtractionService.parseKeywordsFromJSON(json)
+        XCTAssertNil(result)
+    }
+
+    func testReturnsNilForInvalidJSON() {
+        let result = KeywordExtractionService.parseKeywordsFromJSON("not json at all")
+        XCTAssertNil(result)
+    }
+
+    func testReturnsNilForMissingKeywordsKey() {
+        let json = """
+            {"entities": ["NVIDIA"]}
+            """
+        let result = KeywordExtractionService.parseKeywordsFromJSON(json)
+        XCTAssertNil(result)
+    }
+
+    func testPreservesMultiWordKeywords() {
+        let json = """
+            {"keywords": ["Google Cloud", "machine learning", "New York"]}
+            """
+        let result = KeywordExtractionService.parseKeywordsFromJSON(json)
+        XCTAssertEqual(result?.count, 3)
+        XCTAssertTrue(result?.contains("Google Cloud") ?? false)
+        XCTAssertTrue(result?.contains("machine learning") ?? false)
     }
 }
 

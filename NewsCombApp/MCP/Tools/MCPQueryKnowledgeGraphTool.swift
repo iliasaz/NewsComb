@@ -22,8 +22,8 @@ enum MCPQueryKnowledgeGraphTool {
         let maxChunks = arguments["max_chunks"]?.intValue ?? 5
         let maxPathDepth = arguments["max_path_depth"]?.intValue ?? 4
 
-        // Step 1: Extract keywords
-        let keywords = extractKeywords(from: question)
+        // Step 1: Extract keywords using the configured LLM provider
+        let keywords = await KeywordExtractionService.extractKeywords(from: question, database: database)
         guard !keywords.isEmpty else {
             return "Could not extract meaningful keywords from the question."
         }
@@ -87,43 +87,6 @@ enum MCPQueryKnowledgeGraphTool {
         )
     }
 
-    // MARK: - Keyword Extraction
-
-    static func extractKeywords(from question: String) -> [String] {
-        let stopwords: Set<String> = [
-            "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "shall", "can", "need", "dare",
-            "to", "of", "in", "for", "on", "with", "at", "by", "from", "as",
-            "into", "through", "during", "before", "after", "above", "below",
-            "between", "under", "again", "further", "then", "once", "here",
-            "there", "when", "where", "why", "how", "all", "each", "few",
-            "more", "most", "other", "some", "such", "no", "nor", "not",
-            "only", "own", "same", "so", "than", "too", "very", "just",
-            "and", "but", "if", "or", "because", "until", "while", "what",
-            "which", "who", "whom", "this", "that", "these", "those", "am",
-            "about", "it", "its", "they", "their", "them", "we", "us", "our",
-            "you", "your", "he", "she", "him", "her", "his", "i", "me", "my",
-            "tell", "explain", "describe", "show", "find", "get", "give",
-            "know", "think", "say", "make", "go", "take", "come", "see",
-            "look", "want", "use", "work", "call", "try", "ask", "let",
-            "help", "talk", "turn", "start", "run", "move", "play",
-            "related", "relationship", "connect", "connection",
-        ]
-
-        let words = question
-            .lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { $0.count > 2 && !stopwords.contains($0) }
-
-        var seen: Set<String> = []
-        var unique: [String] = []
-        for word in words {
-            if seen.insert(word).inserted { unique.append(word) }
-            if unique.count >= 5 { break }
-        }
-        return unique
-    }
 
     // MARK: - Vector Search
 
