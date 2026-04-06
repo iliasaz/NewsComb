@@ -39,8 +39,11 @@ final class MCPServerService: Sendable {
             httpServer.start()
             logger.info("MCP HTTP server ready on http://127.0.0.1:\(MCPHTTPServer.defaultPort, privacy: .public)")
 
-            // Keep alive — the HTTP server runs until the app exits
-            try? await Task.sleep(for: .seconds(Double.greatestFiniteMagnitude))
+            // Keep alive — the HTTP server runs until the app exits.
+            // NWListener is retained by `httpServer`; sleep forever to keep it alive.
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(86400))
+            }
         } catch {
             logger.error("MCP HTTP server failed to start: \(error.localizedDescription, privacy: .public)")
         }
