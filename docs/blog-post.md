@@ -50,7 +50,7 @@ The foundation matters. When we started, the natural question was: what data str
 
 **Hypergraphs** solve this. A hyperedge can connect any number of nodes. That competition event becomes a single hyperedge with three source nodes, one target node, and the relation "competes in." The semantic unit — the original event as extracted from the article — is preserved intact.
 
-Our implementation extracts S-V-O triples from news articles using configurable LLMs (Meta Llama 4 Maverick via OpenRouter, or local models via Ollama). Each triple becomes a hyperedge in an incidence-based storage model: entities (nodes), relationships (edges), and participation records (which nodes play which roles — source, target, context — in which edges). The result: a knowledge graph where "Apple announces Vision Pro partnership with Unity and Adobe" is one event, not six binary edges.
+Our implementation extracts S-V-O triples from news articles using configurable LLMs: cloud models via OpenRouter (Meta Llama 4 Maverick, GPT-4.1, etc.), local models via Ollama, or — as of the latest release — **Apple's on-device Foundation Model** through the Foundation Models framework. Each triple becomes a hyperedge in an incidence-based storage model: entities (nodes), relationships (edges), and participation records (which nodes play which roles — source, target, context — in which edges). The result: a knowledge graph where "Apple announces Vision Pro partnership with Unity and Adobe" is one event, not six binary edges.
 
 The hypergraph structure directly enables **multi-hop reasoning**. When a user asks "what companies are investing in quantum computing?", the system doesn't just search for documents — it traverses the graph, following chains of relationships: `Company A → invests in → Startup B → develops → Technology C → based on → Research from Lab D`. Each hop is a real extracted event with provenance back to the source article. The answer is grounded in causal structure, not keyword matching.
 
@@ -116,6 +116,9 @@ The pipeline is triggered by a single button press and runs with progressive sta
 
 An interactive force-directed graph visualization lets users pan, zoom, and expand node neighborhoods. Double-tap a node to reveal its connections; single-tap for details. The physics-based layout naturally clusters related entities, giving users an intuitive spatial sense of the knowledge landscape — before any formal clustering algorithm runs.
 
+![Knowledge graph visualization showing entities as nodes with relationship edges](images/semantic_graph.png)
+*Force-directed knowledge graph: entities cluster naturally by connectivity. Dense neighborhoods indicate highly connected topics.*
+
 ### Conversational Querying and In-Depth Reports
 
 A knowledge graph you can't query is just a database. When a user asks "what companies are investing in quantum computing?", an AI agent executes a six-phase pipeline: extract keywords, embed them, search for related nodes via cosine similarity, discover multi-hop reasoning paths via BFS, gather context from article provenance, and stream a grounded answer.
@@ -127,6 +130,9 @@ NVIDIA → competes with → AMD → partners with → Microsoft → invests in 
 ```
 
 These paths are traversed from the actual graph structure, not hallucinated. The key distinction from vanilla LLM chat: every claim is grounded in the causality captured by the graph.
+
+![Reasoning paths UI showing multi-hop chains between concepts](images/reasoning_chains.png)
+*Multi-hop reasoning paths: each chain traces real extracted events from the knowledge graph, with hop count and visual path display.*
 
 **In-depth reports.** "Dive Deeper" triggers a multi-agent workflow: an Engineer agent synthesizes findings with academic-style citations (`[1]`, `[2]`), and a Hypothesizer agent generates follow-up research questions and experiment suggestions. This turns a simple query into a 2-3 page analysis that an innovation team can present to leadership.
 
@@ -160,9 +166,33 @@ Every optimization above maps to a specific hardware feature of Apple Silicon:
 | UMAP kNN (similarity matrix) | **AMX coprocessor** | Tiled N x N dot products at hardware speed |
 | UMAP SGD (gradient updates) | **NEON SIMD** | Vectorized operations on 128-bit lanes |
 | Nomic embeddings | **GPU** | Batched transformer inference via MLTensor |
-| All stages | **Unified Memory** | CPU, GPU, and Neural Engine share physical RAM — zero-copy |
+| On-device extraction | **Neural Engine** | Apple Intelligence LLM with guaranteed structured output |
+| All stages | **Unified Memory** | CPU, GPU, AMX, and Neural Engine share physical RAM — zero-copy |
 
 The insight: **on Apple Silicon, algorithms that express work as matrix operations beat algorithms with better asymptotic complexity but branch-heavy execution.** VP-trees are O(N log N); brute-force matrix multiply is O(N^2 D). But the AMX coprocessor makes the constant factor irrelevant at realistic data sizes.
+
+### On-Device Extraction with Apple Intelligence
+
+The Neural Engine row in the table above deserves a closer look. Apple's Foundation Models framework (iOS/macOS 26+) runs a language model entirely on the device's **Neural Engine** — the dedicated machine learning accelerator on Apple Silicon — no API keys, no network calls, no per-token costs. This is the same Neural Engine that powers Apple Intelligence features like text summarization in Mail and notification prioritization. For knowledge extraction, which is a "low-intelligence" task (extracting structured facts, not creative reasoning), the on-device model is surprisingly capable.
+
+The key advantage is **guaranteed structured output.** Cloud LLMs return raw text that we parse as JSON — and parsing fails more often than you'd expect. Malformed brackets, trailing commas, hallucinated field names. We wrote alias tables, regex extractors, and fallback parsers to handle the mess. The Foundation Models framework eliminates all of this with **guided generation**: we define Swift structs with the `@Generable` macro, and the framework uses constrained token sampling to guarantee the output matches the schema. The model literally cannot produce invalid JSON — it's constrained at the token level, not validated after the fact.
+
+```swift
+@Generable
+struct GenerableExtractionResult {
+    @Guide(description: "Extracted entity relationships", .maximumCount(15))
+    var events: [GenerableEvent]
+}
+```
+
+The trade-off is context window size: 4,096 tokens versus effectively unlimited for cloud models. We handle this by using shorter extraction prompts (~75 tokens vs. ~500 for cloud) and reducing chunk sizes to 600 characters. The token budget works out comfortably — each extraction call uses roughly 875 tokens, leaving over 3,000 tokens of headroom. The same constraint applies to entity classification, where batches of 8 nodes fit well within the window.
+
+For entity classification — labeling each node as person, company, organization, etc. — the `.anyOf(...)` generation guide constrains the model to output only valid types. The entire alias normalization table (12+ mappings like "government" → "government_entity", "ngo" → "organization") becomes unnecessary. The model outputs the canonical type or nothing.
+
+During on-device extraction, `mactop` confirms that the Neural Engine does all the heavy lifting: ANE utilization spikes to 130% (10.43W) while CPU idles at 5% (3.14W) and GPU at 6% (0.04W). The CPU merely orchestrates — chunking text, managing sessions, persisting results — while the Neural Engine runs the transformer inference at hardware speed. This is a clean separation of concerns at the silicon level.
+
+![mactop showing ANE at 130% utilization during on-device extraction](images/mactop-ANE.png)
+*`mactop` during on-device knowledge extraction on M5 Max: the Neural Engine (ANE) dominates at 130% / 10.43W while CPU and GPU idle. Total system power: 28.71W.*
 
 ---
 
@@ -198,7 +228,7 @@ Every stage can be skipped or reconfigured independently.
 
 **6. Start with the naive implementation, measure, then optimize.** Every optimization in this project started with a correct-but-slow implementation and a profiler trace. We never optimized something that wasn't measured first.
 
-**7. Local-first is a feature, not a compromise.** On-device embeddings, on-device clustering, on-device graph traversal. No API keys required for core functionality. The privacy and reliability wins are real.
+**7. Local-first is a feature, not a compromise.** On-device embeddings, on-device clustering, on-device graph traversal — and now on-device knowledge extraction via Apple Intelligence. No API keys required for core functionality. The privacy and reliability wins are real. With the addition of the Neural Engine for LLM inference, the pipeline now uses all four processor types on Apple Silicon: CPU (NEON SIMD for SGD), AMX coprocessor (matrix multiplies for PCA and kNN), GPU (batched embedding), and Neural Engine (on-device LLM extraction). Unified Memory means zero-copy data sharing between all of them.
 
 ---
 
@@ -232,6 +262,8 @@ Three directions:
 
 **Deeper simulation integration.** Using clustering results to seed simulation scenarios: when a new theme emerges, automatically simulate how the ecosystem responds. Closing the loop from detection to prediction.
 
+**On-device quality evaluation.** With Apple Intelligence extraction now functional, the next step is systematic comparison of extraction quality between on-device and cloud models across different article domains. The on-device model handles tech news well, but its performance on academic papers, financial reports, and geopolitical analysis remains to be characterized.
+
 ---
 
 ## References
@@ -241,6 +273,7 @@ Three directions:
 - Grootendorst, M. (2022). "BERTopic: Neural topic modeling with a class-based TF-IDF procedure."
 - Campello, R.J.G.B., Moulavi, D., & Sander, J. (2013). "Density-Based Clustering Based on Hierarchical Density Estimates." PAKDD 2013.
 - Apple Inc. "Accelerate Framework: vDSP, BLAS, LAPACK." developer.apple.com.
+- Apple Inc. "Foundation Models Framework: Generating content and performing tasks with on-device language models." developer.apple.com/documentation/foundationmodels.
 
 ---
 

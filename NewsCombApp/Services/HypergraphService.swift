@@ -376,7 +376,9 @@ final class HypergraphService: Sendable {
                 temperature: settings.extractionTemperature
             )
             return DocumentProcessor(
+                llmProvider: LoggingLLMProvider(wrapping: ollama),
                 ollamaService: ollama,
+                chatModel: model,
                 extractionSystemPrompt: settings.extractionSystemPrompt,
                 distillationSystemPrompt: settings.distillationSystemPrompt
             )
@@ -400,7 +402,7 @@ final class HypergraphService: Sendable {
             )
 
             return DocumentProcessor(
-                llmProvider: openRouter,
+                llmProvider: LoggingLLMProvider(wrapping: openRouter),
                 ollamaService: embeddingOllama,
                 chatModel: chatModel,
                 extractionSystemPrompt: settings.extractionSystemPrompt,
@@ -419,7 +421,7 @@ final class HypergraphService: Sendable {
             logger.info("Configuring on-device Foundation Model: chunkSize=\(chunkSize)")
 
             return DocumentProcessor(
-                llmProvider: service,
+                llmProvider: LoggingLLMProvider(wrapping: service),
                 ollamaService: embeddingOllama,
                 chatModel: "apple-on-device",
                 chunkSize: chunkSize,
