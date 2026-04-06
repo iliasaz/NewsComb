@@ -8,6 +8,7 @@ The MCP server provides read-only access to NewsComb's knowledge graph:
 
 | Tool | Description |
 |------|-------------|
+| `query_knowledge_graph` | **Full RAG pipeline**: embeds question with on-device Nomic, vector search, BFS reasoning paths, context assembly — primary research tool |
 | `search_concepts` | Full-text search for entities/concepts in the knowledge graph |
 | `search_chunks` | Full-text search over article text chunks |
 | `get_node_neighbors` | Explore relationships connected to a concept |
@@ -74,7 +75,11 @@ Or with a custom database path:
 
 ## Example Workflows
 
-### Research a topic
+### Research a topic (recommended)
+1. `query_knowledge_graph` with your question — runs the full RAG pipeline automatically
+2. Use the returned context (concepts, reasoning paths, relationships, source text) to synthesize your answer
+
+### Research a topic (manual exploration)
 1. `search_concepts` with query "quantum computing"
 2. `get_node_neighbors` for an interesting entity
 3. `find_paths` between two related concepts
@@ -94,8 +99,10 @@ Or with a custom database path:
 
 The MCP server opens the NewsComb SQLite database in **read-only** mode, so it can run concurrently with the main NewsComb app without conflicts. It uses:
 
-- **GRDB.swift** for database access (via `DatabasePool` in read-only mode)
+- **GRDBCustom** for database access (via `DatabasePool` in read-only mode) with **sqlite-vec** compiled in for vector similarity search
+- **swift-embeddings** for on-device Nomic Embed Text v1.5 (768-dim) embeddings via Apple MLTensor/GPU
 - **MCP Swift SDK** for the Model Context Protocol implementation
 - **stdio transport** for communication with MCP clients
+- **sqlite-vec** `vec_distance_cosine()` for semantic similarity search over node and chunk embeddings
 - **FTS5** full-text search indexes for concept and chunk search
 - **BFS path finding** over the hypergraph for multi-hop reasoning

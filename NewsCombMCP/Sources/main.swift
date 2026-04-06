@@ -52,6 +52,7 @@ let server = Server(
         embeddings, and story theme clusters extracted from news articles.
 
         ## Available capabilities:
+        - **query_knowledge_graph**: Full RAG pipeline — embed question with Nomic, vector search, BFS reasoning paths, context assembly. Use this as your primary research tool.
         - **search_concepts**: Find entities/concepts in the knowledge graph using full-text search
         - **search_chunks**: Search article text chunks for specific content
         - **get_node_neighbors**: Explore the graph by finding relationships connected to a concept
@@ -62,10 +63,11 @@ let server = Server(
         - **get_recent_articles**: List recently ingested articles from RSS feeds
 
         ## Workflow tips:
-        1. Start with search_concepts or get_themes to find relevant topics
-        2. Use get_node_neighbors to explore connections around interesting concepts
-        3. Use find_paths to discover causal chains between concepts
-        4. Use search_chunks to find supporting evidence in article text
+        1. For research questions, start with query_knowledge_graph — it runs the full RAG pipeline
+        2. Use search_concepts or get_themes for exploratory browsing
+        3. Use get_node_neighbors to explore connections around interesting concepts
+        4. Use find_paths to discover causal chains between two specific concepts
+        5. Use search_chunks to find supporting evidence in article text
         """,
     capabilities: Server.Capabilities(
         tools: .init()

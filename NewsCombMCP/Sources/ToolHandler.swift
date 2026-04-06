@@ -152,6 +152,40 @@ struct ToolHandler: Sendable {
                 ]),
                 annotations: .init(readOnlyHint: true, openWorldHint: false)
             ),
+            Tool(
+                name: "query_knowledge_graph",
+                description: """
+                    Full RAG query over the knowledge hypergraph. Given a natural language question, this tool: \
+                    (1) extracts keywords, (2) embeds them with on-device Nomic embeddings, \
+                    (3) finds similar concepts via vector search, (4) discovers multi-hop reasoning paths between them via BFS, \
+                    (5) gathers supporting relationships and article chunks. \
+                    Returns grounded context (concepts, reasoning paths, relationships, source text, articles) \
+                    for you to synthesize into an answer. Use this as your primary research tool for complex questions.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "question": .object([
+                            "type": .string("string"),
+                            "description": .string("The natural language question to research in the knowledge graph")
+                        ]),
+                        "max_nodes": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum similar nodes to retrieve per keyword (default: 5)")
+                        ]),
+                        "max_chunks": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum source text chunks to retrieve (default: 5)")
+                        ]),
+                        "max_path_depth": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum BFS depth for reasoning paths (default: 4)")
+                        ])
+                    ]),
+                    "required": .array([.string("question")])
+                ]),
+                annotations: .init(readOnlyHint: true, openWorldHint: false)
+            ),
         ]
     }
 
@@ -166,7 +200,7 @@ struct ToolHandler: Sendable {
 
         await server.withMethodHandler(CallTool.self) { params in
             do {
-                let result = try ToolDispatcher.dispatch(
+                let result = try await ToolDispatcher.dispatch(
                     toolName: params.name,
                     arguments: params.arguments ?? [:],
                     database: db

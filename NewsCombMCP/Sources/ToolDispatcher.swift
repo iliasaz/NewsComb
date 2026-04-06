@@ -7,7 +7,7 @@ enum ToolDispatcher {
         toolName: String,
         arguments: [String: Value],
         database: ReadOnlyDatabase
-    ) throws -> String {
+    ) async throws -> String {
         switch toolName {
         case "search_concepts":
             return try SearchConceptsTool.run(arguments: arguments, database: database)
@@ -25,6 +25,8 @@ enum ToolDispatcher {
             return try GetStatisticsTool.run(arguments: arguments, database: database)
         case "get_recent_articles":
             return try GetRecentArticlesTool.run(arguments: arguments, database: database)
+        case "query_knowledge_graph":
+            return try await QueryKnowledgeGraphTool.run(arguments: arguments, database: database)
         default:
             throw ToolError(message: "Unknown tool: \(toolName)")
         }
