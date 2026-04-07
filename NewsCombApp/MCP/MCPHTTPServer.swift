@@ -7,12 +7,14 @@ import Synchronization
 /// Minimal HTTP/1.1 server using Network framework for serving MCP over localhost.
 ///
 /// Listens on a configurable TCP port (default 63548) and forwards HTTP requests
-/// to a `StatelessHTTPServerTransport`. Creates a fresh transport and MCP server
-/// for each new client session (detected by `initialize` requests), following the
-/// same pattern as the MCP SDK's reference `HTTPApp`.
+/// to `StatelessHTTPServerTransport` instances. Supports multiple concurrent client
+/// sessions — each `initialize` request creates a new session with a unique ID,
+/// returned via the `X-Session-Id` response header. Subsequent requests include
+/// this header to route to the correct session.
 final class MCPHTTPServer: Sendable {
 
     static let defaultPort: UInt16 = 63548
+    static let sessionHeader = "X-Session-Id"
 
     /// Factory that creates and configures a new MCP `Server` for each client session.
     typealias ServerFactory = @Sendable (StatelessHTTPServerTransport) async -> Server
@@ -21,12 +23,17 @@ final class MCPHTTPServer: Sendable {
     private let serverFactory: ServerFactory
     private let logger = Logger(subsystem: "com.newscomb.app", category: "MCPHTTPServer")
 
-    /// The current active session — replaced on each new `initialize` request.
-    private let session = Mutex<Session?>(nil)
+    /// Active sessions keyed by session ID. Old sessions are cleaned up periodically.
+    private let sessions = Mutex<[String: Session]>([:])
+
+    /// Most recently created session ID — used as default when no header is provided.
+    private let latestSessionId = Mutex<String?>(nil)
 
     private struct Session {
+        let id: String
         let transport: StatelessHTTPServerTransport
         let server: Server
+        let createdAt: Date
     }
 
     init(serverFactory: @escaping ServerFactory, port: UInt16 = MCPHTTPServer.defaultPort) throws {
@@ -102,32 +109,24 @@ final class MCPHTTPServer: Sendable {
 
     private func dispatchRequest(_ request: MCP.HTTPRequest, on connection: NWConnection) {
         Task {
-            let transport = await self.resolveTransport(for: request)
+            let (transport, sessionId) = await self.resolveTransport(for: request)
             let response = await transport.handleRequest(request)
-            let httpData = self.formatHTTPResponse(response)
+            let httpData = self.formatHTTPResponse(response, sessionId: sessionId)
             connection.send(content: httpData, completion: .contentProcessed { _ in
                 connection.cancel()
             })
         }
     }
 
+    // MARK: - Session Management
+
     /// Returns the transport for this request, creating a new session if this is an `initialize` request.
-    private func resolveTransport(for request: MCP.HTTPRequest) async -> StatelessHTTPServerTransport {
+    private func resolveTransport(for request: MCP.HTTPRequest) async -> (StatelessHTTPServerTransport, String) {
         let isInitialize = request.body.flatMap { Self.isInitializeRequest($0) } ?? false
 
         if isInitialize {
-            logger.info("New MCP client connecting — creating session")
-
-            // Tear down existing session
-            let oldSession = session.withLock { current -> Session? in
-                let old = current
-                current = nil
-                return old
-            }
-
-            if let oldSession {
-                await oldSession.transport.disconnect()
-            }
+            let sessionId = UUID().uuidString
+            logger.info("New MCP client session: \(sessionId, privacy: .public)")
 
             // Create fresh transport + server
             let transport = StatelessHTTPServerTransport(
@@ -139,26 +138,55 @@ final class MCPHTTPServer: Sendable {
             do {
                 try await server.start(transport: transport)
             } catch {
-                logger.error("Failed to start MCP server for new session: \(error.localizedDescription, privacy: .public)")
+                logger.error("Failed to start MCP server for session \(sessionId, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
 
-            let newSession = Session(transport: transport, server: server)
-            session.withLock { $0 = newSession }
+            let newSession = Session(id: sessionId, transport: transport, server: server, createdAt: Date())
+            sessions.withLock { $0[sessionId] = newSession }
+            latestSessionId.withLock { $0 = sessionId }
 
-            return transport
+            // Clean up stale sessions (older than 1 hour)
+            cleanupStaleSessions()
+
+            return (transport, sessionId)
         }
 
-        // Return existing session's transport
-        if let current = session.withLock({ $0 }) {
-            return current.transport
+        // Try to find the session by header
+        let requestSessionId = request.header(Self.sessionHeader)
+
+        if let requestSessionId, let existing = sessions.withLock({ $0[requestSessionId] }) {
+            return (existing.transport, existing.id)
         }
 
-        // No session yet and not an initialize — create one anyway so we can return an error
+        // Fallback: use the most recent session
+        if let latest = latestSessionId.withLock({ $0 }),
+           let existing = sessions.withLock({ $0[latest] }) {
+            return (existing.transport, existing.id)
+        }
+
+        // No session at all — create a temporary transport that will return an error
         logger.warning("Request received before initialize — returning temporary transport")
-        return StatelessHTTPServerTransport(
+        let transport = StatelessHTTPServerTransport(
             validationPipeline: StandardValidationPipeline(validators: []),
             logger: nil
         )
+        return (transport, "none")
+    }
+
+    /// Removes sessions older than 1 hour.
+    private func cleanupStaleSessions() {
+        let cutoff = Date().addingTimeInterval(-3600)
+        let stale = sessions.withLock { dict -> [Session] in
+            let expired = dict.values.filter { $0.createdAt < cutoff }
+            for session in expired {
+                dict.removeValue(forKey: session.id)
+            }
+            return expired
+        }
+        for session in stale {
+            logger.info("Cleaned up stale session: \(session.id, privacy: .public)")
+            Task { await session.transport.disconnect() }
+        }
     }
 
     /// Checks if a JSON-RPC body contains an `initialize` method.
@@ -221,7 +249,7 @@ final class MCPHTTPServer: Sendable {
 
     // MARK: - HTTP Response Formatting
 
-    private func formatHTTPResponse(_ response: MCP.HTTPResponse) -> Data {
+    private func formatHTTPResponse(_ response: MCP.HTTPResponse, sessionId: String) -> Data {
         let statusCode = response.statusCode
         let statusText = Self.statusText(for: statusCode)
         let body = response.bodyData
@@ -233,6 +261,7 @@ final class MCPHTTPServer: Sendable {
             headers["Content-Length"] = "0"
         }
         headers["Connection"] = "close"
+        headers[Self.sessionHeader] = sessionId
 
         var result = "HTTP/1.1 \(statusCode) \(statusText)\r\n"
         for (name, value) in headers {

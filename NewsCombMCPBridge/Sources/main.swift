@@ -14,29 +14,45 @@ import Foundation
 // MARK: - HTTP Client
 
 let endpoint = URL(string: "http://127.0.0.1:63548/mcp")!
-let session = URLSession(configuration: .ephemeral)
+let sessionHeader = "X-Session-Id"
+let urlSession = URLSession(configuration: .ephemeral)
+
+/// The session ID assigned by the server on `initialize`. Included in all subsequent requests.
+/// Safe to use without isolation — the bridge processes requests sequentially.
+nonisolated(unsafe) var currentSessionId: String?
 
 enum BridgeError: Error, CustomStringConvertible {
     case invalidResponse
+    case appNotRunning
 
     var description: String {
         switch self {
         case .invalidResponse: "Invalid HTTP response from NewsComb app"
+        case .appNotRunning: "NewsComb app is not running"
         }
     }
 }
 
-func verifyAppRunning() async throws {
-    // Send a minimal invalid request to check if the server is listening.
-    // We expect an HTTP response (even an error) — a connection refused means the app isn't running.
-    var request = URLRequest(url: endpoint)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.setValue("application/json", forHTTPHeaderField: "Accept")
-    request.httpBody = Data("{}".utf8)
-    request.timeoutInterval = 3
+/// Waits for the app to become reachable, retrying up to `maxAttempts` times.
+func waitForApp(maxAttempts: Int = 5, delay: Duration = .milliseconds(500)) async -> Bool {
+    for attempt in 1...maxAttempts {
+        do {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.httpBody = Data("{}".utf8)
+            request.timeoutInterval = 2
 
-    _ = try await session.data(for: request)
+            _ = try await urlSession.data(for: request)
+            return true
+        } catch {
+            if attempt < maxAttempts {
+                try? await Task.sleep(for: delay)
+            }
+        }
+    }
+    return false
 }
 
 func postToApp(body: Data) async throws -> Data? {
@@ -45,12 +61,22 @@ func postToApp(body: Data) async throws -> Data? {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("application/json", forHTTPHeaderField: "Accept")
     request.httpBody = body
-    request.timeoutInterval = 60
+    request.timeoutInterval = 120
 
-    let (data, response) = try await session.data(for: request)
+    // Include session ID if we have one
+    if let sessionId = currentSessionId {
+        request.setValue(sessionId, forHTTPHeaderField: sessionHeader)
+    }
+
+    let (data, response) = try await urlSession.data(for: request)
 
     guard let httpResponse = response as? HTTPURLResponse else {
         throw BridgeError.invalidResponse
+    }
+
+    // Capture session ID from response
+    if let serverSessionId = httpResponse.value(forHTTPHeaderField: sessionHeader) {
+        currentSessionId = serverSessionId
     }
 
     switch httpResponse.statusCode {
@@ -65,12 +91,30 @@ func postToApp(body: Data) async throws -> Data? {
     }
 }
 
+/// Constructs a JSON-RPC error response for transport-level failures.
+func makeTransportError(id: String?, message: String) -> Data {
+    let idValue = id.map { "\"\($0)\"" } ?? "null"
+    let json = """
+        {"jsonrpc":"2.0","id":\(idValue),"error":{"code":-32000,"message":"\(message)"}}
+        """
+    return Data(json.utf8)
+}
+
+/// Extracts the "id" field from a JSON-RPC message.
+func extractRequestId(from data: Data) -> String? {
+    guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        return nil
+    }
+    if let id = json["id"] as? String { return id }
+    if let id = json["id"] as? Int { return String(id) }
+    return nil
+}
+
 // MARK: - Main
 
-// Verify the app is reachable before entering the main loop
-do {
-    try await verifyAppRunning()
-} catch {
+// Wait for the app to become reachable (retries for up to ~2.5 seconds)
+let appReady = await waitForApp()
+if !appReady {
     FileHandle.standardError.write(Data("error: NewsComb app is not running. Launch NewsCombApp first.\n".utf8))
     exit(1)
 }
@@ -87,7 +131,22 @@ while let line = readLine(strippingNewline: true) {
             FileHandle.standardOutput.write(Data("\n".utf8))
         }
     } catch {
-        FileHandle.standardError.write(Data("error: \(error.localizedDescription)\n".utf8))
-        exit(1)
+        // Don't exit on transient errors — return a JSON-RPC error instead
+        // so the MCP client can decide what to do.
+        let requestId = extractRequestId(from: body)
+        let errorResponse = makeTransportError(
+            id: requestId,
+            message: "Bridge transport error: \(error.localizedDescription)"
+        )
+        FileHandle.standardOutput.write(errorResponse)
+        FileHandle.standardOutput.write(Data("\n".utf8))
+
+        // If it's a connection refused (app crashed/quit), exit so Claude Code
+        // can restart the bridge when the app is back.
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCannotConnectToHost {
+            FileHandle.standardError.write(Data("error: Lost connection to NewsComb app.\n".utf8))
+            exit(1)
+        }
     }
 }
