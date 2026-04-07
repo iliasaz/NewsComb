@@ -11,10 +11,10 @@
 		490FA38E2F1B7D1200BAEBFC /* SQLiteExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA38D2F1B7D1200BAEBFC /* SQLiteExtensions */; };
 		490FA3912F1B7E1000BAEBFC /* HyperGraphReasoning in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3902F1B7E1000BAEBFC /* HyperGraphReasoning */; };
 		490FA3942F1B7E2000BAEBFC /* Embeddings in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3932F1B7E2000BAEBFC /* Embeddings */; };
+		490FA3962F1C8A0000BAEBFC /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3952F1C8A0000BAEBFC /* MCP */; };
 		491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000021 /* FeedKit */; };
 		491E2BE42F16EC2300D1840C /* PostlightSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000050 /* PostlightSwift */; };
 		8A0000000000000000000062 /* OPML in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000061 /* OPML */; };
-		490FA3962F1C8A0000BAEBFC /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3952F1C8A0000BAEBFC /* MCP */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -258,6 +258,7 @@
 				8A0000000000000000000051 /* XCRemoteSwiftPackageReference "postlight-swift" */,
 				490FA38A2F1B7D1200BAEBFC /* XCLocalSwiftPackageReference "GRDBCustom" */,
 				490FA38F2F1B7E1000BAEBFC /* XCLocalSwiftPackageReference "../HyperGraphReasoning/hypergraph-reasoning-swift" */,
+				490FA3972F1D000000BAEBFC /* XCLocalSwiftPackageReference "NewsCombMCPBridge" */,
 				490FA3922F1B7E2000BAEBFC /* XCRemoteSwiftPackageReference "swift-embeddings" */,
 				8A0000000000000000000060 /* XCRemoteSwiftPackageReference "swift-opml" */,
 				490FA3942F1C8A0000BAEBFC /* XCRemoteSwiftPackageReference "swift-sdk" */,
@@ -661,6 +662,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "../HyperGraphReasoning/hypergraph-reasoning-swift";
 		};
+		490FA3972F1D000000BAEBFC /* XCLocalSwiftPackageReference "NewsCombMCPBridge" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = NewsCombMCPBridge;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -670,6 +675,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 0.0.16;
+			};
+		};
+		490FA3942F1C8A0000BAEBFC /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/modelcontextprotocol/swift-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.11.0;
 			};
 		};
 		8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */ = {
@@ -696,14 +709,6 @@
 				minimumVersion = 1.0.0;
 			};
 		};
-		490FA3942F1C8A0000BAEBFC /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/modelcontextprotocol/swift-sdk.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.11.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -724,6 +729,11 @@
 			package = 490FA3922F1B7E2000BAEBFC /* XCRemoteSwiftPackageReference "swift-embeddings" */;
 			productName = Embeddings;
 		};
+		490FA3952F1C8A0000BAEBFC /* MCP */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 490FA3942F1C8A0000BAEBFC /* XCRemoteSwiftPackageReference "swift-sdk" */;
+			productName = MCP;
+		};
 		8A0000000000000000000021 /* FeedKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */;
@@ -738,11 +748,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8A0000000000000000000060 /* XCRemoteSwiftPackageReference "swift-opml" */;
 			productName = OPML;
-		};
-		490FA3952F1C8A0000BAEBFC /* MCP */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 490FA3942F1C8A0000BAEBFC /* XCRemoteSwiftPackageReference "swift-sdk" */;
-			productName = MCP;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
