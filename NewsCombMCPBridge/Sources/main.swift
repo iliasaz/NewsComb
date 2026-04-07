@@ -15,7 +15,12 @@ import Foundation
 
 let endpoint = URL(string: "http://127.0.0.1:63548/mcp")!
 let sessionHeader = "X-Session-Id"
-let urlSession = URLSession(configuration: .ephemeral)
+let urlSession: URLSession = {
+    let config = URLSessionConfiguration.ephemeral
+    config.timeoutIntervalForRequest = 300
+    config.timeoutIntervalForResource = 300
+    return URLSession(configuration: config)
+}()
 
 /// The session ID assigned by the server on `initialize`. Included in all subsequent requests.
 /// Safe to use without isolation — the bridge processes requests sequentially.
@@ -61,7 +66,7 @@ func postToApp(body: Data) async throws -> Data? {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("application/json", forHTTPHeaderField: "Accept")
     request.httpBody = body
-    request.timeoutInterval = 120
+    request.timeoutInterval = 300
 
     // Include session ID if we have one
     if let sessionId = currentSessionId {
