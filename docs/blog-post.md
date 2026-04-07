@@ -278,6 +278,10 @@ Claude Code ←stdio→ newscomb-mcp-bridge ←HTTP→ NewsCombApp (localhost:63
 
 This three-layer architecture — client, bridge, app — means the app must be running before the agent connects, just like Xcode. The MCP server starts automatically on app launch, listening on a high port (63548) that doesn't conflict with common services.
 
+### Example: Oracle Cloud & OpenClaw Analysis
+
+To see this in action, we asked Claude Code to analyze whether Oracle Cloud should invest in OpenClaw — using only the NewsComb MCP tools for evidence. The agent autonomously called `search_concepts`, `get_node_neighbors`, `find_paths`, `search_chunks`, and `get_themes` to build a comprehensive analysis with benefits, risks, and strategic recommendations — all grounded in causal chains and article provenance from the knowledge graph. The full transcript is available in [claude-example-oracle-openclaw.md](claude-example-oracle-openclaw.md).
+
 ### Keyword Extraction: Shared Intelligence
 
 The MCP server's RAG pipeline (`query_knowledge_graph`) reuses the same LLM-based keyword extraction as the in-app "Ask Your Knowledge Graph" feature. When a user configures OpenRouter or Apple's on-device Foundation Model in Settings, the MCP server uses it too — extracting multi-word entities like "Google Cloud" and "machine learning" that a naive tokenizer would split apart. This shared `KeywordExtractionService` ensures the MCP agent gets the same quality of graph search as the human-facing UI.
