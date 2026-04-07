@@ -282,9 +282,16 @@ This three-layer architecture — client, bridge, app — means the app must be 
 
 To see this in action, we asked Claude Code to analyze whether Oracle Cloud should invest in OpenClaw — using only the NewsComb MCP tools for evidence. The agent autonomously called `search_concepts`, `get_node_neighbors`, `find_paths`, `search_chunks`, and `get_themes` to build a comprehensive analysis with benefits, risks, and strategic recommendations — all grounded in causal chains and article provenance from the knowledge graph. The full transcript is available in [claude-example-oracle-openclaw.md](claude-example-oracle-openclaw.md).
 
-### Keyword Extraction: Shared Intelligence
+### Shared Intelligence
 
-The MCP server's RAG pipeline (`query_knowledge_graph`) reuses the same LLM-based keyword extraction as the in-app "Ask Your Knowledge Graph" feature. When a user configures OpenRouter or Apple's on-device Foundation Model in Settings, the MCP server uses it too — extracting multi-word entities like "Google Cloud" and "machine learning" that a naive tokenizer would split apart. This shared `KeywordExtractionService` ensures the MCP agent gets the same quality of graph search as the human-facing UI.
+The MCP server exposes the same analytical capabilities as the in-app "Ask Your Knowledge Graph" feature — not just keyword extraction, but the full depth of the knowledge graph:
+
+- **Concept grounding.** Entities are resolved against the hypergraph via vector similarity, so the agent works with real graph nodes — not fuzzy text matches.
+- **Multi-hop reasoning paths.** BFS traversal discovers causal chains between concepts (`Oracle → builds data centers for → OpenAI → partners with → Microsoft`), giving the agent explainable connections that a keyword search would never surface.
+- **Direct graph search.** Full-text search over both entity labels and article chunks, with FTS5 ranking and source provenance.
+- **Neighborhood retrieval.** Given any concept, the agent can pull all connected relationships, participant nodes, and supporting article text — exploring the graph outward from a starting point.
+
+When a user configures OpenRouter or Apple's on-device Foundation Model in Settings, the MCP server uses it for LLM-based keyword extraction too — preserving multi-word entities like "Google Cloud" and "machine learning" that a naive tokenizer would split apart.
 
 ---
 
