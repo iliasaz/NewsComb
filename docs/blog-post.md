@@ -252,9 +252,41 @@ This is still experimental — a side experiment alongside the main clustering w
 
 ---
 
+## MCP Server: Giving AI Agents Direct Access to the Knowledge Graph
+
+The knowledge graph's conversational query UI is designed for humans. But what if an AI agent — Claude Code, Codex, or any MCP-compatible assistant — could query the graph directly during its own reasoning process?
+
+We built a **Model Context Protocol (MCP) server** directly into the NewsComb app, exposing the full knowledge graph through nine tools: concept search, chunk search, node neighbor exploration, multi-hop path finding, theme browsing, and a complete RAG pipeline. An AI agent can now search for entities, trace causal chains, and retrieve grounded evidence from your news corpus — all without the human in the loop.
+
+### Why This Matters
+
+The key insight: **AI agents reason better when grounded in structured knowledge.** A vanilla LLM answering "how is Oracle connected to OpenAI?" draws on training data that may be stale or incomplete. An agent with MCP access to NewsComb traverses the actual knowledge graph, finds the `Oracle → builds data centers for → OpenAI` relationship extracted from this week's articles, follows the reasoning path through `Microsoft` and `Stargate Abilene`, and cites specific RSS sources. The answer is grounded in causal chains, not parametric memory.
+
+This turns Claude Code from a code assistant into a **research analyst** that can investigate questions across your entire news corpus. "What startups are working on edge inference?" becomes a graph traversal, not a web search. "Find the reasoning path between NVIDIA and regulatory risk" becomes a BFS query returning actual extracted events with article provenance.
+
+### Architecture: The Xcode Pattern
+
+The MCP server follows the same architecture as Xcode's own MCP integration — a pattern Apple established with `mcpbridge`:
+
+```
+Claude Code ←stdio→ newscomb-mcp-bridge ←HTTP→ NewsCombApp (localhost:63548)
+```
+
+**The app runs an HTTP server** on localhost using Apple's Network framework, with `StatelessHTTPServerTransport` from the MCP Swift SDK handling the JSON-RPC protocol. The server supports multiple concurrent sessions — each client gets its own session ID, so parallel connections don't interfere.
+
+**A lightweight bridge CLI** (`newscomb-mcp-bridge`) translates between Claude Code's stdio protocol and the app's HTTP endpoint. Claude Code launches the bridge as a subprocess; the bridge POSTs each JSON-RPC message to the app and streams responses back. If the app isn't running, the bridge retries on startup and returns structured errors on transient failures rather than crashing.
+
+This three-layer architecture — client, bridge, app — means the app must be running before the agent connects, just like Xcode. The MCP server starts automatically on app launch, listening on a high port (63548) that doesn't conflict with common services.
+
+### Keyword Extraction: Shared Intelligence
+
+The MCP server's RAG pipeline (`query_knowledge_graph`) reuses the same LLM-based keyword extraction as the in-app "Ask Your Knowledge Graph" feature. When a user configures OpenRouter or Apple's on-device Foundation Model in Settings, the MCP server uses it too — extracting multi-word entities like "Google Cloud" and "machine learning" that a naive tokenizer would split apart. This shared `KeywordExtractionService` ensures the MCP agent gets the same quality of graph search as the human-facing UI.
+
+---
+
 ## What's Next
 
-Three directions:
+Four directions:
 
 **GPU-accelerated UMAP via MLX Swift.** The SGD loop is the remaining CPU bottleneck. MLX Swift (Apple's ML framework with Swift bindings) could move the entire gradient computation to GPU metal shaders, potentially achieving 10-50x speedup. A reference implementation exists in Python (hanxiao/mlx-vis).
 
@@ -263,6 +295,8 @@ Three directions:
 **Deeper simulation integration.** Using clustering results to seed simulation scenarios: when a new theme emerges, automatically simulate how the ecosystem responds. Closing the loop from detection to prediction.
 
 **On-device quality evaluation.** With Apple Intelligence extraction now functional, the next step is systematic comparison of extraction quality between on-device and cloud models across different article domains. The on-device model handles tech news well, but its performance on academic papers, financial reports, and geopolitical analysis remains to be characterized.
+
+**Agent-driven research workflows.** With MCP access, the next step is multi-step agent workflows: an AI agent that autonomously explores the knowledge graph, identifies gaps, cross-references themes, and produces structured research briefs. The graph provides the grounding; the agent provides the synthesis and follow-up reasoning.
 
 ---
 
@@ -274,6 +308,7 @@ Three directions:
 - Campello, R.J.G.B., Moulavi, D., & Sander, J. (2013). "Density-Based Clustering Based on Hierarchical Density Estimates." PAKDD 2013.
 - Apple Inc. "Accelerate Framework: vDSP, BLAS, LAPACK." developer.apple.com.
 - Apple Inc. "Foundation Models Framework: Generating content and performing tasks with on-device language models." developer.apple.com/documentation/foundationmodels.
+- Anthropic. "Model Context Protocol: An open standard for connecting AI assistants to data sources." modelcontextprotocol.io.
 
 ---
 
