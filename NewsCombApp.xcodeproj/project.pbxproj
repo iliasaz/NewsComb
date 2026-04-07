@@ -47,6 +47,27 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		490FA3982F1D100000BAEBFC /* Build MCP Bridge */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/NewsCombMCPBridge/Sources/main.swift",
+				"$(SRCROOT)/NewsCombMCPBridge/Package.swift",
+			);
+			name = "Build MCP Bridge";
+			outputPaths = (
+				"$(BUILD_DIR)/NewsCombMCPBridge/release/newscomb-mcp-bridge",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/zsh;
+			shellScript = "cd \"$SRCROOT/NewsCombMCPBridge\"\nswift build -c release --scratch-path \"$BUILD_DIR/NewsCombMCPBridge\" 2>&1\nmkdir -p \"$SRCROOT/NewsCombMCPBridge/.build/release\"\ncp -f \"$BUILD_DIR/NewsCombMCPBridge/arm64-apple-macosx/release/newscomb-mcp-bridge\" \"$SRCROOT/NewsCombMCPBridge/.build/release/newscomb-mcp-bridge\" 2>/dev/null || true\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXFileReference section */
 		8A0000000000000000000001 /* NewsCombApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NewsCombApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A0000000000000000000031 /* NewsCombAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NewsCombAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -156,6 +177,7 @@
 				8A0000000000000000000003 /* Frameworks */,
 				8A0000000000000000000008 /* Resources */,
 				490FA1BC2F1B324000BAEBFC /* Embed Frameworks */,
+				490FA3982F1D100000BAEBFC /* Build MCP Bridge */,
 			);
 			buildRules = (
 			);
@@ -374,7 +396,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -439,7 +461,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
