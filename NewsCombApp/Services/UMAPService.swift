@@ -1,427 +1,359 @@
-import Accelerate
 import Foundation
 import OSLog
 
-/// Pure-Swift UMAP (Uniform Manifold Approximation and Projection) implementation
-/// for nonlinear dimensionality reduction before HDBSCAN clustering.
+/// GPU-accelerated UMAP that delegates the heavy work to a sibling executable
+/// (`newscomb-umap-bridge`) built from the local `umap-mlx-swift` package.
 ///
-/// UMAP learns a low-dimensional embedding that preserves the local neighborhood
-/// structure of the high-dimensional data. The algorithm:
-/// 1. Builds a k-nearest-neighbor graph (via VPTreeService)
-/// 2. Converts kNN distances to fuzzy membership weights (fuzzy simplicial set)
-/// 3. Optimizes a low-dimensional layout via stochastic gradient descent
+/// The bridge runs in a separate process so that MLX's symbols never enter the
+/// main NewsCombApp module graph. SwiftAgents/Conduit (transitively pulled in
+/// by HyperGraphReasoning) become uncompilable when MLX is visible to them but
+/// not linked, because they gate `MLXProvider` references behind
+/// `#if canImport(MLX)` without coordinating with Conduit's `MLX` package
+/// trait. Isolating MLX behind a subprocess sidesteps that conflict and keeps
+/// the SPM resolution graph of the main app unchanged.
 ///
-/// References:
-/// - McInnes et al., "UMAP: Uniform Manifold Approximation and Projection
-///   for Dimension Reduction" (2018), arXiv:1802.03426
+/// The previous pure-Swift VP-tree + SGD layout was single-threaded on the CPU
+/// and dominated the theme-rebuild pipeline at production scale (~tens of
+/// minutes for ~116K events). The MLX-backed pipeline runs on Apple Silicon's
+/// GPU/ANE.
 final class UMAPService: Sendable {
 
     /// Configuration parameters for UMAP.
+    ///
+    /// Field names mirror the original CPU implementation so existing call
+    /// sites and `AppSettings` keys keep working unchanged.
     struct Parameters {
-        /// Target number of output dimensions.
         var targetDimension: Int = 25
-        /// Number of nearest neighbors to consider.
         var nNeighbors: Int = 15
-        /// Minimum distance between points in the embedding (controls tightness).
         var minDist: Float = 0.1
-        /// Number of SGD optimization epochs.
-        var nEpochs: Int = 200
-        /// Number of negative samples per positive edge during SGD.
+        /// `nil` lets the underlying MLX UMAP pick automatically
+        /// (500 epochs if n<=10K, otherwise 200).
+        var nEpochs: Int? = nil
         var negativeSampleRate: Int = 5
-        /// Learning rate for SGD.
         var learningRate: Float = 1.0
-        /// Spread of the embedding (used with minDist to compute a, b curve params).
         var spread: Float = 1.0
-        /// Random seed for reproducibility.
+        /// `0` means "non-deterministic" to the bridge.
         var seed: UInt64 = 42
     }
 
-    /// Represents a weighted edge in the fuzzy simplicial set.
-    private struct WeightedEdge {
-        let source: Int
-        let target: Int
-        let weight: Float
+    /// Errors thrown when the bridge subprocess can't be started or returns
+    /// a malformed response.
+    enum BridgeError: Error, LocalizedError {
+        case binaryNotFound
+        case launchFailed(String)
+        case malformedResponse(String)
+        case nonZeroExit(Int32, String)
+
+        var errorDescription: String? {
+            switch self {
+            case .binaryNotFound:
+                return "newscomb-umap-bridge executable not found alongside the app binary."
+            case .launchFailed(let why):
+                return "Failed to launch newscomb-umap-bridge: \(why)"
+            case .malformedResponse(let why):
+                return "newscomb-umap-bridge returned a malformed response: \(why)"
+            case .nonZeroExit(let code, let stderr):
+                return "newscomb-umap-bridge exited with code \(code): \(stderr)"
+            }
+        }
     }
 
-    private let vpTreeService = VPTreeService()
     private let logger = Logger(subsystem: "com.newscomb", category: "UMAPService")
 
     // MARK: - Public API
 
-    /// Reduces vectors to a low-dimensional embedding using UMAP.
+    /// Reduces vectors to a low-dimensional embedding via the GPU bridge.
     ///
     /// - Parameters:
     ///   - vectors: Array of N vectors (typically PCA-reduced to ~50D).
     ///   - params: UMAP configuration.
+    ///   - progressCallback: Optional callback invoked with `(currentEpoch, totalEpochs)`
+    ///     during SGD optimization. Forwarded from the bridge's stderr stream.
     /// - Returns: Array of N vectors, each of `params.targetDimension` dimensions.
-    func reduce(vectors: [[Float]], params: Parameters = Parameters()) async -> [[Float]] {
+    ///   Falls back to the input vectors on any bridge failure so the caller
+    ///   pipeline can continue rather than crash.
+    func reduce(
+        vectors: [[Float]],
+        params: Parameters = Parameters(),
+        progressCallback: (@Sendable (Int, Int) -> Void)? = nil
+    ) async -> [[Float]] {
         let n = vectors.count
         guard n >= 2 else { return vectors }
 
-        let k = min(params.nNeighbors, n - 1)
-        logger.info("UMAP: n=\(n), k=\(k), targetDim=\(params.targetDimension), epochs=\(params.nEpochs)")
+        let inputDim = vectors[0].count
+        // The bridge enforces dOut < dIn; short-circuit instead of erroring.
+        guard params.targetDimension < inputDim else {
+            logger.notice("UMAP: target dim (\(params.targetDimension)) >= input dim (\(inputDim)); returning input")
+            return vectors
+        }
+        // Bridge requires nNeighbors < n; clamp to the largest valid value.
+        let effectiveNeighbors = min(params.nNeighbors, n - 1)
+        guard effectiveNeighbors >= 1 else { return vectors }
+
+        logger.info("UMAP (bridge): n=\(n), inDim=\(inputDim), outDim=\(params.targetDimension), k=\(effectiveNeighbors)")
         let pipelineStart = ContinuousClock.now
 
-        // Stage 1: kNN graph via VP-tree
-        logger.info("UMAP Stage 1: Computing kNN graph (k=\(k))...")
-        let knn = await vpTreeService.findAllKNN(vectors: vectors, k: k, metric: .cosine)
-
-        // Stage 2: Fuzzy simplicial set
-        logger.info("UMAP Stage 2: Computing fuzzy simplicial set...")
-        let stageStart = ContinuousClock.now
-        let edges = computeFuzzySimplicialSet(knn: knn, n: n, k: k)
-        logger.info("UMAP Stage 2 complete: \(edges.count) edges in \(ContinuousClock.now - stageStart)")
-
-        // Stage 3: SGD layout optimization
-        logger.info("UMAP Stage 3: SGD layout optimization (\(params.nEpochs) epochs)...")
-        let embedding = optimizeLayout(edges: edges, n: n, params: params)
-
-        let elapsed = ContinuousClock.now - pipelineStart
-        logger.info("UMAP complete: \(n) points → \(params.targetDimension)D in \(elapsed)")
-
-        return embedding
+        do {
+            let result = try await Self.invokeBridge(
+                vectors: vectors,
+                n: n,
+                dIn: inputDim,
+                dOut: params.targetDimension,
+                nNeighbors: effectiveNeighbors,
+                params: params,
+                progressCallback: progressCallback
+            )
+            let elapsed = ContinuousClock.now - pipelineStart
+            logger.info("UMAP (bridge) complete: \(n) points → \(params.targetDimension)D in \(elapsed)")
+            return result
+        } catch {
+            logger.error("UMAP (bridge) failed: \(error.localizedDescription) — returning input vectors")
+            return vectors
+        }
     }
 
-    // MARK: - Stage 2: Fuzzy Simplicial Set
+    // MARK: - Bridge invocation
 
-    /// Converts kNN distances to fuzzy membership weights.
-    ///
-    /// For each point, finds a per-point `sigma` via binary search such that the
-    /// sum of membership strengths equals `log2(nNeighbors)`. Then symmetrizes
-    /// the directed graph into an undirected fuzzy union.
-    private func computeFuzzySimplicialSet(knn: VPTreeService.KNNResult, n: Int, k: Int) -> [WeightedEdge] {
-        let targetSum = Float(Foundation.log2(Double(k)))
+    /// Locates `newscomb-umap-bridge`. The build phase places it (and its
+    /// colocated `mlx.metallib`) in `<App>.app/Contents/Helpers/` to avoid
+    /// codesign collisions in `Contents/MacOS/`.
+    private static func bridgeURL() -> URL? {
+        let fm = FileManager.default
+        let name = "newscomb-umap-bridge"
 
-        // Step 1: Compute per-point sigma and directed membership weights
-        var directedWeights: [(source: Int, target: Int, weight: Float)] = []
-        directedWeights.reserveCapacity(n * k)
-
-        for i in 0..<n {
-            let distances = knn.distances[i]
-            let indices = knn.indices[i]
-            guard !distances.isEmpty else { continue }
-
-            let rho = distances[0]  // Distance to nearest neighbor
-            let sigma = findSigma(distances: distances, rho: rho, targetSum: targetSum)
-
-            for j in 0..<distances.count {
-                let d = distances[j]
-                let weight: Float
-                if d <= rho {
-                    weight = 1.0
-                } else {
-                    weight = exp(-(d - rho) / sigma)
-                }
-                if weight > 1e-6 {
-                    directedWeights.append((source: i, target: indices[j], weight: weight))
-                }
+        // Inspect both the running process bundle and the bundle that
+        // contains this class — the latter resolves to the host app when
+        // running inside an xctest bundle.
+        let candidates: [Bundle] = [.main, Bundle(for: BundleProbe.self)]
+        for bundle in candidates {
+            // Walk up from the bundle URL looking for an enclosing .app —
+            // xctest bundles are nested inside the host app at
+            // <App>.app/Contents/PlugIns/<Tests>.xctest, and we want the
+            // outermost `.app` either way.
+            var url = bundle.bundleURL
+            for _ in 0..<5 {
+                let helpers = url.appending(path: "Contents/Helpers").appending(path: name)
+                if fm.fileExists(atPath: helpers.path) { return helpers }
+                let mac = url.appending(path: "Contents/MacOS").appending(path: name)
+                if fm.fileExists(atPath: mac.path) { return mac }
+                url = url.deletingLastPathComponent()
             }
         }
 
-        // Step 2: Symmetrize via fuzzy union: w(a,b) = w(a→b) + w(b→a) - w(a→b)·w(b→a)
-        // Accumulate directed weights per ordered pair (lo < hi).
-        var forwardWeights: [Int64: Float] = [:]  // w(lo→hi)
-        var reverseWeights: [Int64: Float] = [:]   // w(hi→lo)
-
-        for edge in directedWeights {
-            let lo = min(edge.source, edge.target)
-            let hi = max(edge.source, edge.target)
-            let key = Int64(lo) * Int64(n) + Int64(hi)
-            if edge.source < edge.target {
-                forwardWeights[key] = max(forwardWeights[key] ?? 0, edge.weight)
-            } else if edge.source > edge.target {
-                reverseWeights[key] = max(reverseWeights[key] ?? 0, edge.weight)
-            }
+        // Fallback: SPM-style auxiliary executable lookup.
+        if let aux = Bundle.main.url(forAuxiliaryExecutable: name) {
+            return aux
         }
-
-        // Combine into symmetric weights and build edge list
-        let allKeys = Set(forwardWeights.keys).union(reverseWeights.keys)
-        var edges: [WeightedEdge] = []
-        edges.reserveCapacity(allKeys.count)
-
-        for key in allKeys {
-            let w1 = forwardWeights[key] ?? 0
-            let w2 = reverseWeights[key] ?? 0
-            let weight = w1 + w2 - w1 * w2
-            guard weight > 1e-6 else { continue }
-            let lo = Int(key / Int64(n))
-            let hi = Int(key % Int64(n))
-            edges.append(WeightedEdge(source: lo, target: hi, weight: weight))
+        // Final fallback: same directory as the running executable.
+        if let exec = Bundle.main.executableURL {
+            let sibling = exec.deletingLastPathComponent().appending(path: name)
+            if fm.fileExists(atPath: sibling.path) { return sibling }
         }
-
-        return edges
+        return nil
     }
 
-    /// Binary search for per-point bandwidth sigma.
-    ///
-    /// Finds sigma such that `sum(exp(-(d - rho) / sigma))` ≈ `targetSum`.
-    private func findSigma(distances: [Float], rho: Float, targetSum: Float) -> Float {
-        var lo: Float = 1e-6
-        var hi: Float = 1000.0
+    /// Marker class used solely to anchor `Bundle(for:)` so that
+    /// test bundles can locate the host app bundle.
+    private final class BundleProbe {}
 
-        for _ in 0..<64 {
-            let mid = (lo + hi) / 2
-            var sum: Float = 0
-            for d in distances {
-                if d > rho {
-                    sum += exp(-(d - rho) / mid)
-                } else {
-                    sum += 1.0
-                }
-            }
-
-            if abs(sum - targetSum) < 1e-4 {
-                return mid
-            } else if sum > targetSum {
-                hi = mid
-            } else {
-                lo = mid
-            }
+    @concurrent
+    private static func invokeBridge(
+        vectors: [[Float]],
+        n: Int,
+        dIn: Int,
+        dOut: Int,
+        nNeighbors: Int,
+        params: Parameters,
+        progressCallback: (@Sendable (Int, Int) -> Void)?
+    ) async throws -> [[Float]] {
+        guard let url = bridgeURL() else {
+            throw BridgeError.binaryNotFound
         }
 
-        return (lo + hi) / 2
+        let request = encodeRequest(
+            vectors: vectors,
+            n: n,
+            dIn: dIn,
+            dOut: dOut,
+            nNeighbors: nNeighbors,
+            params: params
+        )
+
+        let process = Process()
+        process.executableURL = url
+        let stdinPipe = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardInput = stdinPipe
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+
+        do {
+            try process.run()
+        } catch {
+            throw BridgeError.launchFailed(String(describing: error))
+        }
+
+        // Stream progress lines off stderr without buffering the whole stream.
+        let stderrTask = Task.detached(priority: .utility) {
+            forwardProgress(handle: stderrPipe.fileHandleForReading, callback: progressCallback)
+        }
+
+        // Write the request payload, then close stdin so the child sees EOF.
+        do {
+            try stdinPipe.fileHandleForWriting.write(contentsOf: request)
+            try stdinPipe.fileHandleForWriting.close()
+        } catch {
+            process.terminate()
+            throw BridgeError.launchFailed("stdin write failed: \(error)")
+        }
+
+        // Drain stdout fully (binary response).
+        let stdoutData: Data
+        do {
+            stdoutData = try stdoutPipe.fileHandleForReading.readToEnd() ?? Data()
+        } catch {
+            process.terminate()
+            throw BridgeError.malformedResponse("stdout read failed: \(error)")
+        }
+
+        process.waitUntilExit()
+        let stderrTrailing = await stderrTask.value
+
+        guard process.terminationStatus == 0 else {
+            throw BridgeError.nonZeroExit(process.terminationStatus, stderrTrailing)
+        }
+
+        return try decodeResponse(stdoutData, expectedN: n, expectedDOut: dOut)
     }
 
-    // MARK: - Stage 3: SGD Layout Optimization
+    // MARK: - Wire format
 
-    /// Optimizes the low-dimensional embedding using stochastic gradient descent.
-    ///
-    /// The embedding is stored as a contiguous `[Float]` buffer of size N×d for
-    /// cache-friendly access in the tight SGD inner loop (millions of vector
-    /// accesses per epoch). Point i's coordinates are at `flat[i*d ..< (i+1)*d]`.
-    ///
-    /// Attractive forces pull connected points together proportional to edge weight.
-    /// Repulsive forces push random non-neighbors apart (negative sampling).
-    ///
-    /// Performance-critical: uses Accelerate's `vDSP` for all per-dimension operations
-    /// (distance, gradient update) and `vForce` fast `pow` to eliminate the two hottest
-    /// bottlenecks: Range iterator overhead and scalar `pow()` calls.
-    private func optimizeLayout(edges: [WeightedEdge], n: Int, params: Parameters) -> [[Float]] {
-        let d = params.targetDimension
-        var rng = SeededRNG(seed: params.seed)
+    private static func encodeRequest(
+        vectors: [[Float]],
+        n: Int,
+        dIn: Int,
+        dOut: Int,
+        nNeighbors: Int,
+        params: Parameters
+    ) -> Data {
+        var data = Data()
+        data.reserveCapacity(8 + 44 + n * dIn * MemoryLayout<Float>.size)
+        data.append(contentsOf: Array("UMAPRQ01".utf8))
 
-        let (a, b) = findABParams(spread: params.spread, minDist: params.minDist)
-        let bMinus1 = b - 1.0
+        var nVal = Int32(n)
+        var dInVal = Int32(dIn)
+        var dOutVal = Int32(dOut)
+        var kVal = Int32(nNeighbors)
+        var minDistVal = params.minDist
+        var spreadVal = params.spread
+        var nEpochsVal = Int32(params.nEpochs ?? 0)
+        var negSampleVal = Int32(params.negativeSampleRate)
+        var lrVal = params.learningRate
+        var seedVal = params.seed
 
-        // Initialize embedding as a contiguous flat buffer for cache locality.
-        var flat = [Float](repeating: 0, count: n * d)
-        for idx in 0..<(n * d) {
-            flat[idx] = Float.random(in: -10...10, using: &rng) * 0.01
-        }
+        withUnsafeBytes(of: &nVal) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &dInVal) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &dOutVal) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &kVal) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &minDistVal) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &spreadVal) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &nEpochsVal) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &negSampleVal) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &lrVal) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &seedVal) { data.append(contentsOf: $0) }
 
-        guard !edges.isEmpty else { return reshapeToVectors(flat: flat, n: n, d: d) }
-
-        let maxWeight = edges.max(by: { $0.weight < $1.weight })?.weight ?? 1.0
-        let epochsPerEdge = edges.map { edge -> Float in
-            guard maxWeight > 0 else { return Float(params.nEpochs) }
-            return Float(params.nEpochs) * (edge.weight / maxWeight)
-        }
-        var nextEpoch = epochsPerEdge.map { epochPer -> Float in
-            epochPer > 0 ? Float(params.nEpochs) / epochPer : Float(params.nEpochs) + 1
-        }
-
-        // Scratch buffers for vDSP operations (avoid allocation in hot loop)
-        var diff = [Float](repeating: 0, count: d)
-        var grad = [Float](repeating: 0, count: d)
-
-        let startTime = ContinuousClock.now
-        let vDSPLen = vDSP_Length(d)
-
-        flat.withUnsafeMutableBufferPointer { buf in
-            for epoch in 0..<params.nEpochs {
-                let alpha = params.learningRate * (1.0 - Float(epoch) / Float(params.nEpochs))
-
-                for edgeIdx in 0..<edges.count {
-                    if Float(epoch) < nextEpoch[edgeIdx] { continue }
-
-                    let step = epochsPerEdge[edgeIdx] > 0
-                        ? Float(params.nEpochs) / epochsPerEdge[edgeIdx]
-                        : Float(params.nEpochs) + 1
-                    nextEpoch[edgeIdx] += step
-
-                    let edge = edges[edgeIdx]
-                    let iPtr = buf.baseAddress! + edge.source * d
-                    let jPtr = buf.baseAddress! + edge.target * d
-
-                    // diff = i - j (vectorized, no per-dim loop)
-                    vDSP_vsub(jPtr, 1, iPtr, 1, &diff, 1, vDSPLen)
-
-                    // distSq = sum(diff²) (vectorized)
-                    var distSq: Float = 0
-                    vDSP_dotpr(diff, 1, diff, 1, &distSq, vDSPLen)
-
-                    // Gradient coefficient using fast pow approximation
-                    let distSqB = fastPow(distSq, b)
-                    let gradCoeff = -2.0 * a * b * fastPow(distSq, bMinus1)
-                        / (1.0 + a * distSqB)
-
-                    // grad = clamp(gradCoeff * diff, -4...4)
-                    var gc = gradCoeff
-                    vDSP_vsmul(diff, 1, &gc, &grad, 1, vDSPLen)
-                    var lo: Float = -4.0, hi: Float = 4.0
-                    vDSP_vclip(grad, 1, &lo, &hi, &grad, 1, vDSPLen)
-
-                    // i += alpha * grad (vectorized)
-                    var alphaPos = alpha
-                    vDSP_vsma(grad, 1, &alphaPos, iPtr, 1, iPtr, 1, vDSPLen)
-
-                    // j -= alpha * grad (vectorized)
-                    var alphaNeg = -alpha
-                    vDSP_vsma(grad, 1, &alphaNeg, jPtr, 1, jPtr, 1, vDSPLen)
-
-                    // Negative sampling
-                    for _ in 0..<params.negativeSampleRate {
-                        let neg = Int.random(in: 0..<n, using: &rng)
-                        guard neg != edge.source else { continue }
-                        let negPtr = buf.baseAddress! + neg * d
-
-                        // diff = i - neg
-                        vDSP_vsub(negPtr, 1, iPtr, 1, &diff, 1, vDSPLen)
-
-                        var negDistSq: Float = 0
-                        vDSP_dotpr(diff, 1, diff, 1, &negDistSq, vDSPLen)
-                        negDistSq = max(negDistSq, Float.leastNonzeroMagnitude)
-
-                        let repGradCoeff = 2.0 * b
-                            / ((0.001 + negDistSq) * (1.0 + a * fastPow(negDistSq, b)))
-
-                        var rgc = repGradCoeff
-                        vDSP_vsmul(diff, 1, &rgc, &grad, 1, vDSPLen)
-                        vDSP_vclip(grad, 1, &lo, &hi, &grad, 1, vDSPLen)
-
-                        vDSP_vsma(grad, 1, &alphaPos, iPtr, 1, iPtr, 1, vDSPLen)
+        // Flatten input rows into a contiguous Float32 buffer (single copy).
+        var flat = [Float](repeating: 0, count: n * dIn)
+        flat.withUnsafeMutableBufferPointer { dst in
+            for i in 0..<n {
+                let row = vectors[i]
+                let count = Swift.min(row.count, dIn)
+                row.withUnsafeBufferPointer { src in
+                    for j in 0..<count {
+                        dst[i * dIn + j] = src[j]
                     }
                 }
-
-                if (epoch + 1) % 50 == 0 || epoch == params.nEpochs - 1 {
-                    let elapsed = ContinuousClock.now - startTime
-                    logger.info("UMAP SGD epoch \(epoch + 1)/\(params.nEpochs) — \(elapsed)")
-                }
             }
         }
+        flat.withUnsafeBufferPointer { buf in
+            guard let base = buf.baseAddress else { return }
+            let raw = UnsafeRawBufferPointer(start: base, count: buf.count * MemoryLayout<Float>.size)
+            data.append(contentsOf: raw)
+        }
 
-        return reshapeToVectors(flat: flat, n: n, d: d)
+        return data
     }
 
-    // MARK: - Helpers
+    private static func decodeResponse(_ data: Data, expectedN: Int, expectedDOut: Int) throws -> [[Float]] {
+        let headerLen = 8 + 4 + 4
+        guard data.count >= headerLen else {
+            throw BridgeError.malformedResponse("response too short: \(data.count) bytes")
+        }
+        let magic = data.prefix(8)
+        guard magic == Data("UMAPRS01".utf8) else {
+            let preview = String(data: magic, encoding: .utf8) ?? magic.map { String(format: "%02x", $0) }.joined()
+            throw BridgeError.malformedResponse("bad magic: \(preview)")
+        }
+        let n: Int32 = data.withUnsafeBytes { $0.load(fromByteOffset: 8, as: Int32.self) }
+        let d: Int32 = data.withUnsafeBytes { $0.load(fromByteOffset: 12, as: Int32.self) }
+        guard Int(n) == expectedN, Int(d) == expectedDOut else {
+            throw BridgeError.malformedResponse("shape mismatch: got \(n)x\(d), expected \(expectedN)x\(expectedDOut)")
+        }
+        let payloadCount = Int(n) * Int(d)
+        let payloadBytes = payloadCount * MemoryLayout<Float>.size
+        guard data.count == headerLen + payloadBytes else {
+            throw BridgeError.malformedResponse("payload length mismatch: got \(data.count - headerLen) bytes, expected \(payloadBytes)")
+        }
 
-    /// Reshapes a flat contiguous buffer into an array of vectors.
-    private func reshapeToVectors(flat: [Float], n: Int, d: Int) -> [[Float]] {
+        let floats: [Float] = data.withUnsafeBytes { rawBuf -> [Float] in
+            let typed = rawBuf.baseAddress!.advanced(by: headerLen).bindMemory(to: Float.self, capacity: payloadCount)
+            return Array(UnsafeBufferPointer(start: typed, count: payloadCount))
+        }
+
         var result: [[Float]] = []
-        result.reserveCapacity(n)
-        for i in 0..<n {
-            let start = i * d
-            result.append(Array(flat[start..<(start + d)]))
+        result.reserveCapacity(Int(n))
+        let stride = Int(d)
+        for i in 0..<Int(n) {
+            let start = i * stride
+            result.append(Array(floats[start..<(start + stride)]))
         }
         return result
     }
 
-    /// Fast power approximation using exp(b * log(x)).
-    ///
-    /// For the UMAP SGD hot loop, this is called ~1.4 billion times with b≈0.79.
-    /// Using `logf`/`expf` (single-precision) is ~3x faster than `powf` because
-    /// the CPU has dedicated single-precision transcendental pipelines.
-    @inline(__always)
-    private func fastPow(_ base: Float, _ exp: Float) -> Float {
-        guard base > 0 else { return 0 }
-        return expf(exp * logf(base))
-    }
+    // MARK: - Stderr progress forwarding
 
-    /// Clamps gradient values to prevent explosion.
-    @inline(__always)
-    private func clampGrad(_ grad: Float) -> Float {
-        max(-4.0, min(4.0, grad))
-    }
-
-    /// Precomputed (a, b) curve parameters for the default minDist=0.1, spread=1.0.
-    /// These were computed via grid search and match the reference Python UMAP output.
-    private static let defaultABParams: (a: Float, b: Float) = (1.93, 0.79)
-
-    /// Finds the curve parameters `a` and `b` such that
-    /// `1 / (1 + a * d^(2b))` approximates a smooth step function
-    /// transitioning from 1 to 0 around `minDist`.
-    ///
-    /// Returns precomputed constants for default parameters to avoid the
-    /// grid search (~920K pow calls) on every UMAP invocation.
-    private func findABParams(spread: Float, minDist: Float) -> (a: Float, b: Float) {
-        // Fast path: return precomputed values for the default case
-        if abs(spread - 1.0) < 1e-6 && abs(minDist - 0.1) < 1e-6 {
-            return Self.defaultABParams
-        }
-
-        // Slow path: grid search for non-default parameters
-        let x = linspace(0, spread * 3.0, count: 300)
-        let target = x.map { xi -> Float in
-            if xi <= minDist { return 1.0 }
-            return exp(-(xi - minDist) / spread)
-        }
-
-        var bestA: Float = 1.0
-        var bestB: Float = 1.0
-        var bestError: Float = .infinity
-
-        for bCandidate in stride(from: Float(0.5), through: 2.0, by: 0.05) {
-            for aCandidate in stride(from: Float(0.1), through: 5.0, by: 0.05) {
-                var error: Float = 0
-                for idx in 0..<x.count {
-                    let predicted = 1.0 / (1.0 + aCandidate * pow(x[idx], 2.0 * bCandidate))
-                    let diff = predicted - target[idx]
-                    error += diff * diff
-                }
-                if error < bestError {
-                    bestError = error
-                    bestA = aCandidate
-                    bestB = bCandidate
+    /// Reads `PROGRESS\t<epoch>\t<total>` lines off the bridge's stderr and
+    /// forwards them to the caller. Returns whatever non-progress text was
+    /// produced (typically a final ERROR line) so it can be surfaced on
+    /// non-zero exit.
+    private static func forwardProgress(
+        handle: FileHandle,
+        callback: (@Sendable (Int, Int) -> Void)?
+    ) -> String {
+        var trailing = ""
+        var pending = Data()
+        while true {
+            let chunk = handle.availableData
+            if chunk.isEmpty { break }
+            pending.append(chunk)
+            while let nlIdx = pending.firstIndex(of: 0x0A) {
+                let lineData = pending.subdata(in: pending.startIndex..<nlIdx)
+                pending.removeSubrange(pending.startIndex...nlIdx)
+                guard let line = String(data: lineData, encoding: .utf8) else { continue }
+                if line.hasPrefix("PROGRESS\t") {
+                    let parts = line.split(separator: "\t")
+                    if parts.count == 3, let epoch = Int(parts[1]), let total = Int(parts[2]) {
+                        callback?(epoch, total)
+                    }
+                } else {
+                    trailing += line + "\n"
                 }
             }
         }
-
-        return (bestA, bestB)
-    }
-
-    /// Generates `count` evenly spaced values between `start` and `end`.
-    private func linspace(_ start: Float, _ end: Float, count: Int) -> [Float] {
-        guard count > 1 else { return [start] }
-        let step = (end - start) / Float(count - 1)
-        return (0..<count).map { start + Float($0) * step }
-    }
-}
-
-// MARK: - Seeded Random Number Generator
-
-/// A simple xoshiro256** PRNG for reproducible UMAP embeddings.
-private struct SeededRNG: RandomNumberGenerator {
-    private var state: (UInt64, UInt64, UInt64, UInt64)
-
-    init(seed: UInt64) {
-        // SplitMix64 to initialize state from a single seed
-        var s = seed
-        func next() -> UInt64 {
-            s &+= 0x9e3779b97f4a7c15
-            var z = s
-            z = (z ^ (z >> 30)) &* 0xbf58476d1ce4e5b9
-            z = (z ^ (z >> 27)) &* 0x94d049bb133111eb
-            return z ^ (z >> 31)
+        if !pending.isEmpty, let tail = String(data: pending, encoding: .utf8) {
+            trailing += tail
         }
-        state = (next(), next(), next(), next())
-    }
-
-    mutating func next() -> UInt64 {
-        let result = rotl(state.1 &* 5, 7) &* 9
-        let t = state.1 << 17
-
-        state.2 ^= state.0
-        state.3 ^= state.1
-        state.1 ^= state.2
-        state.0 ^= state.3
-
-        state.2 ^= t
-        state.3 = rotl(state.3, 45)
-
-        return result
-    }
-
-    private func rotl(_ x: UInt64, _ k: Int) -> UInt64 {
-        (x << k) | (x >> (64 - k))
+        return trailing
     }
 }

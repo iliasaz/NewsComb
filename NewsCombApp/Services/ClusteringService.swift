@@ -102,7 +102,23 @@ final class ClusteringService: Sendable {
                 targetDimension: umapTargetDim,
                 nNeighbors: umapNeighbors
             )
-            umapReduced = await umapService.reduce(vectors: pcaReduced, params: umapParams)
+            // Surface SGD epoch progress to the UI without spamming on every epoch.
+            let inDimDesc = pcaReduced[0].count
+            let nDesc = pcaReduced.count
+            umapReduced = await umapService.reduce(
+                vectors: pcaReduced,
+                params: umapParams,
+                progressCallback: { [statusCallback, progressCallback] epoch, total in
+                    guard total > 0 else { return }
+                    let stride = max(1, total / 20)
+                    guard epoch == total || epoch % stride == 0 else { return }
+                    let fraction = Double(epoch) / Double(total)
+                    Task { @MainActor in
+                        statusCallback?("UMAP SGD: epoch \(epoch)/\(total) (\(nDesc) events, \(inDimDesc)D → \(umapTargetDim)D)\u{2026}")
+                        progressCallback?(0.42 + fraction * 0.06)
+                    }
+                }
+            )
             logger.info("UMAP: \(pcaReduced[0].count)D → \(umapTargetDim)D")
         } else {
             umapReduced = pcaReduced

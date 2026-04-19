@@ -66,6 +66,24 @@
 			shellScript = "cd \"$SRCROOT/NewsCombMCPBridge\"\nswift build -c release --scratch-path \"$BUILD_DIR/NewsCombMCPBridge\" 2>&1\nmkdir -p \"$SRCROOT/NewsCombMCPBridge/.build/release\"\ncp -f \"$BUILD_DIR/NewsCombMCPBridge/arm64-apple-macosx/release/newscomb-mcp-bridge\" \"$SRCROOT/NewsCombMCPBridge/.build/release/newscomb-mcp-bridge\" 2>/dev/null || true\n";
 			showEnvVarsInLog = 0;
 		};
+		49A8CFE08D0000000000B100 /* Build UMAP Bridge */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			alwaysOutOfDate = 1;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/NewsCombUMAPBridge/Sources/main.swift",
+				"$(SRCROOT)/NewsCombUMAPBridge/Package.swift",
+			);
+			name = "Build UMAP Bridge";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/zsh;
+			shellScript = "set -e\n# Build the UMAP bridge in its own scratch dir so MLX never enters the\n# main app's SPM workspace search path. Xcode (not raw `swift build`) is\n# required because MLX needs the Metal Toolchain to compile its metallib.\nSRC_DIR=\"$SRCROOT/NewsCombUMAPBridge\"\nSCRATCH=\"$BUILD_DIR/NewsCombUMAPBridgeScratch\"\n# Place the bridge in Contents/Helpers/ so its colocated metallib does not\n# conflict with the parent app's CodeSign step (which treats anything in\n# Contents/MacOS/ as an unsigned nested binary).\nDEST=\"$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Helpers\"\n\n# Strip inherited Xcode build env so the inner xcodebuild does not try to\n# build into the parent target's product directory.\ncd \"$SRC_DIR\"\nenv -i \\\n  HOME=\"$HOME\" \\\n  USER=\"$USER\" \\\n  PATH=\"/usr/bin:/bin:/usr/sbin:/sbin\" \\\n  DEVELOPER_DIR=\"$DEVELOPER_DIR\" \\\n  PWD=\"$SRC_DIR\" \\\n  xcodebuild -scheme NewsCombUMAPBridge -configuration Release \\\n    -destination 'platform=macOS' \\\n    -derivedDataPath \"$SCRATCH\" \\\n    -skipPackagePluginValidation \\\n    build >&2\n\nBRIDGE_SRC=\"$SCRATCH/Build/Products/Release\"\nmkdir -p \"$DEST\"\ncp -f \"$BRIDGE_SRC/newscomb-umap-bridge\" \"$DEST/\"\n# MLX's colocated-library search expects `mlx.metallib` next to the binary.\n# Pull the metallib straight out of the SwiftPM bundle so we do not have to\n# embed an opaque .bundle as a nested code object.\ncp -f \"$BRIDGE_SRC/mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib\" \"$DEST/mlx.metallib\"\ncodesign --force --sign - --timestamp=none \"$DEST/mlx.metallib\"\ncodesign --force --sign - --timestamp=none \"$DEST/newscomb-umap-bridge\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -178,6 +196,7 @@
 				8A0000000000000000000008 /* Resources */,
 				490FA1BC2F1B324000BAEBFC /* Embed Frameworks */,
 				490FA3982F1D100000BAEBFC /* Build MCP Bridge */,
+				49A8CFE08D0000000000B100 /* Build UMAP Bridge */,
 			);
 			buildRules = (
 			);
