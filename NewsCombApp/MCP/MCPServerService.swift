@@ -62,24 +62,39 @@ final class MCPServerService: Sendable {
                 The hypergraph contains entities (nodes), relationships (hyperedges), article chunks, \
                 embeddings, and story theme clusters extracted from news articles.
 
-                ## Available capabilities:
+                ## Research (read-only):
                 - **query_knowledge_graph**: Full RAG pipeline — embed question with Nomic, vector search, \
                 BFS reasoning paths, context assembly. Use this as your primary research tool.
                 - **search_concepts**: Find entities/concepts in the knowledge graph using full-text search
                 - **search_chunks**: Search article text chunks for specific content
                 - **get_node_neighbors**: Explore the graph by finding relationships connected to a concept
                 - **find_paths**: Discover multi-hop reasoning paths between two concepts
-                - **get_themes**: Browse automatically discovered story themes/clusters
-                - **get_theme_details**: Get detailed information about a specific theme
                 - **get_statistics**: Get knowledge graph statistics (node/edge/article counts)
                 - **get_recent_articles**: List recently ingested articles from RSS feeds
 
+                ## Theme exploration (read-only):
+                - **get_themes**: Browse automatically discovered story themes/clusters
+                - **get_theme_details**: Top-10 exemplar events plus entities and families for a theme
+                - **get_theme_provenance**: All members of a theme with article + chunk-level provenance
+                - **get_entity_themes**: Themes an entity participates in, ranked by edge count
+                - **compare_themes**: Centroid cosine, top-entity Jaccard, and shared-article overlap between themes
+                - **find_articles_across_themes**: Hub articles spanning multiple themes
+
+                ## App actions (mirror UI buttons — affect the running app):
+                - **refresh_feeds**: Same as the Refresh toolbar button — fetch every RSS source.
+                - **process_knowledge_graph**: Same as the Process Knowledge Graph button — extract entities/edges from new articles.
+                - **cancel_knowledge_graph_processing**: Same as the Stop button shown while processing.
+                - **rebuild_themes**: Same as the Recompute All themes menu — full clustering pipeline.
+                - **regenerate_theme_summaries**: Same as Regenerate Summaries — re-label without re-clustering.
+                - **get_app_status**: Snapshot of every long-running operation; poll this after firing background actions.
+
                 ## Workflow tips:
-                1. For research questions, start with query_knowledge_graph — it runs the full RAG pipeline
-                2. Use search_concepts or get_themes for exploratory browsing
-                3. Use get_node_neighbors to explore connections around interesting concepts
-                4. Use find_paths to discover causal chains between two specific concepts
-                5. Use search_chunks to find supporting evidence in article text
+                1. For research questions, start with query_knowledge_graph — it runs the full RAG pipeline.
+                2. Before research, consider refresh_feeds + process_knowledge_graph (with wait=true) to ensure data is current.
+                3. After major ingestion, run rebuild_themes to refresh story clusters before theme analysis.
+                4. Use get_themes → get_theme_provenance for deep-dives into a specific story.
+                5. Use get_entity_themes to see how a single actor maps onto your knowledge graph's narratives.
+                6. For long-running actions (process/rebuild), pass wait=false and poll get_app_status.
                 """,
             capabilities: Server.Capabilities(
                 tools: .init()

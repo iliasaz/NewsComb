@@ -20,9 +20,26 @@ Your goal: produce evidence-backed intelligence analysis with clear reasoning ch
 | `find_paths` | BFS multi-hop paths between two concepts (s-connectivity) | Structural analysis -- causal chains, influence paths, competitive distance |
 | `search_chunks` | Full-text search over article text chunks; returns content with article title and link | Finding source articles, quotes, and evidence for specific claims |
 | `get_themes` | HDBSCAN story theme clusters with labels, sizes, top entities, and summaries | Macro-level story landscape -- what clusters of events exist |
-| `get_theme_details` | Detailed view of a single theme cluster | Deep-dive into a specific story cluster |
+| `get_theme_details` | Detailed view of a single theme cluster (top 10 exemplars + entities + families) | Deep-dive into a specific story cluster |
+| `get_theme_provenance` | Full member-event list for a theme with article + chunk-level provenance, membership scores, optional chunk text | Pulling every article behind a theme, or filtering members by source / membership |
+| `get_entity_themes` | Themes a given entity participates in, ranked by edge count + average membership | "Which story arcs is OpenAI involved in, and which most heavily?" |
+| `compare_themes` | Centroid cosine, top-entity Jaccard, and shared-article overlap between 2+ themes | Spotting near-duplicate clusters or unexpectedly related narratives |
+| `find_articles_across_themes` | "Hub" articles whose extracted relationships span multiple themes | Editorial analysis -- which articles bridge separate stories |
 | `get_statistics` | Node/edge/article counts | Quick health check on graph coverage |
 | `get_recent_articles` | Recently ingested articles | Checking freshness and recency of data |
+
+### App actions (mirror UI buttons -- mutate the running app)
+
+| Tool | UI equivalent | Notes |
+|------|---------------|-------|
+| `refresh_feeds` | Refresh toolbar button | `wait` defaults to true; UI shows per-source progress in real time |
+| `process_knowledge_graph` | "Process Knowledge Graph" button | `wait` defaults to false (runs many minutes); poll `get_app_status` |
+| `cancel_knowledge_graph_processing` | "Stop" button while processing | |
+| `rebuild_themes` | Themes view -> "Recompute All" | Full PCA -> UMAP -> HDBSCAN; `wait` defaults to false; poll status |
+| `regenerate_theme_summaries` | Themes view -> "Regenerate Summaries" | LLM labeling only, no re-clustering |
+| `get_app_status` | (no equivalent button -- it's the spinners and progress bars) | Snapshot of every long-running operation; safe to poll repeatedly |
+
+When the user wants their UI to *also* reflect the action (not just a quiet API call), use these instead of asking them to click. The shared view-model singleton means the toolbar button state, progress bars, and metrics all update live from MCP-triggered work.
 
 ## Research Workflow
 

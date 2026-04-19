@@ -38,6 +38,26 @@ enum MCPToolDispatcher {
                 result = try MCPGetRecentArticlesTool.run(arguments: arguments)
             case "query_knowledge_graph":
                 result = try await MCPQueryKnowledgeGraphTool.run(arguments: arguments)
+            case "refresh_feeds":
+                result = await MCPRefreshFeedsTool.run(arguments: arguments)
+            case "process_knowledge_graph":
+                result = await MCPProcessKnowledgeGraphTool.run(arguments: arguments)
+            case "cancel_knowledge_graph_processing":
+                result = await MCPCancelKnowledgeGraphProcessingTool.run(arguments: arguments)
+            case "rebuild_themes":
+                result = await MCPRebuildThemesTool.run(arguments: arguments)
+            case "regenerate_theme_summaries":
+                result = await MCPRegenerateThemeSummariesTool.run(arguments: arguments)
+            case "get_app_status":
+                result = await MCPGetAppStatusTool.run(arguments: arguments)
+            case "get_theme_provenance":
+                result = try MCPGetThemeProvenanceTool.run(arguments: arguments)
+            case "compare_themes":
+                result = try MCPCompareThemesTool.run(arguments: arguments)
+            case "get_entity_themes":
+                result = try MCPGetEntityThemesTool.run(arguments: arguments)
+            case "find_articles_across_themes":
+                result = try MCPFindArticlesAcrossThemesTool.run(arguments: arguments)
             default:
                 throw MCPToolError(message: "Unknown tool: \(toolName)")
             }

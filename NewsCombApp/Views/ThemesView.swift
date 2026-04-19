@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Displays the list of story themes (clusters) with a rebuild action.
 struct ThemesView: View {
-    @State private var viewModel = ThemeClusterViewModel()
+    @State private var viewModel = ThemeClusterViewModel.shared
 
     var body: some View {
         List {

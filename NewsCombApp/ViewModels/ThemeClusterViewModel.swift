@@ -8,6 +8,9 @@ import OSLog
 @Observable
 final class ThemeClusterViewModel {
 
+    /// Shared singleton so the ThemesView and the MCP server operate on the same state.
+    static let shared = ThemeClusterViewModel()
+
     // MARK: - Search State
 
     /// Current search query text bound to the search bar.

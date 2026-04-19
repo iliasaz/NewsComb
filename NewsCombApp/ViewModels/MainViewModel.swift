@@ -26,6 +26,11 @@ struct SourceMetric: Identifiable, Equatable, Hashable {
 @MainActor
 @Observable
 class MainViewModel {
+    /// Shared singleton so SwiftUI views and the MCP server can drive the same state.
+    /// Without sharing, MCP-triggered actions would mutate a separate instance and
+    /// the UI would not reflect them.
+    static let shared = MainViewModel()
+
     var metrics: [SourceMetric] = []
     var isRefreshing = false
     var totalItemsFetched = 0

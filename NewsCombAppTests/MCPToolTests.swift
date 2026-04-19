@@ -727,3 +727,183 @@ final class MCPDatabaseReaderTests: XCTestCase {
         XCTAssertEqual(name, "hello")
     }
 }
+
+// MARK: - Theme analysis tool tests
+//
+// These exercise the new MCP tools that go beyond `get_themes` / `get_theme_details`:
+// per-event provenance, theme-vs-theme comparison, entity → theme mapping, and
+// cross-theme article discovery.
+
+/// Builds a fresh in-memory DB with the standard schema *plus* the columns the new
+/// theme tools need (`centroid_vec` blob on clusters, plus an extra cluster).
+private func makeThemeAnalysisDatabase() throws -> InMemoryDatabaseReader {
+    let reader = try makeTestDatabase()
+    try insertTestData(reader.dbQueue)
+    try reader.dbQueue.write { db in
+        // Existing schema test was missing centroid_vec — add it for compare_themes.
+        try db.execute(sql: "ALTER TABLE clusters ADD COLUMN centroid_vec BLOB")
+
+        // A second cluster, partially overlapping with cluster 1 (event 2 sits in both,
+        // exercising both find_articles_across_themes and the shared-article column of
+        // compare_themes).
+        try db.execute(sql: """
+            INSERT INTO clusters (cluster_id, build_id, size, label, summary, top_entities_json, top_rel_families_json)
+            VALUES (2, 'b1', 1, 'Cloud AI Partnerships', 'Strategic deals among hyperscalers.',
+                    '[{"label":"Microsoft","score":0.8},{"label":"AMD","score":0.6}]',
+                    '[{"family":"partners_with","count":1}]')
+        """)
+        try db.execute(sql: "INSERT INTO cluster_members (cluster_id, event_id, membership) VALUES (2, 2, 0.95)")
+        try db.execute(sql: "INSERT INTO fts_cluster(rowid, label, summary) VALUES (2, 'Cloud AI Partnerships', 'Strategic deals among hyperscalers.')")
+
+        // Centroid vectors as little-endian Float arrays (4 dims is enough for a sanity test).
+        let centroidA: [Float] = [1.0, 0.0, 0.5, 0.2]
+        let centroidB: [Float] = [0.9, 0.1, 0.4, 0.3]
+        let blobA = centroidA.withUnsafeBufferPointer { Data(buffer: $0) }
+        let blobB = centroidB.withUnsafeBufferPointer { Data(buffer: $0) }
+        try db.execute(sql: "UPDATE clusters SET centroid_vec = ? WHERE cluster_id = 1", arguments: [blobA])
+        try db.execute(sql: "UPDATE clusters SET centroid_vec = ? WHERE cluster_id = 2", arguments: [blobB])
+    }
+    return reader
+}
+
+final class MCPGetThemeProvenanceToolTests: XCTestCase {
+
+    func testReturnsAllMembersWithMembership() throws {
+        let db = try makeThemeAnalysisDatabase()
+        let result = try MCPGetThemeProvenanceTool.run(
+            arguments: ["cluster_id": .int(1)],
+            database: db
+        )
+        // Cluster 1 has two member events; both should appear.
+        XCTAssertTrue(result.contains("Event #1"))
+        XCTAssertTrue(result.contains("Event #2"))
+        XCTAssertTrue(result.contains("membership=0.90"))
+        XCTAssertTrue(result.contains("NVIDIA Launches New AI Chip"))
+    }
+
+    func testIncludeChunkTextOptIn() throws {
+        let db = try makeThemeAnalysisDatabase()
+        let resultOff = try MCPGetThemeProvenanceTool.run(
+            arguments: ["cluster_id": .int(1)],
+            database: db
+        )
+        XCTAssertFalse(resultOff.contains("groundbreaking AI chip"))
+
+        let resultOn = try MCPGetThemeProvenanceTool.run(
+            arguments: ["cluster_id": .int(1), "include_chunk_text": .bool(true)],
+            database: db
+        )
+        XCTAssertTrue(resultOn.contains("groundbreaking AI chip"))
+    }
+
+    func testMembershipFilterDropsLowScoringEvents() throws {
+        let db = try makeThemeAnalysisDatabase()
+        // Event #2 has membership=0.8; setting min_membership=0.85 should exclude it.
+        let result = try MCPGetThemeProvenanceTool.run(
+            arguments: ["cluster_id": .int(1), "min_membership": .double(0.85)],
+            database: db
+        )
+        XCTAssertTrue(result.contains("Event #1"))
+        XCTAssertFalse(result.contains("Event #2"))
+    }
+
+    func testUnknownClusterThrowsNotFound() throws {
+        let db = try makeThemeAnalysisDatabase()
+        XCTAssertThrowsError(try MCPGetThemeProvenanceTool.run(
+            arguments: ["cluster_id": .int(999)],
+            database: db
+        ))
+    }
+}
+
+final class MCPCompareThemesToolTests: XCTestCase {
+
+    func testProducesPairwiseTable() throws {
+        let db = try makeThemeAnalysisDatabase()
+        let result = try MCPCompareThemesTool.run(
+            arguments: ["cluster_ids": .array([.int(1), .int(2)])],
+            database: db
+        )
+        XCTAssertTrue(result.contains("Pairwise Similarity"))
+        XCTAssertTrue(result.contains("AI Chip Race"))
+        XCTAssertTrue(result.contains("Cloud AI Partnerships"))
+        // The two centroids are nearly parallel, cosine should be > 0.9.
+        // We just check that *some* numeric value (not n/a) is present.
+        XCTAssertFalse(result.contains("| n/a |"))
+    }
+
+    func testRequiresAtLeastTwoIds() throws {
+        let db = try makeThemeAnalysisDatabase()
+        XCTAssertThrowsError(try MCPCompareThemesTool.run(
+            arguments: ["cluster_ids": .array([.int(1)])],
+            database: db
+        ))
+    }
+
+    func testSurfacesSharedArticles() throws {
+        let db = try makeThemeAnalysisDatabase()
+        // Event 2 (AMD partners with Microsoft) belongs to both clusters; both clusters
+        // therefore share article #11.
+        let result = try MCPCompareThemesTool.run(
+            arguments: ["cluster_ids": .array([.int(1), .int(2)])],
+            database: db
+        )
+        XCTAssertTrue(result.contains("AMD Partners with Microsoft"))
+    }
+}
+
+final class MCPGetEntityThemesToolTests: XCTestCase {
+
+    func testReturnsThemesForKnownEntity() throws {
+        let db = try makeThemeAnalysisDatabase()
+        // Microsoft participates in event 2, which is in cluster 2 (and also cluster 1 via
+        // the shared event), so we expect at least one theme.
+        let result = try MCPGetEntityThemesTool.run(
+            arguments: ["entity_label": .string("Microsoft")],
+            database: db
+        )
+        XCTAssertTrue(result.contains("Microsoft"))
+        XCTAssertTrue(result.contains("Cloud AI Partnerships") || result.contains("AI Chip Race"))
+    }
+
+    func testCaseInsensitiveLookup() throws {
+        let db = try makeThemeAnalysisDatabase()
+        let result = try MCPGetEntityThemesTool.run(
+            arguments: ["entity_label": .string("nvidia")],
+            database: db
+        )
+        XCTAssertTrue(result.contains("NVIDIA"))
+    }
+
+    func testUnknownEntityReturnsHelpfulMessage() throws {
+        let db = try makeThemeAnalysisDatabase()
+        let result = try MCPGetEntityThemesTool.run(
+            arguments: ["entity_label": .string("nonexistent-entity-xyz")],
+            database: db
+        )
+        XCTAssertTrue(result.contains("No entity found"))
+    }
+}
+
+final class MCPFindArticlesAcrossThemesToolTests: XCTestCase {
+
+    func testFindsArticlesSpanningMultipleThemes() throws {
+        let db = try makeThemeAnalysisDatabase()
+        // Event 2 is in both clusters; its article should be returned at min_themes=2.
+        let result = try MCPFindArticlesAcrossThemesTool.run(
+            arguments: [:],
+            database: db
+        )
+        XCTAssertTrue(result.contains("AMD Partners with Microsoft"))
+        XCTAssertTrue(result.contains("Spans **2**"))
+    }
+
+    func testHighMinThemesProducesNoMatches() throws {
+        let db = try makeThemeAnalysisDatabase()
+        let result = try MCPFindArticlesAcrossThemesTool.run(
+            arguments: ["min_themes": .int(5)],
+            database: db
+        )
+        XCTAssertTrue(result.contains("No articles span"))
+    }
+}

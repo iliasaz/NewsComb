@@ -5,7 +5,7 @@ import AppKit
 #endif
 
 struct MainView: View {
-    @State private var viewModel = MainViewModel()
+    @State private var viewModel = MainViewModel.shared
     @State private var showingClearAllConfirmation = false
     @State private var showingResetGraphConfirmation = false
     @State private var showingStatistics = false

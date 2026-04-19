@@ -153,6 +153,164 @@ struct MCPToolHandler: Sendable {
                 annotations: .init(readOnlyHint: true, openWorldHint: false)
             ),
             Tool(
+                name: "refresh_feeds",
+                description: "Trigger a feed refresh — equivalent to pressing the Refresh button in the NewsComb UI. Fetches every RSS source, extracts content, and updates the in-app metrics. The UI reflects progress in real time.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true (default), block until refresh completes and return a summary. If false, fire-and-forget and poll get_app_status.")
+                        ])
+                    ])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
+                name: "process_knowledge_graph",
+                description: "Trigger LLM extraction over unprocessed articles — equivalent to the 'Process Knowledge Graph' toolbar button. Persists new entities, relationships, embeddings, and auto-simplifies the graph. The UI shows live progress.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, block until processing finishes (can take many minutes). Default false: returns immediately and you should poll get_app_status.")
+                        ])
+                    ])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
+                name: "cancel_knowledge_graph_processing",
+                description: "Cancel a running knowledge graph processing job — equivalent to the 'Stop' button shown while processing.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([:])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "rebuild_themes",
+                description: "Trigger theme clustering — equivalent to the 'Recompute All' menu item in the Themes view. Runs the full PCA → UMAP → HDBSCAN pipeline and re-labels clusters. The UI shows the rebuild progress bar.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, block until clustering completes. Default false: returns immediately and you should poll get_app_status.")
+                        ])
+                    ])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
+                name: "regenerate_theme_summaries",
+                description: "Re-run only the LLM labeling step on existing theme clusters — equivalent to 'Regenerate Summaries' in the Themes menu. Faster than a full rebuild.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, block until regeneration completes. Default false: returns immediately and you should poll get_app_status.")
+                        ])
+                    ])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
+                name: "get_app_status",
+                description: "Snapshot every long-running operation in the NewsComb app — feed refresh, knowledge graph processing, theme clustering — with progress, status messages, and last-error details. Use this to poll after triggering a background action.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([:])
+                ]),
+                annotations: .init(readOnlyHint: true, idempotentHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "get_theme_provenance",
+                description: "Returns the full member-event list for a theme with article and chunk-level provenance. Unlike get_theme_details (which shows top 10 exemplars), this gives every event with its membership score, source article, and optionally the chunk text it was extracted from.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "cluster_id": .object([
+                            "type": .string("integer"),
+                            "description": .string("Theme cluster ID (from get_themes).")
+                        ]),
+                        "limit": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum member events to return (default 50).")
+                        ]),
+                        "min_membership": .object([
+                            "type": .string("number"),
+                            "description": .string("Minimum membership score, 0.0–1.0 (default 0.0).")
+                        ]),
+                        "include_chunk_text": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, include the source chunk text (truncated to 500 chars).")
+                        ]),
+                        "source": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional: only include events whose source article comes from an RSS source matching this name (substring match).")
+                        ])
+                    ]),
+                    "required": .array([.string("cluster_id")])
+                ]),
+                annotations: .init(readOnlyHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "compare_themes",
+                description: "Compare two or more themes by centroid cosine similarity, top-entity Jaccard overlap, and shared source articles. Useful for spotting near-duplicate clusters or unexpectedly related stories.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "cluster_ids": .object([
+                            "type": .string("array"),
+                            "description": .string("Two or more cluster IDs to compare."),
+                            "items": .object(["type": .string("integer")])
+                        ])
+                    ]),
+                    "required": .array([.string("cluster_ids")])
+                ]),
+                annotations: .init(readOnlyHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "get_entity_themes",
+                description: "Lists every theme an entity participates in, ranked by how many of the entity's edges fall into each theme. Answers questions like 'which themes is OpenAI involved in?'.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "entity_label": .object([
+                            "type": .string("string"),
+                            "description": .string("Entity label (case-insensitive). Use search_concepts first if unsure of the exact label.")
+                        ]),
+                        "limit": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum themes to return (default 20).")
+                        ])
+                    ]),
+                    "required": .array([.string("entity_label")])
+                ]),
+                annotations: .init(readOnlyHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "find_articles_across_themes",
+                description: "Find 'hub' articles whose extracted relationships span multiple theme clusters. Ranked by number of distinct themes touched. Useful for editorial analysis and trend correlation.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "min_themes": .object([
+                            "type": .string("integer"),
+                            "description": .string("Minimum number of themes an article must span (default 2).")
+                        ]),
+                        "limit": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum articles to return (default 20).")
+                        ])
+                    ])
+                ]),
+                annotations: .init(readOnlyHint: true, openWorldHint: false)
+            ),
+            Tool(
                 name: "query_knowledge_graph",
                 description: """
                     Full RAG query over the knowledge hypergraph. Given a natural language question, this tool: \
