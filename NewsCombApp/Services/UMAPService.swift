@@ -38,7 +38,7 @@ final class UMAPService: Sendable {
 
     /// Errors thrown when the bridge subprocess can't be started or returns
     /// a malformed response.
-    enum BridgeError: Error, LocalizedError {
+    enum BridgeError: Error, LocalizedError, Equatable {
         case binaryNotFound
         case launchFailed(String)
         case malformedResponse(String)
@@ -70,13 +70,16 @@ final class UMAPService: Sendable {
     ///   - progressCallback: Optional callback invoked with `(currentEpoch, totalEpochs)`
     ///     during SGD optimization. Forwarded from the bridge's stderr stream.
     /// - Returns: Array of N vectors, each of `params.targetDimension` dimensions.
-    ///   Falls back to the input vectors on any bridge failure so the caller
-    ///   pipeline can continue rather than crash.
+    /// - Throws: `BridgeError` if the helper subprocess can't be located, fails to
+    ///   launch, returns a malformed response, or exits non-zero. Callers should
+    ///   surface the error so a broken UMAP step doesn't silently feed un-reduced
+    ///   vectors to HDBSCAN (which would produce plausible-looking but wrong
+    ///   clusters with no obvious user-visible warning).
     func reduce(
         vectors: [[Float]],
         params: Parameters = Parameters(),
         progressCallback: (@Sendable (Int, Int) -> Void)? = nil
-    ) async -> [[Float]] {
+    ) async throws -> [[Float]] {
         let n = vectors.count
         guard n >= 2 else { return vectors }
 
@@ -93,23 +96,18 @@ final class UMAPService: Sendable {
         logger.info("UMAP (bridge): n=\(n), inDim=\(inputDim), outDim=\(params.targetDimension), k=\(effectiveNeighbors)")
         let pipelineStart = ContinuousClock.now
 
-        do {
-            let result = try await Self.invokeBridge(
-                vectors: vectors,
-                n: n,
-                dIn: inputDim,
-                dOut: params.targetDimension,
-                nNeighbors: effectiveNeighbors,
-                params: params,
-                progressCallback: progressCallback
-            )
-            let elapsed = ContinuousClock.now - pipelineStart
-            logger.info("UMAP (bridge) complete: \(n) points → \(params.targetDimension)D in \(elapsed)")
-            return result
-        } catch {
-            logger.error("UMAP (bridge) failed: \(error.localizedDescription) — returning input vectors")
-            return vectors
-        }
+        let result = try await Self.invokeBridge(
+            vectors: vectors,
+            n: n,
+            dIn: inputDim,
+            dOut: params.targetDimension,
+            nNeighbors: effectiveNeighbors,
+            params: params,
+            progressCallback: progressCallback
+        )
+        let elapsed = ContinuousClock.now - pipelineStart
+        logger.info("UMAP (bridge) complete: \(n) points → \(params.targetDimension)D in \(elapsed)")
+        return result
     }
 
     // MARK: - Bridge invocation
@@ -229,7 +227,7 @@ final class UMAPService: Sendable {
 
     // MARK: - Wire format
 
-    private static func encodeRequest(
+    static func encodeRequest(
         vectors: [[Float]],
         n: Int,
         dIn: Int,
@@ -285,7 +283,7 @@ final class UMAPService: Sendable {
         return data
     }
 
-    private static func decodeResponse(_ data: Data, expectedN: Int, expectedDOut: Int) throws -> [[Float]] {
+    static func decodeResponse(_ data: Data, expectedN: Int, expectedDOut: Int) throws -> [[Float]] {
         let headerLen = 8 + 4 + 4
         guard data.count >= headerLen else {
             throw BridgeError.malformedResponse("response too short: \(data.count) bytes")

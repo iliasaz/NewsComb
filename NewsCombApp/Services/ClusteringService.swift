@@ -105,7 +105,7 @@ final class ClusteringService: Sendable {
             // Surface SGD epoch progress to the UI without spamming on every epoch.
             let inDimDesc = pcaReduced[0].count
             let nDesc = pcaReduced.count
-            umapReduced = await umapService.reduce(
+            umapReduced = try await umapService.reduce(
                 vectors: pcaReduced,
                 params: umapParams,
                 progressCallback: { [statusCallback, progressCallback] epoch, total in

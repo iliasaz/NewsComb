@@ -15,9 +15,7 @@ let package = Package(
         .executable(name: "newscomb-umap-bridge", targets: ["newscomb-umap-bridge"]),
     ],
     dependencies: [
-        // Absolute path keeps the dependency resolvable from the main worktree
-        // and from any git worktrees under `.claude/worktrees/...`.
-        .package(path: "/Users/ilia/Developer/umap-mlx-swift"),
+        .package(url: "https://github.com/iliasaz/umap-mlx-swift.git", branch: "main"),
     ],
     targets: [
         .executableTarget(
