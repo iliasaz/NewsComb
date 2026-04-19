@@ -1,5 +1,6 @@
 import Accelerate
 import Foundation
+import HeapModule
 import OSLog
 
 /// Pure-Swift HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise)
@@ -192,6 +193,19 @@ final class HDBSCANService: Sendable {
     ///
     /// When the best kNN edge would leave disconnected components, computes the
     /// exact distance on-demand for the nearest non-MST vertex (lazy fallback).
+    /// Single entry in the Prim's frontier heap. Carries its own parent so we
+    /// don't need a separate `bestNeighbor[]` book-keeping array.
+    private struct MSTHeapEntry: Comparable {
+        let weight: Float
+        let vertex: Int
+        let parent: Int
+
+        static func < (lhs: MSTHeapEntry, rhs: MSTHeapEntry) -> Bool {
+            // Tie-break on vertex so equal-weight pops are deterministic.
+            lhs.weight == rhs.weight ? lhs.vertex < rhs.vertex : lhs.weight < rhs.weight
+        }
+    }
+
     private func buildSparseMST(
         adjacency: [[Int]],
         edgeDistances: [Int64: Float],
@@ -199,76 +213,187 @@ final class HDBSCANService: Sendable {
         vectors: [[Float]],
         n: Int
     ) -> [MSTEdge] {
+        // Heap-based Prim's on the sparse mutual-reachability graph.
+        // Using a min-heap brings frontier selection from O(V) per step (the
+        // previous linear scan, ~O(V²) total = ~13.6B comparisons at V=116K)
+        // down to O((V+E) log V) ≈ 22M ops.
+        //
+        // - `minEdge[v]` records the best mutual-reachability we've ever
+        //   pushed for v. New pushes filtered against it to keep the heap
+        //   size bounded by E rather than E·k.
+        // - `inMST[v]` filters stale entries on pop (lazy deletion).
+        // - Entries carry their own parent, so no separate bestNeighbor[].
         var inMST = [Bool](repeating: false, count: n)
         var minEdge = [Float](repeating: .infinity, count: n)
-        var bestNeighbor = [Int](repeating: -1, count: n)
+        var heap = Heap<MSTHeapEntry>()
         var edges: [MSTEdge] = []
         edges.reserveCapacity(n - 1)
 
-        // Start from vertex 0 — initialize from its kNN neighbors
-        inMST[0] = true
-        for j in adjacency[0] {
-            let dist = lookupDistance(i: 0, j: j, n: n, edgeDistances: edgeDistances)
-            let mr = max(coreDistances[0], coreDistances[j], dist)
-            if mr < minEdge[j] {
-                minEdge[j] = mr
-                bestNeighbor[j] = 0
+        // Push v's still-unreached kNN neighbors into the heap with the
+        // mutual-reachability of each (v, j) edge. Used for the initial seed
+        // and after each bridge edge.
+        func pushNeighbors(of v: Int) {
+            for j in adjacency[v] where !inMST[j] {
+                let dist = lookupDistance(i: v, j: j, n: n, edgeDistances: edgeDistances)
+                let mr = max(coreDistances[v], coreDistances[j], dist)
+                if mr < minEdge[j] {
+                    minEdge[j] = mr
+                    heap.insert(MSTHeapEntry(weight: mr, vertex: j, parent: v))
+                }
             }
         }
 
-        for step in 1..<n {
-            // Find the minimum edge to a non-MST vertex
-            var bestVertex = -1
-            var bestWeight: Float = .infinity
-
-            for j in 0..<n {
-                if !inMST[j] && minEdge[j] < bestWeight {
-                    bestWeight = minEdge[j]
-                    bestVertex = j
+        // Drain the heap, popping the cheapest reachable vertex each iteration.
+        // Lazy-deletes stale entries via the `inMST` check.
+        func drainHeap() {
+            while edges.count < n - 1, let entry = heap.popMin() {
+                if inMST[entry.vertex] { continue }
+                inMST[entry.vertex] = true
+                edges.append(MSTEdge(u: entry.parent, v: entry.vertex, weight: entry.weight))
+                pushNeighbors(of: entry.vertex)
+                if edges.count % 10000 == 0 {
+                    logger.info("Sparse MST progress: \(edges.count)/\(n - 1)")
                 }
             }
+        }
 
-            // If no reachable vertex found, compute distances on-demand
-            // to the nearest unreachable vertex (handles disconnected kNN graph)
-            if bestVertex == -1 || bestWeight == .infinity {
-                for j in 0..<n where !inMST[j] {
-                    // Find the nearest MST vertex by computing exact distance
-                    for mstV in 0..<n where inMST[mstV] {
-                        let dist = cosineDistance(vectors[mstV], vectors[j])
-                        let mr = max(coreDistances[mstV], coreDistances[j], dist)
-                        if mr < minEdge[j] {
-                            minEdge[j] = mr
-                            bestNeighbor[j] = mstV
-                        }
-                    }
-                    if minEdge[j] < bestWeight {
-                        bestWeight = minEdge[j]
-                        bestVertex = j
-                    }
-                }
-            }
+        // Seed from vertex 0 and drain.
+        inMST[0] = true
+        minEdge[0] = 0
+        pushNeighbors(of: 0)
+        drainHeap()
 
-            guard bestVertex >= 0 else { break }
-
-            inMST[bestVertex] = true
-            edges.append(MSTEdge(u: bestNeighbor[bestVertex], v: bestVertex, weight: bestWeight))
-
-            // Update neighbors via sparse adjacency
-            for j in adjacency[bestVertex] where !inMST[j] {
-                let dist = lookupDistance(i: bestVertex, j: j, n: n, edgeDistances: edgeDistances)
-                let mr = max(coreDistances[bestVertex], coreDistances[j], dist)
-                if mr < minEdge[j] {
-                    minEdge[j] = mr
-                    bestNeighbor[j] = bestVertex
-                }
-            }
-
-            if step % 10000 == 0 {
-                logger.info("Sparse MST progress: \(step)/\(n - 1)")
-            }
+        // Disconnected-kNN bridge fallback. If the heap drained before the
+        // MST covered every vertex, the kNN graph is multi-component. Bridge
+        // one component at a time via a vectorized matmul-based search, then
+        // resume the heap to drain the newly-reachable component before
+        // looking for the next bridge.
+        //
+        // The previous implementation was nested O(V_unreached × V_mst) per
+        // *edge added* with scalar `cosineDistance` calls — at V=116K with
+        // ~6,500 unreached the profile showed it pinning one CPU for ~20s.
+        // The matmul version computes the entire (unreached × mst) sim
+        // matrix in one Accelerate `vDSP_mmul`, finds each row's argmax via
+        // `vDSP_maxvi`, and then re-seeds the heap so most of the bridged
+        // component falls back to the fast path.
+        while edges.count < n - 1 {
+            guard let bridge = findBestBridge(
+                inMST: inMST, vectors: vectors,
+                coreDistances: coreDistances, n: n
+            ) else { break }
+            inMST[bridge.unreached] = true
+            edges.append(MSTEdge(
+                u: bridge.mstVertex, v: bridge.unreached, weight: bridge.weight
+            ))
+            pushNeighbors(of: bridge.unreached)
+            drainHeap()
         }
 
         return edges.sorted()
+    }
+
+    /// Finds the cheapest bridge edge between any unreached vertex and any
+    /// MST vertex, measured by mutual reachability. Returns nil if both sides
+    /// are empty (i.e. nothing left to bridge).
+    ///
+    /// Complexity per call: one `vDSP_mmul` of shape
+    /// `(V_unreached × d) × (d × V_mst)`, plus `V_unreached` `vDSP_maxvi`
+    /// row scans. Dominated by the matmul.
+    private func findBestBridge(
+        inMST: [Bool],
+        vectors: [[Float]],
+        coreDistances: [Float],
+        n: Int
+    ) -> (unreached: Int, mstVertex: Int, weight: Float)? {
+        var unreachedIdx: [Int] = []
+        var mstIdx: [Int] = []
+        unreachedIdx.reserveCapacity(n)
+        mstIdx.reserveCapacity(n)
+        for v in 0 ..< n {
+            if inMST[v] { mstIdx.append(v) } else { unreachedIdx.append(v) }
+        }
+        guard !unreachedIdx.isEmpty, !mstIdx.isEmpty else { return nil }
+        guard let d = vectors.first?.count else { return nil }
+        let nu = unreachedIdx.count
+        let nm = mstIdx.count
+
+        // Pack & L2-normalize both sides — cosine sim becomes a dot product
+        // on the packed rows, which `vDSP_mmul` does in bulk.
+        let unreachedMat = packAndNormalize(vectors: vectors, indices: unreachedIdx, dim: d)
+        let mstMat = packAndNormalize(vectors: vectors, indices: mstIdx, dim: d)
+
+        // vDSP_mmul wants the right-hand side already transposed in memory.
+        var mstTransposed = [Float](repeating: 0, count: d * nm)
+        mstMat.withUnsafeBufferPointer { mstBuf in
+            vDSP_mtrans(mstBuf.baseAddress!, 1,
+                        &mstTransposed, 1,
+                        vDSP_Length(d), vDSP_Length(nm))
+        }
+
+        // sim[u, m] = unreached[u] · mst[m], shape (nu × nm).
+        var sims = [Float](repeating: 0, count: nu * nm)
+        unreachedMat.withUnsafeBufferPointer { uBuf in
+            mstTransposed.withUnsafeBufferPointer { mBuf in
+                vDSP_mmul(uBuf.baseAddress!, 1,
+                          mBuf.baseAddress!, 1,
+                          &sims, 1,
+                          vDSP_Length(nu), vDSP_Length(nm), vDSP_Length(d))
+            }
+        }
+
+        // Per-row argmax (= argmin cosine distance), then global argmin of
+        // mutual reachability across all bridge candidates.
+        var bestUnreached = -1
+        var bestMstVertex = -1
+        var bestWeight: Float = .infinity
+        sims.withUnsafeBufferPointer { simsBuf in
+            for ui in 0 ..< nu {
+                var maxSim: Float = -.infinity
+                var maxIdx: vDSP_Length = 0
+                vDSP_maxvi(simsBuf.baseAddress! + ui * nm, 1,
+                           &maxSim, &maxIdx,
+                           vDSP_Length(nm))
+                let argmax = Int(maxIdx)
+                let j = unreachedIdx[ui]
+                let mstV = mstIdx[argmax]
+                let dist = max(0, 1.0 - maxSim)
+                let mr = max(coreDistances[j], coreDistances[mstV], dist)
+                if mr < bestWeight {
+                    bestWeight = mr
+                    bestUnreached = j
+                    bestMstVertex = mstV
+                }
+            }
+        }
+
+        return bestUnreached >= 0
+            ? (bestUnreached, bestMstVertex, bestWeight)
+            : nil
+    }
+
+    /// Packs a subset of `vectors` (selected by `indices`) into a contiguous
+    /// row-major Float buffer with each row L2-normalized. Used by the
+    /// bridge search to convert cosine similarity into a plain dot product.
+    private func packAndNormalize(
+        vectors: [[Float]],
+        indices: [Int],
+        dim: Int
+    ) -> [Float] {
+        var packed = [Float](repeating: 0, count: indices.count * dim)
+        packed.withUnsafeMutableBufferPointer { packedBuf in
+            let dst = packedBuf.baseAddress!
+            for (row, idx) in indices.enumerated() {
+                let v = vectors[idx]
+                v.withUnsafeBufferPointer { src in
+                    var norm: Float = 0
+                    vDSP_svesq(src.baseAddress!, 1, &norm, vDSP_Length(dim))
+                    var scale = norm > 0 ? 1.0 / sqrt(norm) : 0
+                    vDSP_vsmul(src.baseAddress!, 1, &scale,
+                               dst + row * dim, 1, vDSP_Length(dim))
+                }
+            }
+        }
+        return packed
     }
 
     /// Looks up a distance from the sparse edge dictionary.

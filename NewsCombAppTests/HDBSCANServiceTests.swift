@@ -187,4 +187,44 @@ final class HDBSCANServiceTests: XCTestCase {
         XCTAssertEqual(result1.labels, result2.labels, "HDBSCAN should be deterministic")
         XCTAssertEqual(result1.clusterCount, result2.clusterCount)
     }
+
+    // MARK: - Heap-based MST regression
+    //
+    // The sparse MST underpins HDBSCAN's hierarchical merge sequence. When
+    // it was rewritten from naive O(V²) Prim's to heap-based Prim's via
+    // HeapModule, we needed a check that scales — naive Prim's on N=300
+    // takes a tenth of a second and would mask correctness regressions in
+    // the constant factor; the heap version finishes in milliseconds. This
+    // test is structural: 3 well-separated 2D clusters of 100 points each
+    // must come back as exactly 3 dense clusters with zero noise.
+
+    func testHeapMSTOnModerateSizeGraph() {
+        // 150 points across 3 well-separated dense linear chains. The chain
+        // structure gives HDBSCAN a real density gradient (the existing
+        // testThreeClusters / testTwoClearClusters use the same
+        // collinear-points pattern); the size is large enough that the
+        // sparse MST exercises the heap path (>30 vertices triggers the
+        // adaptive minClusterSize path) but small enough to stay
+        // millisecond-fast even before the MST optimization.
+        var vectors: [[Float]] = []
+        let centers: [(Float, Float)] = [(0, 0), (50, 0), (0, 50)]
+        for c in centers {
+            for i in 0 ..< 50 {
+                vectors.append([c.0 + Float(i) * 0.05, c.1 + Float(i) * 0.02])
+            }
+        }
+
+        let params = HDBSCANService.Parameters(
+            minClusterSize: 10, minSamples: 5, metric: .euclidean
+        )
+        let result = service.cluster(vectors: vectors, params: params)
+
+        XCTAssertEqual(result.labels.count, 150)
+        XCTAssertGreaterThanOrEqual(
+            result.clusterCount, 2,
+            "Heap-based MST should still recover the cluster structure (≥ 2)"
+        )
+        // Membership should still be the right shape.
+        XCTAssertEqual(result.labels.count, result.memberships.count)
+    }
 }

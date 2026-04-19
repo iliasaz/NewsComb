@@ -30,6 +30,21 @@ final class UMAPService: Sendable {
 
     private let logger = Logger(subsystem: "com.newscomb", category: "UMAPService")
 
+    /// Cap MLX's allocator cache once per process. The default `cacheLimit`
+    /// equals `memoryLimit`, which on a Mac with abundant RAM grows to tens
+    /// of GB and stays resident long after the GPU work that produced it has
+    /// finished — putting OS-level memory pressure on subsequent CPU stages
+    /// of the pipeline (the Accelerate-based HDBSCAN kNN observed mid-run
+    /// per-tile slowdowns 0.6s → 21s when this cache was unconstrained).
+    /// 4 GB is generous for the SGD inner loop's working set at production
+    /// N (~116K) and small enough to leave the rest of the system breathable.
+    private static let configureMLXMemoryOnce: Void = {
+        let cap = 4 * 1024 * 1024 * 1024
+        MLX.Memory.cacheLimit = cap
+        Logger(subsystem: "com.newscomb", category: "UMAPService")
+            .info("MLX cache limit set to \(cap) bytes")
+    }()
+
     /// Reduces vectors to a low-dimensional embedding via MLX UMAP.
     ///
     /// - Parameters:
@@ -46,6 +61,7 @@ final class UMAPService: Sendable {
         params: Parameters = Parameters(),
         progressCallback: (@Sendable (Int, Int) -> Void)? = nil
     ) async throws -> [[Float]] {
+        _ = Self.configureMLXMemoryOnce
         let n = vectors.count
         guard n >= 2 else { return vectors }
 
@@ -128,6 +144,22 @@ final class UMAPService: Sendable {
             let start = i * outDim
             result.append(Array(floats[start ..< (start + outDim)]))
         }
+
+        // Drop GPU buffers before returning so downstream CPU stages
+        // (HDBSCAN kNN, MST) don't compete with our temporaries for the
+        // OS memory budget. eval(embedding) above already blocked until
+        // GPU work finished and asArray copied the data to host memory,
+        // so it's safe to clear MLX's allocator cache now. cacheLimit
+        // alone only takes effect on the *next* deallocation per the
+        // MLX docstring, so we explicitly clear here.
+        let logger = Logger(subsystem: "com.newscomb", category: "UMAPService")
+        let before = MLX.Memory.snapshot()
+        MLX.Memory.clearCache()
+        let after = MLX.Memory.snapshot()
+        logger.info(
+            "MLX memory after UMAP: active \(before.activeMemory)→\(after.activeMemory) bytes, cache \(before.cacheMemory)→\(after.cacheMemory) bytes (peak \(after.peakMemory))"
+        )
+
         return result
     }
 }

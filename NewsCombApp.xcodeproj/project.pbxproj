@@ -12,9 +12,10 @@
 		490FA3912F1B7E1000BAEBFC /* HyperGraphReasoning in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3902F1B7E1000BAEBFC /* HyperGraphReasoning */; };
 		490FA3942F1B7E2000BAEBFC /* Embeddings in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3932F1B7E2000BAEBFC /* Embeddings */; };
 		490FA3962F1C8A0000BAEBFC /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 490FA3952F1C8A0000BAEBFC /* MCP */; };
-		49C0A4A4D00000000000001A /* UMAPMLX in Frameworks */ = {isa = PBXBuildFile; productRef = 49C0A4A4D00000000000002A /* UMAPMLX */; };
 		491E2BE32F16EC2300D1840C /* FeedKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000021 /* FeedKit */; };
 		491E2BE42F16EC2300D1840C /* PostlightSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000050 /* PostlightSwift */; };
+		49C0A4A4D00000000000001A /* UMAPMLX in Frameworks */ = {isa = PBXBuildFile; productRef = 49C0A4A4D00000000000002A /* UMAPMLX */; };
+		49C0A4A4D00000000000004A /* HeapModule in Frameworks */ = {isa = PBXBuildFile; productRef = 49C0A4A4D00000000000005A /* HeapModule */; };
 		8A0000000000000000000062 /* OPML in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000000000000000000061 /* OPML */; };
 /* End PBXBuildFile section */
 
@@ -47,27 +48,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		490FA3982F1D100000BAEBFC /* Build MCP Bridge */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/NewsCombMCPBridge/Sources/main.swift",
-				"$(SRCROOT)/NewsCombMCPBridge/Package.swift",
-			);
-			name = "Build MCP Bridge";
-			outputPaths = (
-				"$(BUILD_DIR)/NewsCombMCPBridge/release/newscomb-mcp-bridge",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/zsh;
-			shellScript = "cd \"$SRCROOT/NewsCombMCPBridge\"\nswift build -c release --scratch-path \"$BUILD_DIR/NewsCombMCPBridge\" 2>&1\nmkdir -p \"$SRCROOT/NewsCombMCPBridge/.build/release\"\ncp -f \"$BUILD_DIR/NewsCombMCPBridge/arm64-apple-macosx/release/newscomb-mcp-bridge\" \"$SRCROOT/NewsCombMCPBridge/.build/release/newscomb-mcp-bridge\" 2>/dev/null || true\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXFileReference section */
 		8A0000000000000000000001 /* NewsCombApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NewsCombApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -120,6 +100,7 @@
 				8A0000000000000000000062 /* OPML in Frameworks */,
 				490FA3962F1C8A0000BAEBFC /* MCP in Frameworks */,
 				49C0A4A4D00000000000001A /* UMAPMLX in Frameworks */,
+				49C0A4A4D00000000000004A /* HeapModule in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -199,6 +180,7 @@
 				8A0000000000000000000061 /* OPML */,
 				490FA3952F1C8A0000BAEBFC /* MCP */,
 				49C0A4A4D00000000000002A /* UMAPMLX */,
+				49C0A4A4D00000000000005A /* HeapModule */,
 			);
 			productName = NewsCombApp;
 			productReference = 8A0000000000000000000001 /* NewsCombApp.app */;
@@ -288,6 +270,7 @@
 				8A0000000000000000000060 /* XCRemoteSwiftPackageReference "swift-opml" */,
 				490FA3942F1C8A0000BAEBFC /* XCRemoteSwiftPackageReference "swift-sdk" */,
 				49C0A4A4D00000000000003A /* XCRemoteSwiftPackageReference "umap-mlx-swift" */,
+				49C0A4A4D00000000000006A /* XCRemoteSwiftPackageReference "swift-collections" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8A0000000000000000000005 /* Products */;
@@ -324,6 +307,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		490FA3982F1D100000BAEBFC /* Build MCP Bridge */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/NewsCombMCPBridge/Sources/main.swift",
+				"$(SRCROOT)/NewsCombMCPBridge/Package.swift",
+			);
+			name = "Build MCP Bridge";
+			outputPaths = (
+				"$(BUILD_DIR)/NewsCombMCPBridge/release/newscomb-mcp-bridge",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/zsh;
+			shellScript = "cd \"$SRCROOT/NewsCombMCPBridge\"\nswift build -c release --scratch-path \"$BUILD_DIR/NewsCombMCPBridge\" 2>&1\nmkdir -p \"$SRCROOT/NewsCombMCPBridge/.build/release\"\ncp -f \"$BUILD_DIR/NewsCombMCPBridge/arm64-apple-macosx/release/newscomb-mcp-bridge\" \"$SRCROOT/NewsCombMCPBridge/.build/release/newscomb-mcp-bridge\" 2>/dev/null || true\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8A0000000000000000000007 /* Sources */ = {
@@ -719,6 +723,14 @@
 				kind = branch;
 			};
 		};
+		49C0A4A4D00000000000006A /* XCRemoteSwiftPackageReference "swift-collections" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-collections.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.0;
+			};
+		};
 		8A0000000000000000000023 /* XCRemoteSwiftPackageReference "FeedKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/nmdias/FeedKit";
@@ -772,6 +784,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 49C0A4A4D00000000000003A /* XCRemoteSwiftPackageReference "umap-mlx-swift" */;
 			productName = UMAPMLX;
+		};
+		49C0A4A4D00000000000005A /* HeapModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 49C0A4A4D00000000000006A /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = HeapModule;
 		};
 		8A0000000000000000000021 /* FeedKit */ = {
 			isa = XCSwiftPackageProductDependency;
