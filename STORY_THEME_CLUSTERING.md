@@ -23,11 +23,12 @@ EventVectorService
 PCAService (Accelerate LAPACK)             ── 2,316D → 50D linear reduction
     |
     v
-UMAPService (pure-Swift)                   ── 50D → 25D nonlinear manifold learning
+UMAPService (MLX / GPU via UMAPMLX)        ── 50D → 25D nonlinear manifold learning
     |
-    ├── VP-tree kNN graph construction
-    ├── Fuzzy simplicial set (membership weights)
-    └── SGD layout optimization
+    ├── kNN on the GPU (MLX matmul + topk)
+    ├── Fuzzy simplicial set (vectorized membership weights)
+    └── SGD layout optimization on the GPU
+        (sibling package: github.com/iliasaz/umap-mlx-swift)
     |
     v
 HDBSCANService (pure-Swift, uses Accelerate)
@@ -89,17 +90,23 @@ This linear pre-reduction removes noise dimensions and makes the subsequent UMAP
 
 **Performance**: Sub-second for any N (the bottleneck is the D×D eigendecomposition, not N-dependent). Default: 2,316D → 50D.
 
-### Step 4: UMAP Nonlinear Embedding
+### Step 4: UMAP Nonlinear Embedding (GPU via MLX)
 
-`UMAPService.reduce()` learns a nonlinear low-dimensional embedding that preserves local neighborhood structure:
+`UMAPService.reduce()` is a thin wrapper around the [`umap-mlx-swift`](https://github.com/iliasaz/umap-mlx-swift) package — a from-scratch UMAP implementation we wrote on top of [MLX Swift](https://github.com/ml-explore/mlx-swift) so the entire embedding step runs on the Apple Silicon GPU.
 
-1. **kNN graph**: VP-tree (`VPTreeService`) finds k-nearest neighbors for each point using cosine distance. Runs in O(N log N) at 50 dimensions.
-2. **Fuzzy simplicial set**: Converts kNN distances to membership weights via per-point bandwidth σ (found by binary search) and symmetrizes the graph via fuzzy union.
-3. **SGD layout**: Stochastic gradient descent optimizes the low-dimensional embedding using attractive forces (pull connected points together) and repulsive forces (push random non-neighbors apart via negative sampling).
+The wrapper flattens the input row vectors into a single contiguous `Float32` buffer, builds an `MLXArray` of shape `[n, d]`, and calls `UMAP.fitTransform(...)` on a `@concurrent` task so the GPU dispatch (and the Metal `eval()` wait) doesn't block the caller's actor (typically `@MainActor` via `ClusteringService`). The three internal phases are:
 
-Default parameters: `nNeighbors = 15`, `targetDimension = 25`, `minDist = 0.1`, `nEpochs = 200`.
+1. **kNN graph (GPU)**: `umap-mlx-swift` computes nearest neighbors via tiled matrix-multiply on the GPU plus a `topk` reduction, replacing the previous CPU VP-tree. Tiles are sized to fit GPU memory; throughput scales with the number of GPU cores.
+2. **Fuzzy simplicial set**: Per-point bandwidth σ found by binary search (vectorized across all points) converts kNN distances to membership weights, then symmetrizes via fuzzy union.
+3. **SGD layout (GPU)**: Negative-sampling-based stochastic gradient descent runs as MLX tensor ops — attractive forces on edge endpoints, repulsive forces on negative samples — with each epoch dispatched as a small graph of GPU kernels. SGD epoch progress is surfaced to the UI via the optional `progressCallback`.
 
-**Performance**: ~6-14 seconds for N=50K on M-series chips (kNN dominates at ~2-5s).
+Default parameters: `nNeighbors = 15`, `targetDimension = 25`, `minDist = 0.1`, `nEpochs` auto-selected (`500` if `n ≤ 10K`, otherwise `200`), seeded `MLXRandom` (default `42`).
+
+**Performance** (N ≈ 116K events on Apple M5):
+- Pure-Swift VP-tree + Accelerate-vectorized SGD: **~50 minutes** (CPU-bound, single-threaded inner loop).
+- `umap-mlx-swift` GPU pipeline: **single-digit minutes** — kNN drops from ~75s to a few seconds, SGD goes from ~144s to seconds; the bulk of remaining time is fuzzy simplicial set construction.
+
+Using a separately published Swift package keeps the MLX surface narrow: the main app declares `umap-mlx-swift` as a direct SPM dep, and Conduit's MLX provider stays trait-gated so it doesn't get pulled in by accident. See `Services/UMAPService.swift` for the full bridge code.
 
 ### Step 5: HDBSCAN Clustering
 
@@ -249,8 +256,9 @@ Both `clearAllArticles()` and `resetKnowledgeGraph()` in `MainViewModel` follow 
 |------|---------|
 | `Services/EventVectorService.swift` | IDF computation and event vector construction |
 | `Services/PCAService.swift` | PCA via Accelerate LAPACK (linear reduction) |
-| `Services/VPTreeService.swift` | Vantage-Point tree for kNN search |
-| `Services/UMAPService.swift` | UMAP nonlinear dimensionality reduction |
+| `Services/VPTreeService.swift` | Vantage-Point tree for kNN search — still used by `HDBSCANService` for its mutual-reachability graph; no longer used by UMAP |
+| `Services/UMAPService.swift` | Thin wrapper around `umap-mlx-swift` (GPU) — flattens vectors into MLX, dispatches `fitTransform` on `@concurrent` |
+| `umap-mlx-swift` (sibling SPM package) | From-scratch UMAP on MLX: GPU kNN, fuzzy set, SGD layout. Dependency declared in `NewsCombApp.xcodeproj`. |
 | `Services/HDBSCANService.swift` | Pure-Swift HDBSCAN with Accelerate |
 | `Services/ClusteringService.swift` | Pipeline orchestrator (steps 1-8) |
 | `Services/ClusterLabelingService.swift` | LLM title and summary generation |

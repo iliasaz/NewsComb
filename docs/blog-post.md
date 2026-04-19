@@ -154,6 +154,8 @@ The fix: brute-force matrix multiply via Apple's Accelerate framework. For norma
 
 **UMAP SGD: 1.4 billion `pow` calls.** The SGD inner loop computes `pow(distSq, b)` for every edge at every epoch — 1.4 billion calls. We replaced all per-dimension scalar loops with vectorized operations and substituted the expensive `pow` with a fast single-precision approximation (`exp(b * log(x))`). Total: 144 seconds for 200 epochs, down from ~600.
 
+**UMAP at production scale: not enough.** That ~144s SGD figure was for N=89K. After several weeks of feed ingestion the corpus grew to ~116K events, and the same Accelerate-vectorized pipeline started taking *fifty minutes* end-to-end — bigger N tipped both kNN and SGD over the threshold where Apple Silicon's CPU+AMX combination stopped winning. We needed the GPU. That story is its own section below.
+
 **HDBSCAN: From 128 GB to 15 MB.** The original implementation computed a full N x N distance matrix. At N=89K, four intermediate arrays totaled 128 GB — it crashed the machine. The fix: reuse the kNN graph from UMAP. HDBSCAN needs core distances and a minimum spanning tree, both derivable from the sparse kNN graph. Memory: 15 MB instead of 128 GB. Same algorithm, same results.
 
 ### Leveraging Apple Silicon
@@ -295,11 +297,59 @@ When a user configures OpenRouter or Apple's on-device Foundation Model in Setti
 
 ---
 
+## Building umap-mlx-swift: GPU UMAP for Apple Silicon
+
+The Accelerate-vectorized pipeline carried us from ~600s to ~144s on N=89K. Then the corpus grew to N≈116K and the same code pushed past 50 minutes for a single rebuild — slow enough that "recompute themes" stopped being a button people would press during research.
+
+The CPU was the wrong machine. UMAP's two hot stages — kNN search and SGD layout — are both massively parallel arithmetic over flat float buffers, exactly the workload Apple's GPU and Metal are designed to chew through. We'd already shipped MLX in production via on-device embeddings; the framework was sitting right there. So we wrote a sibling Swift package — [`iliasaz/umap-mlx-swift`](https://github.com/iliasaz/umap-mlx-swift) — that reimplements UMAP from scratch on top of [MLX Swift](https://github.com/ml-explore/mlx-swift).
+
+**What it does, in one screen of API:**
+
+```swift
+var configuration = UMAP.Configuration()
+configuration.nComponents = 25
+configuration.nNeighbors = 15
+configuration.minDist = 0.1
+configuration.randomSeed = 42
+
+let umap = UMAP(configuration)
+let embedding: MLXArray = try umap.fitTransform(input, progressCallback: { epoch, total in
+    // surface SGD progress to the UI
+})
+eval(embedding)
+```
+
+That single call replaces our previous ~390-line `UMAPService.swift` (VP-tree + Accelerate-vectorized SGD layout). The `MLXArray` input lives in unified memory and never copies between CPU and GPU; the kernels run on the GPU; the output is a row-major Float buffer we can hand straight to HDBSCAN.
+
+**Inside the package:**
+
+- **kNN on the GPU.** Brute-force similarity matrix via tiled `MLX.matmul`, then `topk` reduction. We tile so the intermediate matrix fits in GPU memory regardless of N. Where the CPU brute-force at N=89K cost 75s, the GPU does it in seconds — and the cost grows much more slowly with N because the GPU was hardly breathing a sweat at the smaller size.
+- **Fuzzy simplicial set, vectorized.** The per-point bandwidth σ search (binary search to a target perplexity) runs across all points simultaneously as MLX tensor ops. The fuzzy union for symmetrization is a couple of element-wise ops on the membership matrix.
+- **SGD layout on the GPU.** Each epoch dispatches a small graph of MLX kernels: lookup the endpoints of each edge, compute attractive forces, sample negatives, compute repulsive forces, apply the gradient, decay the learning rate. The 1.4-billion-`pow`-calls problem from the CPU pipeline isn't a problem when the work runs as a few hundred large fused kernels.
+- **Auto epoch selection.** Following the standard UMAP heuristic, the package picks 500 epochs for N ≤ 10K and 200 for larger N if the caller doesn't override `nEpochs`. Reproducibility is preserved by exposing `randomSeed` (defaults to 42; pass `nil` for non-deterministic).
+
+**The integration friction nobody warned us about.** Adding MLX as a direct dependency to NewsCombApp surfaced an SPM trait-propagation bug we'd been quietly tolerating. The transitive dependency chain `NewsCombApp → HyperGraphReasoning → SwiftAgents → Conduit` had Conduit conditionally compiling its `MLXProvider.swift` on `#if canImport(MLX)`, but only declaring its MLX product dependencies (MLXLMCommon, MLXLLM, MLXVLM, StableDiffusion) when its `MLX` package trait was enabled. As long as MLX wasn't visible anywhere in the workspace, the unguarded `canImport` was false and the missing dependencies didn't matter. Adding `umap-mlx-swift` flipped `canImport(MLX)` to true everywhere — and Conduit's MLX-touching files suddenly tried to import modules that weren't linked, breaking the build with "unable to resolve module dependency" errors that had nothing to do with us.
+
+The fix took two passes:
+1. **Conduit 1.0.4** (a fork release): promoted the outer guard on every MLX-touching source file from `#if canImport(MLX)` to `#if CONDUIT_TRAIT_MLX && canImport(MLX)`. Strict superset of 1.0.3 — no API changes, just stricter conditional compilation. Now Conduit's MLX surface is genuinely opt-in and other packages can bring MLX into the workspace without dragging Conduit's MLX provider in by accident.
+2. **SwiftAgents trait propagation**: gave SwiftAgents its own `MLX` package trait that propagates conditionally to Conduit's `MLX` trait, and changed the four `#if canImport(MLX)` blocks in `ConduitProvider.swift` to `#if SWIFTAGENTS_TRAIT_MLX`. Same idea — make MLX an explicit consumer choice, not a side-effect of workspace visibility.
+
+The lesson — for anyone wrapping accelerator frameworks in SPM packages: **`#if canImport(X)` is not isolation, it's leakage.** Use package traits and `#if PACKAGE_TRAIT_X && canImport(X)` together so siblings can use X without your package quietly trying to.
+
+**End-to-end result:**
+
+| Stage | CPU pipeline (N=116K) | MLX pipeline (N=116K) |
+|---|---|---|
+| kNN graph | ~10 min (VP-tree + parallel queries) | seconds (tiled matmul + topk) |
+| Fuzzy simplicial set | seconds | seconds |
+| SGD layout (200 epochs) | ~38 min (Accelerate-vectorized inner loop) | seconds |
+| **Theme rebuild end-to-end** | **~50 min** | **single-digit minutes** |
+
+The pure-Swift implementation (`Services/UMAPService.swift` ~ 390 LOC) collapsed to a ~135-line wrapper that flattens the input into an `MLXArray`, calls `fitTransform`, and reshapes the output. The `umap-mlx-swift` package itself is independently usable by anyone who wants UMAP on Apple Silicon — released under the same fork-friendly license as the rest of the project.
+
+---
+
 ## What's Next
-
-Four directions:
-
-**GPU-accelerated UMAP via MLX Swift.** The SGD loop is the remaining CPU bottleneck. MLX Swift (Apple's ML framework with Swift bindings) could move the entire gradient computation to GPU metal shaders, potentially achieving 10-50x speedup. A reference implementation exists in Python (hanxiao/mlx-vis).
 
 **Incremental clustering.** Currently the full pipeline reruns from scratch. Incremental UMAP and HDBSCAN on new events — updating the embedding and cluster assignments without recomputing from zero — would make the system live-updating.
 
@@ -323,4 +373,4 @@ Four directions:
 
 ---
 
-*NewsComb is an open-source project. The complete source code, including the pure-Swift PCA, UMAP, and HDBSCAN implementations, is available on GitHub.*
+*NewsComb is an open-source project. The complete source code — pure-Swift PCA and HDBSCAN, plus the GPU UMAP package [`umap-mlx-swift`](https://github.com/iliasaz/umap-mlx-swift) — is available on GitHub.*
