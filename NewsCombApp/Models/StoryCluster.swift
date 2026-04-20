@@ -12,6 +12,8 @@ struct StoryCluster: Identifiable, Hashable, Codable, FetchableRecord, Persistab
     var topRelFamiliesJson: String?
     var summary: String?
     var createdAt: Date
+    var parentClusterId: Int64?
+    var isTentative: Bool
 
     var id: Int64 { clusterId }
 
@@ -34,6 +36,8 @@ struct StoryCluster: Identifiable, Hashable, Codable, FetchableRecord, Persistab
         case topRelFamiliesJson = "top_rel_families_json"
         case summary
         case createdAt = "created_at"
+        case parentClusterId = "parent_cluster_id"
+        case isTentative = "is_tentative"
     }
 
     enum Columns: String, ColumnExpression {
@@ -45,6 +49,34 @@ struct StoryCluster: Identifiable, Hashable, Codable, FetchableRecord, Persistab
         case topRelFamiliesJson = "top_rel_families_json"
         case summary
         case createdAt = "created_at"
+        case parentClusterId = "parent_cluster_id"
+        case isTentative = "is_tentative"
+    }
+
+    init(
+        clusterId: Int64,
+        buildId: String,
+        label: String? = nil,
+        size: Int,
+        centroidVec: Data? = nil,
+        topEntitiesJson: String? = nil,
+        topRelFamiliesJson: String? = nil,
+        summary: String? = nil,
+        createdAt: Date,
+        parentClusterId: Int64? = nil,
+        isTentative: Bool = false
+    ) {
+        self.clusterId = clusterId
+        self.buildId = buildId
+        self.label = label
+        self.size = size
+        self.centroidVec = centroidVec
+        self.topEntitiesJson = topEntitiesJson
+        self.topRelFamiliesJson = topRelFamiliesJson
+        self.summary = summary
+        self.createdAt = createdAt
+        self.parentClusterId = parentClusterId
+        self.isTentative = isTentative
     }
 
     /// Decoded top entities with their IDF-weighted scores.

@@ -114,6 +114,17 @@ extension AppSettings {
     static let umapNNeighbors = "umap_n_neighbors"
     static let defaultUMAPNNeighbors = 15
 
+    // Algorithm Parameters - HDBSCAN
+    static let hdbscanMinClusterSize = "hdbscan_min_cluster_size"
+    static let defaultHDBSCANMinClusterSize = 0  // 0 = auto (sqrt-scaled by HDBSCANService.Parameters.validated)
+    static let hdbscanMinSamples = "hdbscan_min_samples"
+    static let defaultHDBSCANMinSamples = 10
+    static let clusterMergeThreshold = "cluster_merge_threshold"
+    static let defaultClusterMergeThreshold: Float = 0.85
+    static let noisePoolIQRMultiplier = "noise_pool_iqr_multiplier"
+    /// Multiplier for the IQR rule used to flag mega-clusters as noise pools (Q3 + k * IQR on log(size)).
+    static let defaultNoisePoolIQRMultiplier: Float = 1.5
+
     // Algorithm Parameters - LLM
     static let extractionTemperature = "extraction_temperature"
     static let defaultExtractionTemperature: Float = 0.33

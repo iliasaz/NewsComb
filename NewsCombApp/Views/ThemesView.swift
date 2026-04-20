@@ -3,6 +3,29 @@ import SwiftUI
 /// Displays the list of story themes (clusters) with a rebuild action.
 struct ThemesView: View {
     @State private var viewModel = ThemeClusterViewModel.shared
+    @State private var dropConfirmAlert: DropConfirmAlert?
+
+    private struct DropConfirmAlert: Identifiable {
+        let id = UUID()
+        let ids: [Int64]
+        let summary: String
+    }
+
+    private func confirmDropNoisePools() {
+        let ids = Array(viewModel.noisePoolClusterIds)
+        guard !ids.isEmpty else { return }
+        let lookup = Dictionary(uniqueKeysWithValues: viewModel.clusters.map { ($0.clusterId, $0) })
+        let summary = ids
+            .compactMap { id -> String? in
+                guard let c = lookup[id] else { return nil }
+                return "#\(id) (\(c.size) events)"
+            }
+            .joined(separator: ", ")
+        dropConfirmAlert = DropConfirmAlert(
+            ids: ids,
+            summary: "Drop \(ids.count) noise-pool cluster(s): \(summary)? Saved sub-themes will be unlinked and become top-level. Underlying article and graph data is preserved."
+        )
+    }
 
     var body: some View {
         List {
@@ -38,6 +61,13 @@ struct ThemesView: View {
                             }
                         }
                         .disabled(!viewModel.hasClusters)
+
+                        Divider()
+
+                        Button("Drop Noise Pool Clusters\u{2026}", systemImage: "trash", role: .destructive) {
+                            confirmDropNoisePools()
+                        }
+                        .disabled(viewModel.noisePoolClusterIds.isEmpty)
                     } label: {
                         Label("Actions", systemImage: "ellipsis.circle")
                     }
@@ -69,6 +99,16 @@ struct ThemesView: View {
             if let error = viewModel.rebuildError {
                 Text(error)
             }
+        }
+        .alert(item: $dropConfirmAlert) { alert in
+            Alert(
+                title: Text("Drop Noise Pools"),
+                message: Text(alert.summary),
+                primaryButton: .destructive(Text("Drop")) {
+                    Task { _ = await viewModel.dropNoisePools(ids: alert.ids) }
+                },
+                secondaryButton: .cancel()
+            )
         }
         .onAppear {
             viewModel.loadClusters()
@@ -102,6 +142,10 @@ struct ThemesView: View {
             if viewModel.noiseCount > 0 {
                 LabeledContent("Noise Events", value: "\(viewModel.noiseCount)")
             }
+            if !viewModel.noisePoolClusterIds.isEmpty {
+                LabeledContent("Noise Pools (outliers)", value: "\(viewModel.noisePoolClusterIds.count)")
+                    .foregroundStyle(.red)
+            }
         } header: {
             Text("Summary")
         }
@@ -109,12 +153,39 @@ struct ThemesView: View {
 
     private var clustersSection: some View {
         Section {
-            ForEach(viewModel.displayedClusters) { cluster in
-                NavigationLink(value: cluster) {
-                    ClusterRow(
-                        cluster: cluster,
-                        snippet: viewModel.snippet(for: cluster.clusterId)
-                    )
+            if viewModel.isSearching {
+                // Flat list for search — entries can be either top-level or children.
+                ForEach(viewModel.displayedClusters) { cluster in
+                    NavigationLink(value: cluster) {
+                        ClusterRow(
+                            cluster: cluster,
+                            snippet: viewModel.snippet(for: cluster.clusterId),
+                            isSplitting: viewModel.splittingClusterIds.contains(cluster.clusterId),
+                            isNoisePool: viewModel.noisePoolClusterIds.contains(cluster.clusterId)
+                        )
+                    }
+                }
+            } else {
+                // Tree view: top-level rows + DisclosureGroup-expanded children.
+                ForEach(viewModel.topLevelClusters) { parent in
+                    let children = viewModel.subClusters(of: parent.clusterId)
+                    if children.isEmpty {
+                        NavigationLink(value: parent) {
+                            ClusterRow(
+                                cluster: parent,
+                                snippet: nil,
+                                isSplitting: viewModel.splittingClusterIds.contains(parent.clusterId),
+                                isNoisePool: viewModel.noisePoolClusterIds.contains(parent.clusterId)
+                            )
+                        }
+                    } else {
+                        ParentClusterRow(
+                            parent: parent,
+                            children: children,
+                            isSplitting: viewModel.splittingClusterIds.contains(parent.clusterId),
+                            isNoisePool: viewModel.noisePoolClusterIds.contains(parent.clusterId)
+                        )
+                    }
                 }
             }
         } header: {
@@ -132,13 +203,47 @@ struct ThemesView: View {
 private struct ClusterRow: View {
     let cluster: StoryCluster
     var snippet: String?
+    /// True when this cluster's split is currently running. Adds an animated indicator + tint.
+    var isSplitting: Bool = false
+    /// True when this cluster is a statistical outlier (likely an absorption pool, not a real theme).
+    var isNoisePool: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(cluster.label ?? "Cluster \(cluster.clusterId)")
+                Text("#\(cluster.clusterId)")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+
+                Text(cluster.label ?? "Untitled")
                     .font(.headline)
                     .lineLimit(1)
+                    .italic(cluster.isTentative)
+
+                if cluster.isTentative {
+                    Text("tentative")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.orange.opacity(0.18))
+                        .foregroundStyle(.orange)
+                        .clipShape(.capsule)
+                }
+
+                if isNoisePool {
+                    Text("noise pool")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.red.opacity(0.16))
+                        .foregroundStyle(.red)
+                        .clipShape(.capsule)
+                }
+
+                if isSplitting {
+                    ProgressView()
+                        .controlSize(.small)
+                }
 
                 Spacer()
 
@@ -187,6 +292,45 @@ private struct ClusterRow: View {
             }
         }
         .padding(.vertical, 4)
+        .listRowBackground(rowBackground)
+    }
+
+    private var rowBackground: AnyView? {
+        if isSplitting {
+            return AnyView(Color.yellow.opacity(0.15))
+        }
+        if isNoisePool {
+            return AnyView(Color.red.opacity(0.06))
+        }
+        if cluster.isTentative {
+            return AnyView(Color.orange.opacity(0.06))
+        }
+        return nil
+    }
+}
+
+// MARK: - Parent Cluster Row (DisclosureGroup wrapper)
+
+private struct ParentClusterRow: View {
+    let parent: StoryCluster
+    let children: [StoryCluster]
+    let isSplitting: Bool
+    let isNoisePool: Bool
+
+    @State private var isExpanded: Bool = true
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            ForEach(children) { child in
+                NavigationLink(value: child) {
+                    ClusterRow(cluster: child, snippet: nil, isSplitting: false, isNoisePool: false)
+                }
+            }
+        } label: {
+            NavigationLink(value: parent) {
+                ClusterRow(cluster: parent, snippet: nil, isSplitting: isSplitting, isNoisePool: isNoisePool)
+            }
+        }
     }
 }
 

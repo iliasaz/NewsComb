@@ -3,6 +3,13 @@ import GRDB
 import Observation
 import OSLog
 
+/// Lightweight error wrapper so ViewModel methods can return `Result<T, ThemeOperationError>`
+/// (Swift requires the failure type to conform to `Error`; a bare `String` does not).
+struct ThemeOperationError: LocalizedError, Sendable {
+    let message: String
+    var errorDescription: String? { message }
+}
+
 /// View model for the story themes list, supporting cluster display and rebuild.
 @MainActor
 @Observable
@@ -80,6 +87,8 @@ final class ThemeClusterViewModel {
                 return (total, noise)
             }
 
+            recomputeNoisePools()
+
             logger.info("Loaded \(self.clusters.count) clusters")
         } catch {
             logger.error("Failed to load clusters: \(error.localizedDescription, privacy: .public)")
@@ -125,6 +134,303 @@ final class ThemeClusterViewModel {
         }
 
         isRebuilding = false
+    }
+
+    // MARK: - Tree views
+
+    /// Top-level clusters (no parent), sorted by size descending. Used as the
+    /// root of the directory-style tree in `ThemesView`.
+    var topLevelClusters: [StoryCluster] {
+        clusters
+            .filter { $0.parentClusterId == nil }
+            .sorted { $0.size > $1.size }
+    }
+
+    /// Children of a parent cluster, sorted by size descending.
+    func subClusters(of parentId: Int64) -> [StoryCluster] {
+        clusters
+            .filter { $0.parentClusterId == parentId }
+            .sorted { $0.size > $1.size }
+    }
+
+    /// Whether this cluster has any tentative children awaiting Save / Discard.
+    func hasTentativeChildren(_ clusterId: Int64) -> Bool {
+        clusters.contains { $0.parentClusterId == clusterId && $0.isTentative }
+    }
+
+    // MARK: - Noise Pools
+
+    /// Cluster IDs that the IQR-on-log(size) outlier rule flagged as noise pools.
+    /// Recomputed inside `loadClusters()`.
+    private(set) var noisePoolClusterIds: Set<Int64> = []
+
+    /// Re-runs the noise-pool detector against the current top-level clusters and
+    /// the user's IQR multiplier setting.
+    private func recomputeNoisePools() {
+        let multiplier: Float = {
+            do {
+                return try database.read { db -> Float in
+                    if let setting = try AppSettings
+                        .filter(AppSettings.Columns.key == AppSettings.noisePoolIQRMultiplier)
+                        .fetchOne(db),
+                       let value = Float(setting.value) {
+                        return value
+                    }
+                    return AppSettings.defaultNoisePoolIQRMultiplier
+                }
+            } catch {
+                return AppSettings.defaultNoisePoolIQRMultiplier
+            }
+        }()
+        let sizes = clusters
+            .filter { $0.parentClusterId == nil && $0.size > 1 }
+            .map { (clusterId: $0.clusterId, size: $0.size) }
+        let result = ClusteringService.detectNoisePools(sizes: sizes, iqrMultiplier: multiplier)
+        noisePoolClusterIds = Set(result.noisePoolClusterIds)
+    }
+
+    /// Drops the named noise-pool clusters by reusing the existing delete-cluster
+    /// path (so saved children get unlinked and tentative children are removed).
+    /// Returns the number of clusters successfully dropped.
+    @discardableResult
+    func dropNoisePools(ids: [Int64]) async -> Result<Int, ThemeOperationError> {
+        guard !isRebuilding else { return .failure(ThemeOperationError(message: "Another theme operation is already running.")) }
+        isRebuilding = true
+        rebuildStatus = "Dropping \(ids.count) noise-pool cluster(s)\u{2026}"
+        defer { isRebuilding = false }
+
+        var dropped = 0
+        for id in ids {
+            do {
+                _ = try await clusteringService.deleteCluster(id)
+                dropped += 1
+            } catch {
+                logger.warning("Failed to drop noise-pool #\(id): \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        loadClusters()
+        rebuildStatus = ""
+        logger.info("Dropped \(dropped) of \(ids.count) noise-pool cluster(s)")
+        return .success(dropped)
+    }
+
+    // MARK: - Split
+
+    /// Cluster IDs whose split is currently running. Drives the in-progress
+    /// row highlight in `ThemesView`.
+    private(set) var splittingClusterIds: Set<Int64> = []
+
+    /// Outcome of a `splitCluster` invocation, surfaced for the view to react.
+    enum ThemeSplitOutcome: Sendable {
+        case unchanged(suggestion: String)
+        case split(newClusterIds: [Int64], unfitted: Int)
+        case dryRun(predictedSizes: [Int], unfitted: Int)
+        case failed(String)
+    }
+
+    /// Re-clusters a single existing cluster's members and inserts the discovered
+    /// sub-clusters as **tentative children** under the parent. The parent is left
+    /// intact. Use `saveSplit` / `discardSplit` to commit or undo.
+    @discardableResult
+    func splitCluster(
+        _ cluster: StoryCluster,
+        minClusterSize: Int? = nil,
+        minSamples: Int? = nil,
+        relabel: Bool = true,
+        dryRun: Bool = false
+    ) async -> ThemeSplitOutcome {
+        guard !splittingClusterIds.contains(cluster.clusterId) else {
+            return .failed("Cluster #\(cluster.clusterId) is already being split.")
+        }
+        guard !isRebuilding else {
+            return .failed("Another theme operation is already running.")
+        }
+
+        splittingClusterIds.insert(cluster.clusterId)
+        isRebuilding = true
+        rebuildError = nil
+        rebuildProgress = 0
+        rebuildStatus = dryRun
+            ? "Previewing split of #\(cluster.clusterId)\u{2026}"
+            : "Splitting #\(cluster.clusterId)\u{2026}"
+        defer {
+            splittingClusterIds.remove(cluster.clusterId)
+            isRebuilding = false
+        }
+
+        do {
+            let result = try await clusteringService.splitCluster(
+                clusterId: cluster.clusterId,
+                minClusterSizeOverride: minClusterSize,
+                minSamplesOverride: minSamples,
+                relabel: relabel,
+                dryRun: dryRun,
+                statusCallback: { [weak self] status in
+                    self?.rebuildStatus = status
+                },
+                progressCallback: { [weak self] progress in
+                    self?.rebuildProgress = progress
+                }
+            )
+
+            if !dryRun {
+                loadClusters()
+            }
+            rebuildStatus = ""
+
+            if result.unchanged {
+                return .unchanged(
+                    suggestion: "Try a smaller Min Cluster Size — the current value found \(result.newClusterSizes.count) sub-cluster(s)."
+                )
+            }
+            if result.dryRun {
+                return .dryRun(
+                    predictedSizes: result.newClusterSizes.map(\.size),
+                    unfitted: result.unfittedCount
+                )
+            }
+            return .split(
+                newClusterIds: result.newClusterSizes.compactMap(\.id),
+                unfitted: result.unfittedCount
+            )
+        } catch {
+            logger.error("Split cluster failed: \(error.localizedDescription, privacy: .public)")
+            rebuildError = error.localizedDescription
+            return .failed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Focused Theme Extraction
+
+    enum ThemeExtractOutcome: Sendable {
+        case extracted(newClusterId: Int64, matchedCount: Int, topScore: Float)
+        case noMatches(topScore: Float)
+        case failed(String)
+    }
+
+    /// Extracts events from a parent cluster matching a free-text phrase, persisting
+    /// them as a tentative sub-theme under the parent. Drives the in-progress highlight
+    /// just like `splitCluster` so the user can navigate away while it runs.
+    @discardableResult
+    func extractTheme(
+        parent: StoryCluster,
+        queryText: String,
+        topK: Int = 200,
+        similarityThreshold: Float = 0.45,
+        relabel: Bool = true,
+        dryRun: Bool = false
+    ) async -> ThemeExtractOutcome {
+        guard !splittingClusterIds.contains(parent.clusterId) else {
+            return .failed("Cluster #\(parent.clusterId) is already being split or extracted.")
+        }
+        guard !isRebuilding else {
+            return .failed("Another theme operation is already running.")
+        }
+
+        splittingClusterIds.insert(parent.clusterId)
+        isRebuilding = true
+        rebuildError = nil
+        rebuildProgress = 0
+        rebuildStatus = dryRun
+            ? "Previewing extract from #\(parent.clusterId)\u{2026}"
+            : "Extracting from #\(parent.clusterId)\u{2026}"
+        defer {
+            splittingClusterIds.remove(parent.clusterId)
+            isRebuilding = false
+        }
+
+        do {
+            let result = try await clusteringService.extractTheme(
+                parentClusterId: parent.clusterId,
+                queryText: queryText,
+                topK: topK,
+                similarityThreshold: similarityThreshold,
+                relabel: relabel,
+                dryRun: dryRun,
+                statusCallback: { [weak self] status in
+                    self?.rebuildStatus = status
+                },
+                progressCallback: { [weak self] progress in
+                    self?.rebuildProgress = progress
+                }
+            )
+
+            if !dryRun {
+                loadClusters()
+            }
+            rebuildStatus = ""
+
+            if let newId = result.newClusterId {
+                return .extracted(newClusterId: newId, matchedCount: result.matchedCount, topScore: result.topSimilarityScore)
+            }
+            return .noMatches(topScore: result.topSimilarityScore)
+        } catch {
+            logger.error("Extract theme failed: \(error.localizedDescription, privacy: .public)")
+            rebuildError = error.localizedDescription
+            return .failed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Save / Discard / Delete
+
+    /// Promotes tentative children of `parent` to permanent sub-themes.
+    @discardableResult
+    func saveSplit(parent: StoryCluster) async -> Result<Int, ThemeOperationError> {
+        guard !isRebuilding else { return .failure(ThemeOperationError(message: "Another theme operation is already running.")) }
+        isRebuilding = true
+        rebuildStatus = "Saving split of #\(parent.clusterId)\u{2026}"
+        defer { isRebuilding = false }
+
+        do {
+            let count = try await clusteringService.saveSplit(parentClusterId: parent.clusterId)
+            loadClusters()
+            rebuildStatus = ""
+            logger.info("Saved split of #\(parent.clusterId): \(count) child(ren) promoted")
+            return .success(count)
+        } catch {
+            rebuildError = error.localizedDescription
+            return .failure(ThemeOperationError(message: error.localizedDescription))
+        }
+    }
+
+    /// Removes all tentative children of `parent`.
+    @discardableResult
+    func discardSplit(parent: StoryCluster) async -> Result<Int, ThemeOperationError> {
+        guard !isRebuilding else { return .failure(ThemeOperationError(message: "Another theme operation is already running.")) }
+        isRebuilding = true
+        rebuildStatus = "Discarding split of #\(parent.clusterId)\u{2026}"
+        defer { isRebuilding = false }
+
+        do {
+            let count = try await clusteringService.discardSplit(parentClusterId: parent.clusterId)
+            loadClusters()
+            rebuildStatus = ""
+            logger.info("Discarded split of #\(parent.clusterId): \(count) tentative child(ren) removed")
+            return .success(count)
+        } catch {
+            rebuildError = error.localizedDescription
+            return .failure(ThemeOperationError(message: error.localizedDescription))
+        }
+    }
+
+    /// Deletes a cluster row and its dependents. Underlying graph data is preserved.
+    @discardableResult
+    func deleteCluster(_ cluster: StoryCluster) async -> Result<ClusteringService.DeleteResult, ThemeOperationError> {
+        guard !isRebuilding else { return .failure(ThemeOperationError(message: "Another theme operation is already running.")) }
+        isRebuilding = true
+        rebuildStatus = "Deleting #\(cluster.clusterId)\u{2026}"
+        defer { isRebuilding = false }
+
+        do {
+            let result = try await clusteringService.deleteCluster(cluster.clusterId)
+            loadClusters()
+            rebuildStatus = ""
+            logger.info("Deleted #\(cluster.clusterId): \(result.unlinkedChildCount) child(ren) unlinked (\(result.promotedTentativeChildCount) of which were tentative, now promoted)")
+            return .success(result)
+        } catch {
+            rebuildError = error.localizedDescription
+            return .failure(ThemeOperationError(message: error.localizedDescription))
+        }
     }
 
     /// Re-runs only the LLM labeling step for existing clusters.

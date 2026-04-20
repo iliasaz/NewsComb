@@ -381,6 +381,19 @@ public final class Database: Sendable {
                 }
             } catch { }
 
+            // Parent/child tree + tentative-children flag for non-destructive splits.
+            do {
+                let parentExists = try db.columns(in: "clusters").contains { $0.name == "parent_cluster_id" }
+                if !parentExists {
+                    try db.execute(sql: "ALTER TABLE clusters ADD COLUMN parent_cluster_id INTEGER REFERENCES clusters(cluster_id) ON DELETE SET NULL")
+                    try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_clusters_parent ON clusters(parent_cluster_id)")
+                }
+                let tentativeExists = try db.columns(in: "clusters").contains { $0.name == "is_tentative" }
+                if !tentativeExists {
+                    try db.execute(sql: "ALTER TABLE clusters ADD COLUMN is_tentative INTEGER NOT NULL DEFAULT 0")
+                }
+            } catch { }
+
             // FTS5 full-text search indexes (external content — no data duplication)
             try db.execute(sql: """
                 CREATE VIRTUAL TABLE IF NOT EXISTS fts_node USING fts5(

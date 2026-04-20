@@ -102,6 +102,10 @@ class SettingsViewModel {
     var pcaIntermediateDimension: Int = AppSettings.defaultPCAIntermediateDimension
     var umapTargetDimension: Int = AppSettings.defaultUMAPTargetDimension
     var umapNNeighbors: Int = AppSettings.defaultUMAPNNeighbors
+    var hdbscanMinClusterSize: Int = AppSettings.defaultHDBSCANMinClusterSize
+    var hdbscanMinSamples: Int = AppSettings.defaultHDBSCANMinSamples
+    var clusterMergeThreshold: Float = AppSettings.defaultClusterMergeThreshold
+    var noisePoolIQRMultiplier: Float = AppSettings.defaultNoisePoolIQRMultiplier
     var extractionTemperature: Float = AppSettings.defaultExtractionTemperature
     var analysisTemperature: Float = AppSettings.defaultAnalysisTemperature
     var llmMaxTokens: Int = AppSettings.defaultLLMMaxTokens
@@ -265,6 +269,26 @@ class SettingsViewModel {
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.umapNNeighbors).fetchOne(db),
                    let value = Int(setting.value) {
                     umapNNeighbors = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.hdbscanMinClusterSize).fetchOne(db),
+                   let value = Int(setting.value) {
+                    hdbscanMinClusterSize = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.hdbscanMinSamples).fetchOne(db),
+                   let value = Int(setting.value) {
+                    hdbscanMinSamples = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.clusterMergeThreshold).fetchOne(db),
+                   let value = Float(setting.value) {
+                    clusterMergeThreshold = value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.noisePoolIQRMultiplier).fetchOne(db),
+                   let value = Float(setting.value) {
+                    noisePoolIQRMultiplier = value
                 }
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.extractionTemperature).fetchOne(db),
@@ -629,6 +653,22 @@ class SettingsViewModel {
 
     func saveUMAPNNeighbors() {
         saveAPIKey(key: AppSettings.umapNNeighbors, value: String(umapNNeighbors))
+    }
+
+    func saveHDBSCANMinClusterSize() {
+        saveAPIKey(key: AppSettings.hdbscanMinClusterSize, value: String(hdbscanMinClusterSize))
+    }
+
+    func saveHDBSCANMinSamples() {
+        saveAPIKey(key: AppSettings.hdbscanMinSamples, value: String(hdbscanMinSamples))
+    }
+
+    func saveClusterMergeThreshold() {
+        saveAPIKey(key: AppSettings.clusterMergeThreshold, value: String(clusterMergeThreshold))
+    }
+
+    func saveNoisePoolIQRMultiplier() {
+        saveAPIKey(key: AppSettings.noisePoolIQRMultiplier, value: String(noisePoolIQRMultiplier))
     }
 
     func saveExtractionTemperature() {

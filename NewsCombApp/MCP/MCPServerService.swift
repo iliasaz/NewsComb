@@ -86,6 +86,13 @@ final class MCPServerService: Sendable {
                 - **cancel_knowledge_graph_processing**: Same as the Stop button shown while processing.
                 - **rebuild_themes**: Same as the Recompute All themes menu — full clustering pipeline.
                 - **regenerate_theme_summaries**: Same as Regenerate Summaries — re-label without re-clustering.
+                - **split_cluster**: Re-cluster a single cluster's members to surface sub-themes. Non-destructive: creates TENTATIVE children under the parent.
+                - **save_split**: Promote tentative children of a parent to permanent sub-themes.
+                - **discard_split**: Delete tentative children of a parent (parent stays).
+                - **delete_cluster**: Delete a single cluster row. Underlying graph data preserved. Saved children of a parent get unlinked (become top-level); tentative children get deleted.
+                - **identify_noise_pools** (read-only): List clusters flagged as outliers (likely absorption pools, not real themes).
+                - **drop_noise_pools**: Delete the flagged noise-pool clusters. Underlying graph data preserved. Useful as a cleanup step after rebuild_themes.
+                - **extract_theme**: Pull events matching a free-text phrase from a parent cluster as a tentative sub-theme. Uses chunk_embedding + cosine. Use save_split/discard_split afterwards.
                 - **get_app_status**: Snapshot of every long-running operation; poll this after firing background actions.
 
                 ## Workflow tips:

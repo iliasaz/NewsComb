@@ -281,6 +281,102 @@ struct SettingsView: View {
 
             Divider()
 
+            // HDBSCAN Clustering
+            Text("HDBSCAN Clustering")
+                .font(.headline)
+
+            Stepper(value: $viewModel.hdbscanMinClusterSize, in: 0...500, step: 5) {
+                HStack {
+                    Text("Min Cluster Size")
+                    ParameterInfoButton(
+                        title: "HDBSCAN Min Cluster Size",
+                        description: """
+                            Smallest group of events that HDBSCAN will treat as a real cluster. Anything smaller is merged into a parent cluster or marked as noise.
+
+                            • 0 (Auto) — scales as max(20, √N / 2). Conservative; tends to produce a few giant catch-all clusters on large datasets.
+                            • Higher (100–300) — forces fewer, broader themes. Use when one mega-cluster is absorbing unrelated content.
+                            • Lower (10–20) — allows many small, specific themes. Risk: noisy fragmentation.
+
+                            A safety floor inside HDBSCANService prevents pathological values regardless of what you set here.
+                            """
+                    )
+                    Spacer()
+                    Text(viewModel.hdbscanMinClusterSize == 0 ? "Auto" : "\(viewModel.hdbscanMinClusterSize)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.hdbscanMinClusterSize) {
+                viewModel.saveHDBSCANMinClusterSize()
+            }
+
+            Stepper(value: $viewModel.hdbscanMinSamples, in: 2...50) {
+                HStack {
+                    Text("Min Samples")
+                    ParameterInfoButton(
+                        title: "HDBSCAN Min Samples",
+                        description: """
+                            Number of nearest neighbors used to compute each point's *core distance* — the local density estimate at that point.
+
+                            Higher values make HDBSCAN more conservative: fewer, denser clusters with more noise. Typical: 5–20.
+
+                            Clamped to ≤ Min Cluster Size; values above that have no effect.
+                            """
+                    )
+                    Spacer()
+                    Text("\(viewModel.hdbscanMinSamples)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.hdbscanMinSamples) {
+                viewModel.saveHDBSCANMinSamples()
+            }
+
+            HStack {
+                Text("Merge Similarity Threshold")
+                ParameterInfoButton(
+                    title: "Cluster Merge Similarity Threshold",
+                    description: """
+                        After HDBSCAN, similar clusters are merged when their centroids' cosine similarity exceeds this value.
+
+                        • Default 0.85 — only very close themes are merged.
+                        • Lower (e.g. 0.75) — consolidates more aggressively.
+                        • Higher (e.g. 0.95) — keeps nuanced sub-themes separate.
+                        """
+                )
+                Spacer()
+                Text(viewModel.clusterMergeThreshold, format: .percent.precision(.fractionLength(0)))
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: $viewModel.clusterMergeThreshold, in: 0.5...0.99, step: 0.01)
+                .onChange(of: viewModel.clusterMergeThreshold) {
+                    viewModel.saveClusterMergeThreshold()
+                }
+
+            HStack {
+                Text("Noise-Pool IQR Multiplier")
+                ParameterInfoButton(
+                    title: "Noise-Pool IQR Multiplier",
+                    description: """
+                        After clustering, top-level cluster sizes are run through an Interquartile Range (IQR) outlier rule on log(size). Any cluster with log(size) above Q3 + multiplier × IQR is flagged as a noise pool — a giant absorption bucket that's not a real theme.
+
+                        • Default 1.5 — standard Tukey rule, flags clear outliers.
+                        • Higher (2.0–3.0) — stricter; flags only the most extreme giants.
+                        • Lower (1.0) — more aggressive; flags more moderately-large clusters.
+
+                        Flagged noise pools display a badge in the themes list. Use the toolbar action to drop them; underlying graph data is preserved.
+                        """
+                )
+                Spacer()
+                Text(viewModel.noisePoolIQRMultiplier, format: .number.precision(.fractionLength(1)))
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: $viewModel.noisePoolIQRMultiplier, in: 1.0...3.0, step: 0.1)
+                .onChange(of: viewModel.noisePoolIQRMultiplier) {
+                    viewModel.saveNoisePoolIQRMultiplier()
+                }
+
+            Divider()
+
             // LLM Parameters
             HStack {
                 Text("Extraction Temperature")

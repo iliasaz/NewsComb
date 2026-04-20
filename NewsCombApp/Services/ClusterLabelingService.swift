@@ -64,6 +64,7 @@ final class ClusterLabelingService: Sendable {
     ///   - progressCallback: Fractional progress updates (0..1).
     func labelClusters(
         buildId: String,
+        onlyClusterIds: Set<Int64>? = nil,
         statusCallback: StatusCallback?,
         progressCallback: ProgressCallback?
     ) async {
@@ -85,10 +86,13 @@ final class ClusterLabelingService: Sendable {
         let clusters: [StoryCluster]
         do {
             clusters = try database.read { db in
-                try StoryCluster
+                var request = StoryCluster
                     .filter(StoryCluster.Columns.buildId == buildId)
                     .order(StoryCluster.Columns.size.desc)
-                    .fetchAll(db)
+                if let onlyClusterIds, !onlyClusterIds.isEmpty {
+                    request = request.filter(onlyClusterIds.contains(StoryCluster.Columns.clusterId))
+                }
+                return try request.fetchAll(db)
             }
         } catch {
             logger.error("Failed to load clusters for labeling: \(error.localizedDescription)")

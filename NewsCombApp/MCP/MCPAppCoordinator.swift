@@ -103,6 +103,238 @@ final class MCPAppCoordinator {
         }
     }
 
+    /// Re-clusters a single existing cluster — equivalent to the "Split" menu in ThemeDetailView.
+    func splitCluster(
+        clusterId: Int64,
+        minClusterSize: Int?,
+        minSamples: Int?,
+        relabel: Bool,
+        dryRun: Bool,
+        wait: Bool
+    ) async -> String {
+        if themesViewModel.isRebuilding {
+            return "Theme operation already running: \(themesViewModel.rebuildStatus). Use get_app_status to monitor."
+        }
+        logger.info("MCP triggered splitCluster id=\(clusterId, privacy: .public) dryRun=\(dryRun, privacy: .public) wait=\(wait, privacy: .public)")
+
+        guard let cluster = themesViewModel.clusters.first(where: { $0.clusterId == clusterId }) else {
+            return "Cluster #\(clusterId) not found. Use get_themes to list available cluster IDs."
+        }
+
+        if wait {
+            let outcome = await themesViewModel.splitCluster(
+                cluster,
+                minClusterSize: minClusterSize,
+                minSamples: minSamples,
+                relabel: relabel,
+                dryRun: dryRun
+            )
+            return Self.describe(outcome: outcome, originalClusterId: clusterId)
+        } else {
+            Task {
+                await themesViewModel.splitCluster(
+                    cluster,
+                    minClusterSize: minClusterSize,
+                    minSamples: minSamples,
+                    relabel: relabel,
+                    dryRun: dryRun
+                )
+            }
+            return "Started \(dryRun ? "split preview" : "cluster split") for #\(clusterId) in background. Poll get_app_status to monitor progress."
+        }
+    }
+
+    /// Formats a `ThemeSplitOutcome` for an MCP response.
+    private static func describe(outcome: ThemeClusterViewModel.ThemeSplitOutcome, originalClusterId: Int64) -> String {
+        switch outcome {
+        case .unchanged(let suggestion):
+            return "Cluster #\(originalClusterId) split produced no meaningful subdivision. \(suggestion)"
+        case .dryRun(let sizes, let unfitted):
+            let sizesStr = sizes.map { "\($0)" }.joined(separator: ", ")
+            return "DRY RUN — splitting cluster #\(originalClusterId) would produce \(sizes.count) sub-cluster(s) of sizes [\(sizesStr)] and leave \(unfitted) event(s) unfitted (they would stay attached to the parent). Re-invoke without dry_run to create tentative children."
+        case .split(let newIds, let unfitted):
+            let idsStr = newIds.map { "#\($0)" }.joined(separator: ", ")
+            return "Cluster #\(originalClusterId) split into \(newIds.count) tentative sub-theme(s): \(idsStr). \(unfitted) event(s) didn't fit any sub-theme and remain in the parent. Use get_theme_details on each new ID to inspect, then call save_split or discard_split."
+        case .failed(let error):
+            return "Split failed: \(error)"
+        }
+    }
+
+    // MARK: - Noise Pools
+
+    /// Returns the current noise-pool cluster IDs (read-only snapshot).
+    func identifyNoisePools() -> String {
+        let ids = themesViewModel.noisePoolClusterIds.sorted()
+        guard !ids.isEmpty else {
+            return "No noise-pool clusters detected. The size distribution doesn't have outliers above the current IQR multiplier."
+        }
+        let lookup = Dictionary(uniqueKeysWithValues: themesViewModel.clusters.map { ($0.clusterId, $0) })
+        let lines = ids.map { id -> String in
+            guard let c = lookup[id] else { return "#\(id) (unknown)" }
+            return "#\(id) — \(c.size) events — \(c.label ?? "Untitled")"
+        }
+        return "Noise-pool clusters (likely absorption pools, not real themes):\n" + lines.joined(separator: "\n")
+    }
+
+    /// Drops the named noise-pool clusters (or all currently-flagged when ids is nil).
+    func dropNoisePools(ids: [Int64]?, wait: Bool) async -> String {
+        if themesViewModel.isRebuilding {
+            return "Theme operation already running: \(themesViewModel.rebuildStatus). Use get_app_status to monitor."
+        }
+        let resolved = ids ?? Array(themesViewModel.noisePoolClusterIds)
+        guard !resolved.isEmpty else {
+            return "No noise-pool clusters to drop."
+        }
+        logger.info("MCP triggered dropNoisePools count=\(resolved.count, privacy: .public) wait=\(wait, privacy: .public)")
+
+        if wait {
+            switch await themesViewModel.dropNoisePools(ids: resolved) {
+            case .success(let count):
+                return "Dropped \(count) of \(resolved.count) noise-pool cluster(s). Saved sub-themes were unlinked. Underlying graph data preserved."
+            case .failure(let error):
+                return "Drop noise pools failed: \(error.message)"
+            }
+        } else {
+            Task { _ = await themesViewModel.dropNoisePools(ids: resolved) }
+            return "Started drop of \(resolved.count) noise-pool cluster(s) in background."
+        }
+    }
+
+    // MARK: - Focused Theme Extraction
+
+    func extractTheme(
+        parentClusterId: Int64,
+        queryText: String,
+        topK: Int,
+        similarityThreshold: Float,
+        relabel: Bool,
+        dryRun: Bool,
+        wait: Bool
+    ) async -> String {
+        if themesViewModel.isRebuilding {
+            return "Theme operation already running: \(themesViewModel.rebuildStatus). Use get_app_status to monitor."
+        }
+        guard let parent = themesViewModel.clusters.first(where: { $0.clusterId == parentClusterId }) else {
+            return "Cluster #\(parentClusterId) not found."
+        }
+        logger.info("MCP triggered extractTheme parent=\(parentClusterId, privacy: .public) wait=\(wait, privacy: .public)")
+
+        if wait {
+            let outcome = await themesViewModel.extractTheme(
+                parent: parent,
+                queryText: queryText,
+                topK: topK,
+                similarityThreshold: similarityThreshold,
+                relabel: relabel,
+                dryRun: dryRun
+            )
+            switch outcome {
+            case .extracted(let newId, let count, let topScore):
+                let scoreStr = String(format: "%.3f", topScore)
+                if dryRun {
+                    return "DRY RUN — extracting '\(queryText)' from #\(parentClusterId) would match \(count) event(s) (top similarity \(scoreStr))."
+                }
+                return "Extracted '\(queryText)' from #\(parentClusterId) into tentative sub-theme #\(newId): \(count) event(s) (top similarity \(scoreStr)). Use save_split or discard_split to commit/undo."
+            case .noMatches(let topScore):
+                let scoreStr = String(format: "%.3f", topScore)
+                return "No events in #\(parentClusterId) matched '\(queryText)' above the threshold. Best score was \(scoreStr) — try a lower threshold or rephrase."
+            case .failed(let error):
+                return "Extract failed: \(error)"
+            }
+        } else {
+            Task {
+                _ = await themesViewModel.extractTheme(
+                    parent: parent,
+                    queryText: queryText,
+                    topK: topK,
+                    similarityThreshold: similarityThreshold,
+                    relabel: relabel,
+                    dryRun: dryRun
+                )
+            }
+            return "Started extract of '\(queryText)' from #\(parentClusterId) in background."
+        }
+    }
+
+    // MARK: - Save / Discard / Delete
+
+    /// Promotes tentative children of a parent to permanent sub-themes.
+    func saveSplit(parentClusterId: Int64, wait: Bool) async -> String {
+        if themesViewModel.isRebuilding {
+            return "Theme operation already running: \(themesViewModel.rebuildStatus). Use get_app_status to monitor."
+        }
+        guard let parent = themesViewModel.clusters.first(where: { $0.clusterId == parentClusterId }) else {
+            return "Cluster #\(parentClusterId) not found."
+        }
+        logger.info("MCP triggered saveSplit parent=\(parentClusterId, privacy: .public) wait=\(wait, privacy: .public)")
+
+        if wait {
+            switch await themesViewModel.saveSplit(parent: parent) {
+            case .success(let count):
+                return "Saved split of #\(parentClusterId): \(count) tentative sub-theme(s) promoted to permanent."
+            case .failure(let error):
+                return "Save split failed: \(error.message)"
+            }
+        } else {
+            Task { _ = await themesViewModel.saveSplit(parent: parent) }
+            return "Started save split for #\(parentClusterId) in background."
+        }
+    }
+
+    /// Removes tentative children of a parent.
+    func discardSplit(parentClusterId: Int64, wait: Bool) async -> String {
+        if themesViewModel.isRebuilding {
+            return "Theme operation already running: \(themesViewModel.rebuildStatus). Use get_app_status to monitor."
+        }
+        guard let parent = themesViewModel.clusters.first(where: { $0.clusterId == parentClusterId }) else {
+            return "Cluster #\(parentClusterId) not found."
+        }
+        logger.info("MCP triggered discardSplit parent=\(parentClusterId, privacy: .public) wait=\(wait, privacy: .public)")
+
+        if wait {
+            switch await themesViewModel.discardSplit(parent: parent) {
+            case .success(let count):
+                return "Discarded split of #\(parentClusterId): \(count) tentative sub-theme(s) removed."
+            case .failure(let error):
+                return "Discard split failed: \(error.message)"
+            }
+        } else {
+            Task { _ = await themesViewModel.discardSplit(parent: parent) }
+            return "Started discard split for #\(parentClusterId) in background."
+        }
+    }
+
+    /// Deletes a cluster row. Underlying graph data is preserved. Saved children of a
+    /// parent get unlinked (become top-level themes); tentative children are deleted.
+    func deleteCluster(clusterId: Int64, wait: Bool) async -> String {
+        if themesViewModel.isRebuilding {
+            return "Theme operation already running: \(themesViewModel.rebuildStatus). Use get_app_status to monitor."
+        }
+        guard let cluster = themesViewModel.clusters.first(where: { $0.clusterId == clusterId }) else {
+            return "Cluster #\(clusterId) not found."
+        }
+        logger.info("MCP triggered deleteCluster id=\(clusterId, privacy: .public) wait=\(wait, privacy: .public)")
+
+        if wait {
+            switch await themesViewModel.deleteCluster(cluster) {
+            case .success(let res):
+                var parts: [String] = ["Cluster #\(clusterId) deleted (underlying graph data preserved)."]
+                if res.unlinkedChildCount > 0 {
+                    parts.append("\(res.unlinkedChildCount) sub-theme(s) unlinked and promoted to top-level.")
+                }
+                if res.promotedTentativeChildCount > 0 {
+                    parts.append("(\(res.promotedTentativeChildCount) of the unlinked children were tentative — they are now regular standalone themes.)")
+                }
+                return parts.joined(separator: " ")
+            case .failure(let error):
+                return "Delete cluster failed: \(error.message)"
+            }
+        } else {
+            Task { _ = await themesViewModel.deleteCluster(cluster) }
+            return "Started delete cluster for #\(clusterId) in background."
+        }
+    }
+
     /// Triggers the same action as the "Regenerate Summaries" themes menu item.
     func regenerateThemeSummaries(wait: Bool) async -> String {
         if themesViewModel.isRebuilding {

@@ -218,6 +218,165 @@ struct MCPToolHandler: Sendable {
                 annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true)
             ),
             Tool(
+                name: "split_cluster",
+                description: "Re-cluster a single existing theme to surface its sub-structure. NON-DESTRUCTIVE: the parent cluster stays intact; discovered sub-clusters are inserted as TENTATIVE children with parent_cluster_id pointing back. Use save_split to promote them to permanent sub-themes, or discard_split to remove them. Events that don't fit any sub-cluster remain attached to the parent. Supports dry_run for preview-only without writing.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "cluster_id": .object([
+                            "type": .string("integer"),
+                            "description": .string("ID of the cluster to split (from get_themes).")
+                        ]),
+                        "min_cluster_size": .object([
+                            "type": .string("integer"),
+                            "description": .string("Override HDBSCAN min cluster size for this split. Lower = more, smaller sub-clusters. Default: sqrt(N)/4 of the cluster's member count.")
+                        ]),
+                        "min_samples": .object([
+                            "type": .string("integer"),
+                            "description": .string("Override HDBSCAN min samples (core distance neighborhood). Default: app setting.")
+                        ]),
+                        "relabel": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true (default), re-run LLM labeling on the new sub-clusters. Ignored when dry_run is true.")
+                        ]),
+                        "dry_run": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, return the predicted sub-cluster sizes and noise count WITHOUT modifying the database. Use to preview before committing a destructive split. Default false.")
+                        ]),
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, block until split completes. Default false: returns immediately, poll get_app_status.")
+                        ])
+                    ]),
+                    "required": .array([.string("cluster_id")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
+                name: "save_split",
+                description: "Promote tentative children of a parent cluster to permanent sub-themes (clears their is_tentative flag). The parent cluster stays unchanged.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "parent_cluster_id": .object([
+                            "type": .string("integer"),
+                            "description": .string("ID of the parent cluster whose tentative children should be saved.")
+                        ]),
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, block until the operation completes. Default false.")
+                        ])
+                    ]),
+                    "required": .array([.string("parent_cluster_id")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "discard_split",
+                description: "Delete all tentative children of a parent cluster (cluster_members and cluster_exemplars cascade). The parent cluster stays unchanged.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "parent_cluster_id": .object([
+                            "type": .string("integer"),
+                            "description": .string("ID of the parent cluster whose tentative children should be discarded.")
+                        ]),
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, block until the operation completes. Default false.")
+                        ])
+                    ]),
+                    "required": .array([.string("parent_cluster_id")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "identify_noise_pools",
+                description: "List clusters flagged by the IQR-on-log(size) outlier rule as likely noise pools — absorption buckets that swallowed every event the density-based clusterer couldn't tightly group elsewhere. They are not real themes. Use drop_noise_pools to remove them.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([:])
+                ]),
+                annotations: .init(readOnlyHint: true, idempotentHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "drop_noise_pools",
+                description: "Drop clusters identified as noise pools. With no cluster_ids, drops all currently-flagged. Underlying graph data (nodes, edges, embeddings, articles) is preserved. Saved sub-themes of a dropped parent get unlinked and become top-level themes.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "cluster_ids": .object([
+                            "type": .string("array"),
+                            "description": .string("Optional: specific cluster IDs to drop. If omitted, drops every currently-flagged noise-pool cluster."),
+                            "items": .object(["type": .string("integer")])
+                        ]),
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, block until completion. Default false.")
+                        ])
+                    ])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
+                name: "extract_theme",
+                description: "Extract events from a parent cluster matching a free-text phrase as a TENTATIVE sub-theme under the parent. Embeds the phrase with the same provider used for chunk_embedding, scores cosine similarity against each event's source-chunk embedding, and creates a tentative child from the top-K matches. Use save_split / discard_split to commit or undo.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "parent_cluster_id": .object([
+                            "type": .string("integer"),
+                            "description": .string("ID of the parent cluster to extract from.")
+                        ]),
+                        "query": .object([
+                            "type": .string("string"),
+                            "description": .string("Free-text phrase, e.g. 'Google Spanner BigQuery'.")
+                        ]),
+                        "top_k": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum number of events to include. Default 200.")
+                        ]),
+                        "similarity_threshold": .object([
+                            "type": .string("number"),
+                            "description": .string("Minimum cosine similarity (0..1). Default 0.45.")
+                        ]),
+                        "relabel": .object([
+                            "type": .string("boolean"),
+                            "description": .string("Re-run LLM labeling on the new sub-theme. Default true. Ignored when dry_run is true.")
+                        ]),
+                        "dry_run": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, return predicted match count without writing. Default false.")
+                        ]),
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, block until completion. Default false.")
+                        ])
+                    ]),
+                    "required": .array([.string("parent_cluster_id"), .string("query")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
+                name: "delete_cluster",
+                description: "Delete a single cluster row. Underlying graph data (nodes, edges, embeddings, chunks, articles) is preserved. If the cluster is a parent: tentative children are removed, saved children are unlinked (their parent_cluster_id becomes NULL) and become top-level themes.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "cluster_id": .object([
+                            "type": .string("integer"),
+                            "description": .string("ID of the cluster to delete.")
+                        ]),
+                        "wait": .object([
+                            "type": .string("boolean"),
+                            "description": .string("If true, block until the operation completes. Default false.")
+                        ])
+                    ]),
+                    "required": .array([.string("cluster_id")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
                 name: "get_app_status",
                 description: "Snapshot every long-running operation in the NewsComb app — feed refresh, knowledge graph processing, theme clustering — with progress, status messages, and last-error details. Use this to poll after triggering a background action.",
                 inputSchema: .object([

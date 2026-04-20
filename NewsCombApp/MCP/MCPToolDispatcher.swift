@@ -48,6 +48,20 @@ enum MCPToolDispatcher {
                 result = await MCPRebuildThemesTool.run(arguments: arguments)
             case "regenerate_theme_summaries":
                 result = await MCPRegenerateThemeSummariesTool.run(arguments: arguments)
+            case "split_cluster":
+                result = await MCPSplitClusterTool.run(arguments: arguments)
+            case "save_split":
+                result = await MCPSaveSplitTool.run(arguments: arguments)
+            case "discard_split":
+                result = await MCPDiscardSplitTool.run(arguments: arguments)
+            case "delete_cluster":
+                result = await MCPDeleteClusterTool.run(arguments: arguments)
+            case "identify_noise_pools":
+                result = await MCPIdentifyNoisePoolsTool.run(arguments: arguments)
+            case "drop_noise_pools":
+                result = await MCPDropNoisePoolsTool.run(arguments: arguments)
+            case "extract_theme":
+                result = await MCPExtractThemeTool.run(arguments: arguments)
             case "get_app_status":
                 result = await MCPGetAppStatusTool.run(arguments: arguments)
             case "get_theme_provenance":
