@@ -56,7 +56,7 @@ WorkspaceCoordinator.active = Workspace(directory: …)
 |---|-------|--------|-------|
 | 1 | Foundation types (Workspace, WorkspaceCoordinator skeleton, WorkspaceDefaults) | **done** | new files only, no behavior change |
 | 2 | Database refactor (`init(directory:)`, `Database.current`, rename ~55 sites) | **done** | mechanical |
-| 3 | App launch + legacy migration | pending | wires bootstrap into `NewsCombApp.init` |
+| 3 | App launch + legacy migration | **done** | wires bootstrap into `NewsCombApp.init` |
 | 4 | Workspace switch operation | pending | refuse-while-busy is core invariant |
 | 5 | MCP `X-Workspace` header | pending | v2-ready wire protocol |
 | 6 | UI (File menu, window title, Settings, first-run sheet) | pending | macOS only |
@@ -149,7 +149,47 @@ sanity check). SwiftLint clean (4 pre-existing warnings unchanged).
 
 ### Phase 3 — App launch + legacy migration
 
-(pending)
+**Status:** complete. 12 new bootstrap unit tests, all green. SwiftLint clean.
+
+**Files modified:**
+- `NewsCombApp/Services/WorkspaceCoordinator.swift`:
+  - Added `BootstrapSource` enum (commandLine / environment / lastOpened / legacy).
+  - Added `BootstrapResult` enum (`opened(Workspace, source:)` / `needsSelection`).
+  - Added `bootstrap(commandLineArgs:environment:legacyDirectory:fileManager:) throws -> BootstrapResult`
+    with full dependency injection for testability.
+  - Added `static func parseWorkspaceArg(from:)` — handles
+    `--workspace <value>` and `--workspace=<value>` forms; rejects empty values.
+- `NewsCombApp/NewsCombApp.swift`:
+  - Replaced `_ = Database.current` with `try WorkspaceCoordinator.shared.bootstrap()`.
+  - Logs the bootstrap source (CLI / env / lastOpened / legacy) on success.
+  - Catches explicit-source failures and logs them. Falls through to the
+    `Database.current` lazy fallback (Phase 6 will surface errors in the UI).
+
+**Files added:**
+- `NewsCombAppTests/WorkspaceCoordinatorBootstrapTests.swift` (12 tests):
+  - 6 tests for `parseWorkspaceArg` (space form, equals form, missing, empty, etc.)
+  - 6 tests for `bootstrap` resolution priority + sources + fall-through.
+
+**Resolution priority:**
+1. `--workspace <path>` CLI arg — explicit, errors propagate.
+2. `NEWSCOMB_WORKSPACE` env var — explicit, errors propagate.
+3. `WorkspaceDefaults.lastOpenedWorkspace` — implicit, falls through if dir missing.
+4. Legacy `~/Library/Application Support/NewsComb/newscomb.sqlite` — implicit.
+5. Returns `.needsSelection` — UI handles in Phase 6.
+
+**Deviations from plan:**
+- Made `legacyDirectory` an injectable parameter on `bootstrap` rather than
+  a hardcoded reference to `Workspace.legacyDirectory`. Lets tests simulate
+  legacy detection without touching the user's actual Application Support dir.
+- Implicit-source failures (deleted lastOpened directory, broken legacy DB)
+  log + fall through rather than throwing. Explicit-source failures throw —
+  user-supplied bad input should fail loudly.
+
+**Follow-ups for later phases:**
+- Phase 4: `switchWorkspace(to:)` reuses `openWorkspace(at:)` + `Database.setCurrent`.
+  Adds refuse-while-busy and tear-down semantics.
+- Phase 6: capture bootstrap errors in coordinator state for UI display.
+  Show first-run picker when bootstrap returns `.needsSelection`.
 
 ### Phase 4 — Workspace switch operation
 
