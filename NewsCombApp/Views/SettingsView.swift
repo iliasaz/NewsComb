@@ -6,6 +6,9 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            #if os(macOS)
+            WorkspaceSettingsSection(coordinator: WorkspaceCoordinator.shared)
+            #endif
             feedSettingsSection
             userRolesSection
             knowledgeExtractionSection

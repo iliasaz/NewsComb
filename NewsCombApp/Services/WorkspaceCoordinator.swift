@@ -26,6 +26,11 @@ final class WorkspaceCoordinator {
     /// The currently-active workspace. `nil` until `openWorkspace(at:)` succeeds.
     private(set) var active: Workspace?
 
+    /// Most-recently-used workspaces, reflected from `WorkspaceDefaults`. Mutated
+    /// here so SwiftUI views observing the coordinator see updates after
+    /// `recordActive(_:)` / `switchWorkspace(to:)` push to the recents list.
+    private(set) var recentWorkspaces: [URL] = []
+
     private let logger = Logger(subsystem: "com.newscomb.app", category: "WorkspaceCoordinator")
     private let defaults: WorkspaceDefaults
     private let busyReasonsProvider: @MainActor () -> [String]
@@ -36,6 +41,14 @@ final class WorkspaceCoordinator {
     ) {
         self.defaults = defaults
         self.busyReasonsProvider = busyReasonsProvider
+        self.recentWorkspaces = defaults.recentWorkspaces
+    }
+
+    /// Removes a workspace from the recents list (e.g., the user deleted the
+    /// directory). Forwards to `WorkspaceDefaults` and refreshes the observed list.
+    func removeRecent(_ url: URL) {
+        defaults.removeRecent(url)
+        recentWorkspaces = defaults.recentWorkspaces
     }
 
     /// Reasons the app currently can't accept a workspace switch. Empty when safe.
@@ -84,6 +97,7 @@ final class WorkspaceCoordinator {
         active = workspace
         defaults.lastOpenedWorkspace = workspace.directory
         defaults.pushRecent(workspace.directory)
+        recentWorkspaces = defaults.recentWorkspaces
         logger.notice("Active workspace: \(workspace.directory.path(percentEncoded: false), privacy: .public)")
     }
 
@@ -193,6 +207,7 @@ final class WorkspaceCoordinator {
         let target = Workspace(directory: directory)
         defaults.lastOpenedWorkspace = target.directory
         defaults.pushRecent(target.directory)
+        recentWorkspaces = defaults.recentWorkspaces
         logger.notice("Switch staged to '\(target.directory.path(percentEncoded: false), privacy: .public)' — caller must relaunch")
         return target
     }

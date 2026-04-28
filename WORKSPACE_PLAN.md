@@ -59,7 +59,7 @@ WorkspaceCoordinator.active = Workspace(directory: …)
 | 3 | App launch + legacy migration | **done** | wires bootstrap into `NewsCombApp.init` |
 | 4 | Workspace switch operation | **done** | refuse-while-busy is core invariant; v1 ships as "stage + relaunch" |
 | 5 | MCP `X-Workspace` header | **done** | v2-ready wire protocol |
-| 6 | UI (File menu, window title, Settings, first-run sheet) | pending | macOS only |
+| 6 | UI (File menu, window title, Settings, first-run sheet) | **done** | macOS only |
 | 7 | Test coverage sweep | pending | fill gaps from prior phases |
 | 8 | Documentation (README, .mcp.json, CLAUDE.md) | pending | final commit |
 
@@ -280,7 +280,80 @@ discovery step. **No future config changes required for users.**
 
 ### Phase 6 — UI
 
-(pending)
+**Status:** complete. Build clean. SwiftLint clean. New observable-recents
+tests added; full workspace suite (~50 tests) green.
+
+**Files added:**
+- `NewsCombApp/Views/WorkspaceRelauncher.swift` — wraps the standard macOS
+  app-relaunch pattern (spawn `/bin/sh -c "sleep 0.4 && open <bundle>"`,
+  then `NSApplication.shared.terminate(nil)`).
+- `NewsCombApp/Views/WorkspaceCommands.swift` — `Commands` provider injected
+  via `.commands { … }` on the main `WindowGroup`. Adds File-menu items
+  (after `.newItem`):
+  - **New Workspace…** (⇧⌘N) — `NSOpenPanel` with `canCreateDirectories`.
+  - **Open Workspace…** (⇧⌘O) — `NSOpenPanel` directories-only.
+  - **Open Recent Workspace ▸** — submenu populated from
+    `coordinator.recentWorkspaces` (auto-disabled when empty); includes
+    "Clear Menu".
+  - **Reveal Workspace in Finder** — disabled when no active workspace.
+  Each switch attempt routes through `coordinator.switchWorkspace(to:)` and,
+  on success, prompts an `NSAlert` with Relaunch/Cancel before calling
+  `WorkspaceRelauncher.relaunchApp()`. Refused-while-busy errors surface as
+  a warning alert with the human-readable reason list.
+- `NewsCombApp/Views/WorkspaceSettingsSection.swift` — `Section` for the
+  Settings `Form`. Shows active workspace name + path (monospaced,
+  selectable, truncated middle). Buttons: Reveal in Finder, Switch
+  Workspace…. Disabled-with-explanation when `busyReasons` is non-empty.
+- `NewsCombApp/Views/FirstRunWorkspaceSheet.swift` — sheet shown when
+  `coordinator.active == nil`. Two prominent buttons (Create New / Open
+  Existing) plus an inline list of up to 5 recent workspaces. Default folder
+  for the create panel is `~/Documents/NewsComb-Workspaces/`.
+- `interactiveDismissDisabled(true)` — the user can't accidentally dismiss
+  the first-run sheet without picking a workspace.
+
+**Files modified:**
+- `NewsCombApp/Services/WorkspaceCoordinator.swift`:
+  - Added observable `recentWorkspaces: [URL]` synced from `WorkspaceDefaults`
+    after each push/remove. SwiftUI menus + the first-run list track this.
+  - Added `removeRecent(_:)` — used by the "Clear Menu" item.
+- `NewsCombApp/NewsCombApp.swift`:
+  - Attached `.commands { WorkspaceCommands(...) }` to the main `WindowGroup`
+    (wrapped in its own `#if os(macOS)` because mixing modifiers and new
+    scenes inside a single `#if` confuses the scene builder).
+- `NewsCombApp/Views/ContentView.swift`:
+  - Reads `WorkspaceCoordinator.shared`. Sets `.navigationTitle` to
+    "NewsComb — &lt;workspace name&gt;" or just "NewsComb".
+  - Presents `FirstRunWorkspaceSheet` via a `Binding(get:set:)` driven by
+    `coordinator.active == nil`; the sheet self-dismisses when the user
+    picks a workspace and `openWorkspace(at:)` flips active to non-nil.
+- `NewsCombApp/Views/SettingsView.swift`:
+  - Inserts `WorkspaceSettingsSection` at the top of the Form (macOS only).
+
+**Test coverage added in Phase 6:**
+- `WorkspaceCoordinatorTests.testRecentWorkspacesInitiallyMatchesDefaults`
+- `WorkspaceCoordinatorTests.testRecordActiveUpdatesObservedRecents`
+- `WorkspaceCoordinatorTests.testRemoveRecentUpdatesObservedList`
+
+**Deviations from plan:**
+- The relauncher is a separate file (`WorkspaceRelauncher.swift`) rather
+  than living inside the coordinator. Keeps the coordinator AppKit-free
+  and unit-testable from any platform.
+- File-menu items are placed under `CommandGroup(after: .newItem)` so they
+  group naturally with macOS's existing File-menu items.
+- Window title uses `.navigationTitle(...)` on `ContentView` rather than a
+  per-`WindowGroup` static title, since the workspace name is dynamic.
+
+**Manual smoke test deferred:** the app couldn't be launched safely from
+this session (would bind port 63548 and open windows). A real launch should
+verify: (a) bare launch with no workspace shows the first-run sheet;
+(b) File → New Workspace creates a folder + opens it; (c) Switch Workspace
+prompts relaunch and reopens with the new DB; (d) menu greys out when
+nothing's active.
+
+**Follow-ups:**
+- Phase 7: add a smoke test or UI test that exercises the first-run sheet
+  binding logic if practical.
+- Phase 8: docs.
 
 ### Phase 7 — Test coverage sweep
 

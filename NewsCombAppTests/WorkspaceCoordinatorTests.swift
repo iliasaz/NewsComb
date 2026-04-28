@@ -95,4 +95,30 @@ final class WorkspaceCoordinatorTests: XCTestCase {
         XCTAssertEqual(workspaceDefaults.lastOpenedWorkspace, dir.canonicalDirectoryURL)
         XCTAssertEqual(workspaceDefaults.recentWorkspaces.first, dir.canonicalDirectoryURL)
     }
+
+    // MARK: - Observable recentWorkspaces
+
+    func testRecentWorkspacesInitiallyMatchesDefaults() {
+        // Pre-seed defaults, then build a new coordinator; recents should reflect.
+        workspaceDefaults.pushRecent(URL(filePath: "/tmp/Pre1"))
+        workspaceDefaults.pushRecent(URL(filePath: "/tmp/Pre2"))
+        let coordinator = WorkspaceCoordinator(defaults: workspaceDefaults)
+        XCTAssertEqual(coordinator.recentWorkspaces.count, 2)
+        XCTAssertEqual(coordinator.recentWorkspaces.first?.lastPathComponent, "Pre2")
+    }
+
+    func testRecordActiveUpdatesObservedRecents() {
+        XCTAssertTrue(sut.recentWorkspaces.isEmpty)
+        sut.recordActive(Workspace(directory: URL(filePath: "/tmp/Tech")))
+        XCTAssertEqual(sut.recentWorkspaces.count, 1)
+        XCTAssertEqual(sut.recentWorkspaces.first?.lastPathComponent, "Tech")
+    }
+
+    func testRemoveRecentUpdatesObservedList() {
+        sut.recordActive(Workspace(directory: URL(filePath: "/tmp/A")))
+        sut.recordActive(Workspace(directory: URL(filePath: "/tmp/B")))
+        sut.removeRecent(URL(filePath: "/tmp/A"))
+        XCTAssertEqual(sut.recentWorkspaces.count, 1)
+        XCTAssertEqual(sut.recentWorkspaces.first?.lastPathComponent, "B")
+    }
 }
