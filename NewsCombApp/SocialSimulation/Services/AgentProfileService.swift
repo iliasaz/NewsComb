@@ -10,7 +10,7 @@ import OSLog
 /// and `social_connection` tables.
 final class AgentProfileService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "AgentProfileService")
 
     // MARK: - Callbacks

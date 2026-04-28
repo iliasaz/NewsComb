@@ -85,7 +85,7 @@ final class AnswerDetailViewModel {
     private let deepAnalysisService = DeepAnalysisService()
     private let queryHistoryService = QueryHistoryService()
     private let userRoleService = UserRoleService()
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "AnswerDetailViewModel")
 
     // MARK: - History Mode Initializer

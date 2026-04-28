@@ -4,7 +4,7 @@ import MCP
 
 /// Gets all edges (relationships) connected to a node, showing neighbors and provenance.
 enum MCPGetNodeNeighborsTool {
-    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.current) throws -> String {
         guard let nodeLabel = arguments["node_label"]?.stringValue, !nodeLabel.isEmpty else {
             throw MCPToolError.missingParameter("node_label")
         }

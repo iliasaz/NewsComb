@@ -2,36 +2,69 @@ import Foundation
 import GRDB
 import OSLog
 import SQLiteExtensions
+import Synchronization
 
 public final class Database: Sendable {
     private static let logger = Logger(subsystem: "com.newscomb", category: "Database")
-    public static let shared = Database()
+
+    /// Workspace directory containing this database's `newscomb.sqlite` file.
+    public let workspaceDirectory: URL
 
     let dbQueue: DatabaseQueue
 
-    private init() {
-        do {
+    /// Backing storage for the active workspace's database. Mutated via
+    /// `setCurrent(_:)` (called by `WorkspaceCoordinator` during bootstrap and
+    /// workspace switch). Read via `Database.current`.
+    private static let active = Mutex<Database?>(nil)
 
-            // Initialize all SQLite extensions
-            SQLiteExtensions.initialize_sqlite3_extensions()
-
-            let fileManager = FileManager.default
-            let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            let dbDirectory = appSupport.appending(path: "NewsComb")
-
-            try fileManager.createDirectory(at: dbDirectory, withIntermediateDirectories: true)
-
-            let dbPath = dbDirectory.appending(path: "newscomb.sqlite")
-            Self.logger.info("Database path: open '\(dbPath.path(percentEncoded: false), privacy: .public)'")
-
-            var config = Configuration()
-            config.foreignKeysEnabled = true
-            dbQueue = try DatabaseQueue(path: dbPath.path, configuration: config)
-
-            try migrate()
-        } catch {
-            fatalError("Failed to initialize database: \(error)")
+    /// The database for the currently-active workspace.
+    ///
+    /// During the workspace-feature transition, this lazy-bootstraps to the
+    /// legacy directory (`~/Library/Application Support/NewsComb/`) if no active
+    /// workspace has been set yet. Phase 3 will set the active workspace
+    /// explicitly at app launch, making the fallback dead code.
+    public static var current: Database {
+        active.withLock { holder in
+            if let db = holder { return db }
+            do {
+                let db = try Database(directory: Workspace.legacyDirectory)
+                holder = db
+                return db
+            } catch {
+                fatalError("Failed to lazy-bootstrap legacy database: \(error)")
+            }
         }
+    }
+
+    /// Sets the active workspace's database. Called by `WorkspaceCoordinator`.
+    public static func setCurrent(_ database: Database) {
+        active.withLock { $0 = database }
+    }
+
+    /// Test-only: clears the active database so the next `current` access
+    /// re-bootstraps. Production code should use `setCurrent(_:)`.
+    static func resetCurrentForTesting() {
+        active.withLock { $0 = nil }
+    }
+
+    /// Opens (or creates) a database at `<directory>/newscomb.sqlite`,
+    /// running migrations and seeding defaults.
+    public init(directory: URL) throws {
+        // Initialize all SQLite extensions (idempotent — safe to call again on workspace switch)
+        SQLiteExtensions.initialize_sqlite3_extensions()
+
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let dbPath = directory.appending(path: Workspace.databaseFileName)
+        Self.logger.info("Database path: open '\(dbPath.path(percentEncoded: false), privacy: .public)'")
+
+        var config = Configuration()
+        config.foreignKeysEnabled = true
+
+        self.workspaceDirectory = directory.canonicalDirectoryURL
+        self.dbQueue = try DatabaseQueue(path: dbPath.path(percentEncoded: false), configuration: config)
+
+        try migrate()
     }
 
     private func migrate() throws {

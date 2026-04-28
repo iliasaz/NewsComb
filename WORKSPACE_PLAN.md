@@ -55,7 +55,7 @@ WorkspaceCoordinator.active = Workspace(directory: …)
 | # | Title | Status | Notes |
 |---|-------|--------|-------|
 | 1 | Foundation types (Workspace, WorkspaceCoordinator skeleton, WorkspaceDefaults) | **done** | new files only, no behavior change |
-| 2 | Database refactor (`init(directory:)`, `Database.current`, rename ~55 sites) | pending | mechanical |
+| 2 | Database refactor (`init(directory:)`, `Database.current`, rename ~55 sites) | **done** | mechanical |
 | 3 | App launch + legacy migration | pending | wires bootstrap into `NewsCombApp.init` |
 | 4 | Workspace switch operation | pending | refuse-while-busy is core invariant |
 | 5 | MCP `X-Workspace` header | pending | v2-ready wire protocol |
@@ -104,7 +104,48 @@ touched, tests added, deviations from plan, and follow-ups.
 
 ### Phase 2 — Database refactor
 
-(pending)
+**Status:** complete. 24 unit tests green (incl. DB-touching DeleteSourceGRDBTests
+sanity check). SwiftLint clean (4 pre-existing warnings unchanged).
+
+**Files modified:**
+- `NewsCombApp/Services/DatabaseService.swift`:
+  - Removed `static let shared`, removed `private init()`.
+  - Added `public init(directory: URL) throws` — opens
+    `<directory>/newscomb.sqlite`, runs migrations.
+  - Added `public let workspaceDirectory: URL` (canonicalized) for callers
+    that need to know which workspace they're talking to.
+  - Added `private static let active = Mutex<Database?>(nil)` (Synchronization.Mutex).
+  - Added `public static var current: Database` — lazy-bootstraps to
+    `Workspace.legacyDirectory` if `setCurrent(_:)` hasn't been called yet.
+    This is the **transitional** path that keeps existing code working until
+    Phase 3 wires explicit bootstrap.
+  - Added `public static func setCurrent(_:)` and `static func resetCurrentForTesting()`.
+- `NewsCombApp/Services/WorkspaceCoordinator.swift`:
+  - `setActive(_:)` (Phase 1) split into two:
+    - `recordActive(_:)` — bookkeeping only (no I/O), useful for tests.
+    - `openWorkspace(at:) throws -> Workspace` — builds Database, calls
+      `Database.setCurrent`, then `recordActive`.
+- 49 files: mechanical rename `Database.shared` → `Database.current` via sed.
+  64 occurrences across 57 files now reference `current`. 0 `shared` remain.
+
+**Phase 1 test updates:**
+- `WorkspaceCoordinatorTests` — split into two groups:
+  - bookkeeping (uses `recordActive`, no DB I/O)
+  - real I/O (uses `openWorkspace` against a per-test temp directory; cleaned
+    up in `tearDown` along with `Database.resetCurrentForTesting()`)
+
+**Deviations from plan:**
+- Renamed `setActive` → `recordActive` to clarify it's the internal bookkeeping
+  helper. The new public API is `openWorkspace(at:)`.
+- Used `Synchronization.Mutex` (already in use elsewhere — `MCPHTTPServer`)
+  instead of an actor or `nonisolated(unsafe)`. Cleanest fit for a
+  cross-actor singleton accessor.
+
+**Follow-ups for later phases:**
+- Phase 3: replace lazy-bootstrap fallback in `Database.current` with a
+  `fatalError` once `bootstrap()` always runs at app launch.
+- Phase 4: `switchWorkspace(to:)` should refuse-while-busy, then call
+  `openWorkspace(at:)`, and tear down the old DB.
 
 ### Phase 3 — App launch + legacy migration
 

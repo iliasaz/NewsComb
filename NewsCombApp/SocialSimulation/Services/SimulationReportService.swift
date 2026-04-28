@@ -10,7 +10,7 @@ import OSLog
 /// 2. **Insight Agent**: identifies narratives, consensus/contention, influential agents
 final class SimulationReportService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let graphService = SocialGraphService()
     private let logger = Logger(subsystem: "com.newscomb", category: "SimulationReportService")
 

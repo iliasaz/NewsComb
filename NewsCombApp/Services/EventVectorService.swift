@@ -17,7 +17,7 @@ final class EventVectorService: Sendable {
     /// Total dimension of the final event vector: `3 * embeddingDim + RelationFamily.count`.
     let eventVecDim: Int
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "EventVectorService")
 
     init() {
@@ -29,7 +29,7 @@ final class EventVectorService: Sendable {
     /// Reads the effective embedding dimension for the active provider.
     private static func loadEmbeddingDimension() -> Int {
         do {
-            return try Database.shared.read { db in
+            return try Database.current.read { db in
                 return try AppSettings.effectiveEmbeddingDimension(db)
             }
         } catch {

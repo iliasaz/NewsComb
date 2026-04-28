@@ -11,7 +11,7 @@ class SettingsViewModel {
     var openRouterKey: String = ""
     var errorMessage: String?
 
-    private let database = Database.shared
+    private let database = Database.current
 
     func loadData() {
         loadRSSSources()

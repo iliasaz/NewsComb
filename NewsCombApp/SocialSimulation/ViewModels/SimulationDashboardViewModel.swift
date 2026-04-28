@@ -38,7 +38,7 @@ final class SimulationDashboardViewModel {
     private let profileService = AgentProfileService()
     private let exportService = OasisExportService()
     private let graphService = SocialGraphService()
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "SimDashboard")
 
     private var statusTask: Task<Void, Never>? {

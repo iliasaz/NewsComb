@@ -4,7 +4,7 @@ import MCP
 
 /// Lists story theme clusters with labels, sizes, top entities, and summaries.
 enum MCPGetThemesTool {
-    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.current) throws -> String {
         let limit = arguments["limit"]?.intValue ?? 20
         let query = arguments["query"]?.stringValue
 

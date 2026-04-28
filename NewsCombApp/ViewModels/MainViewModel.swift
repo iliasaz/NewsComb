@@ -71,7 +71,7 @@ class MainViewModel {
     var classificationProgress: Double = 0
     var classificationStatus: String = ""
 
-    private let database = Database.shared
+    private let database = Database.current
 
     @ObservationIgnored
     private let opmlService = OPMLImportService()

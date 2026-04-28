@@ -4,7 +4,7 @@ import MCP
 
 /// Searches article text chunks using FTS5.
 enum MCPSearchChunksTool {
-    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.current) throws -> String {
         guard let query = arguments["query"]?.stringValue, !query.isEmpty else {
             throw MCPToolError.missingParameter("query")
         }

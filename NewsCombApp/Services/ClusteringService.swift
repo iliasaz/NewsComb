@@ -18,7 +18,7 @@ final class ClusteringService: Sendable {
     /// Progress update with fraction complete (0..1).
     typealias ProgressCallback = @MainActor @Sendable (Double) -> Void
 
-    private let database = Database.shared
+    private let database = Database.current
     private let eventVectorService = EventVectorService()
     private let pcaService = PCAService()
     private let umapService = UMAPService()

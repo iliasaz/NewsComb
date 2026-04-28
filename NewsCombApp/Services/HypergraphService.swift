@@ -6,7 +6,7 @@ import OSLog
 /// Service for extracting and persisting hypergraph knowledge from articles.
 final class HypergraphService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "HypergraphService")
 
     // Cancellation support (accessed only from @MainActor methods)

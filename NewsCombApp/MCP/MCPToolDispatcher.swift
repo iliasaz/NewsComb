@@ -3,7 +3,7 @@ import MCP
 import OSLog
 
 /// Dispatches MCP tool calls to the appropriate handler.
-/// All tools use the app's existing services via `Database.shared`.
+/// All tools use the app's existing services via `Database.current`.
 enum MCPToolDispatcher {
 
     private static let logger = Logger(subsystem: "com.newscomb.app", category: "MCPTools")

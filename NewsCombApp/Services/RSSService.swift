@@ -13,7 +13,7 @@ struct FetchResult: Sendable {
 }
 
 struct RSSService {
-    private let database = Database.shared
+    private let database = Database.current
 
     /// Returns the article age limit in days from settings, or the default value.
     private func getArticleAgeLimitDays() -> Int {

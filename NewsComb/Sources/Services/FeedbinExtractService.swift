@@ -20,7 +20,7 @@ struct ExtractedContent: Decodable {
 }
 
 struct FeedbinExtractService {
-    private let database = Database.shared
+    private let database = Database.current
     private let baseURL = "https://extract.feedbin.com/parser"
 
     @concurrent

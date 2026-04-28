@@ -21,7 +21,7 @@ struct FeedItemData {
 }
 
 struct RSSService {
-    private let database = Database.shared
+    private let database = Database.current
 
     @concurrent
     func fetchAllFeeds(sources: [RSSSource], extractService: FeedbinExtractService) async -> [FetchResult] {

@@ -153,7 +153,7 @@ class SettingsViewModel {
     /// the dimension the vec0 tables were built with, and graph data exists.
     var needsGraphRebuild = false
 
-    private let database = Database.shared
+    private let database = Database.current
 
     func loadData() {
         loadRSSSources()

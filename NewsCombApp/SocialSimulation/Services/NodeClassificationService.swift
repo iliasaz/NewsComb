@@ -14,7 +14,7 @@ import FoundationModels
 /// hypergraph_node.node_type.
 final class NodeClassificationService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "NodeClassification")
 
     typealias StatusCallback = @MainActor @Sendable (String) -> Void

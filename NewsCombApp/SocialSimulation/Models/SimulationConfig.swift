@@ -47,7 +47,7 @@ struct SimulationConfig: Codable, Sendable, Equatable {
         var semaphore = AppSettings.defaultSimSemaphoreLimit
 
         do {
-            try Database.shared.read { db in
+            try Database.current.read { db in
                 if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simAgentsPerHourMin).fetchOne(db),
                    let v = Int(s.value) { agentsMin = v }
                 if let s = try AppSettings.filter(AppSettings.Columns.key == AppSettings.simAgentsPerHourMax).fetchOne(db),

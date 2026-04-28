@@ -8,6 +8,7 @@ final class WorkspaceCoordinatorTests: XCTestCase {
     private var defaults: UserDefaults!
     private var workspaceDefaults: WorkspaceDefaults!
     private var sut: WorkspaceCoordinator!
+    private var tempRoot: URL!
 
     override func setUp() async throws {
         try await super.setUp()
@@ -15,46 +16,83 @@ final class WorkspaceCoordinatorTests: XCTestCase {
         defaults = UserDefaults(suiteName: suiteName)!
         workspaceDefaults = WorkspaceDefaults(defaults: defaults)
         sut = WorkspaceCoordinator(defaults: workspaceDefaults)
+        tempRoot = FileManager.default.temporaryDirectory
+            .appending(path: "WorkspaceCoordinatorTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
     }
 
     override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
+        try? FileManager.default.removeItem(at: tempRoot)
+        Database.resetCurrentForTesting()
         sut = nil
         workspaceDefaults = nil
         defaults = nil
         suiteName = nil
+        tempRoot = nil
         try await super.tearDown()
     }
+
+    // MARK: - Bookkeeping (recordActive)
 
     func testActiveIsNilOnInit() {
         XCTAssertNil(sut.active)
     }
 
-    func testSetActiveStoresWorkspace() {
+    func testRecordActiveStoresWorkspace() {
         let workspace = Workspace(directory: URL(filePath: "/tmp/Tech"))
-        sut.setActive(workspace)
+        sut.recordActive(workspace)
         XCTAssertEqual(sut.active, workspace)
     }
 
-    func testSetActivePersistsLastOpened() {
+    func testRecordActivePersistsLastOpened() {
         let workspace = Workspace(directory: URL(filePath: "/tmp/Tech"))
-        sut.setActive(workspace)
+        sut.recordActive(workspace)
         XCTAssertEqual(workspaceDefaults.lastOpenedWorkspace, workspace.directory)
     }
 
-    func testSetActivePushesToRecents() {
+    func testRecordActivePushesToRecents() {
         let workspace = Workspace(directory: URL(filePath: "/tmp/Tech"))
-        sut.setActive(workspace)
+        sut.recordActive(workspace)
         XCTAssertEqual(workspaceDefaults.recentWorkspaces.first, workspace.directory)
     }
 
-    func testSetActiveTwiceMovesMostRecentToFront() {
+    func testRecordActiveTwiceMovesMostRecentToFront() {
         let a = Workspace(directory: URL(filePath: "/tmp/A"))
         let b = Workspace(directory: URL(filePath: "/tmp/B"))
-        sut.setActive(a)
-        sut.setActive(b)
-        sut.setActive(a)
+        sut.recordActive(a)
+        sut.recordActive(b)
+        sut.recordActive(a)
         XCTAssertEqual(workspaceDefaults.recentWorkspaces.first, a.directory)
         XCTAssertEqual(workspaceDefaults.recentWorkspaces.count, 2)
+    }
+
+    // MARK: - openWorkspace (real DB I/O)
+
+    func testOpenWorkspaceCreatesDatabaseFile() throws {
+        let dir = tempRoot.appending(path: "Alpha")
+        let workspace = try sut.openWorkspace(at: dir)
+        XCTAssertEqual(sut.active, workspace)
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: workspace.databaseFileURL.path(percentEncoded: false)),
+            "Database file should be created on openWorkspace"
+        )
+    }
+
+    func testOpenWorkspaceSetsDatabaseCurrent() throws {
+        let dir = tempRoot.appending(path: "Beta")
+        try sut.openWorkspace(at: dir)
+        XCTAssertEqual(
+            Database.current.workspaceDirectory,
+            dir.canonicalDirectoryURL,
+            "Database.current should point at the just-opened workspace"
+        )
+    }
+
+    func testOpenWorkspaceRecordsBookkeeping() throws {
+        let dir = tempRoot.appending(path: "Gamma")
+        try sut.openWorkspace(at: dir)
+        XCTAssertEqual(workspaceDefaults.lastOpenedWorkspace, dir.canonicalDirectoryURL)
+        XCTAssertEqual(workspaceDefaults.recentWorkspaces.first, dir.canonicalDirectoryURL)
     }
 }

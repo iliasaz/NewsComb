@@ -10,7 +10,7 @@ enum MCPGetRecentArticlesTool {
         formatter.timeStyle = .short
         return formatter
     }()
-    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.current) throws -> String {
         let limit = arguments["limit"]?.intValue ?? 20
         let sourceFilter = arguments["source"]?.stringValue
 

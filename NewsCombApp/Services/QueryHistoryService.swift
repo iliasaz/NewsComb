@@ -4,7 +4,7 @@ import OSLog
 
 /// Service for managing query history persistence.
 struct QueryHistoryService {
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "QueryHistoryService")
 
     /// Saves a GraphRAGResponse to the query history.

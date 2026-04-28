@@ -12,7 +12,7 @@ struct MergeResult: Sendable {
 /// Service for merging similar nodes in the hypergraph based on embedding similarity.
 final class NodeMergingService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "NodeMergingService")
 
     /// Default similarity threshold for merging (0.9 = 90% similar).

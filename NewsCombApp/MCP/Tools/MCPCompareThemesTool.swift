@@ -10,7 +10,7 @@ import MCP
 /// Useful for spotting near-duplicate clusters, related sub-themes, or unexpectedly
 /// connected topics that the labeling LLM may have missed.
 enum MCPCompareThemesTool {
-    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.current) throws -> String {
         guard let idsValue = arguments["cluster_ids"] else {
             throw MCPToolError.missingParameter("cluster_ids")
         }

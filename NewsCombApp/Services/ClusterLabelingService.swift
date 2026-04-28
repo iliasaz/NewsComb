@@ -16,7 +16,7 @@ final class ClusterLabelingService: Sendable {
     /// Progress update with fraction complete (0..1).
     typealias ProgressCallback = @MainActor @Sendable (Double) -> Void
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "ClusterLabelingService")
 
     // MARK: - System Prompt

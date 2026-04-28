@@ -304,13 +304,13 @@ final class OasisEnvironmentServiceTests: XCTestCase {
         // The knowledge graph may have nodes with NULL node_type.
         // Verify the database has nodes (from the live DB) and that
         // the service can find some even without typed persona nodes.
-        let nodeCount = try Database.shared.read { db in
+        let nodeCount = try Database.current.read { db in
             try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM hypergraph_node")
         }
 
         // Only run this test if the DB has data
         if let count = nodeCount, count > 0 {
-            let hasTypedPersonas = try Database.shared.read { db in
+            let hasTypedPersonas = try Database.current.read { db in
                 let types = AgentProfileService.personaNodeTypes.map { "'\($0)'" }.joined(separator: ", ")
                 let count = try Int.fetchOne(db, sql: """
                     SELECT COUNT(*) FROM hypergraph_node
@@ -319,7 +319,7 @@ final class OasisEnvironmentServiceTests: XCTestCase {
                 return (count ?? 0) > 0
             }
 
-            let fallbackNodes = try Database.shared.read { db in
+            let fallbackNodes = try Database.current.read { db in
                 try Int.fetchOne(db, sql: """
                     SELECT COUNT(*) FROM hypergraph_node
                     WHERE LENGTH(label) <= 80

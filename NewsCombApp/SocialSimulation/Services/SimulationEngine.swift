@@ -22,7 +22,7 @@ actor SimulationEngine {
     private var statusContinuation: AsyncStream<SimulationStatus>.Continuation?
     private var agentMapping: [Int: Int64] = [:]
 
-    private let database = Database.shared
+    private let database = Database.current
     private let ingestionService = ActionIngestionService()
     private let logger = Logger(subsystem: "com.newscomb", category: "SimulationEngine")
 

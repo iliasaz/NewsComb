@@ -6,7 +6,7 @@ import OSLog
 /// Service for querying the knowledge graph using RAG (Retrieval-Augmented Generation).
 final class GraphRAGService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "GraphRAGService")
 
     /// Callback fired with a human-readable status string at each pipeline phase.

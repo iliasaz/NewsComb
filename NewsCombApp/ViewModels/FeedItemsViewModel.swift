@@ -45,7 +45,7 @@ class FeedItemsViewModel {
     var selectedSourceId: Int64?
     var searchText: String = ""
 
-    private let database = Database.shared
+    private let database = Database.current
 
     var filteredItems: [FeedItemDisplay] {
         var result = items

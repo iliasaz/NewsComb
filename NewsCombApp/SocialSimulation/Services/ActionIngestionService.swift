@@ -9,7 +9,7 @@ import OSLog
 /// social graph tables, never to the knowledge hypergraph.
 final class ActionIngestionService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "ActionIngestion")
 
     // MARK: - Public API
