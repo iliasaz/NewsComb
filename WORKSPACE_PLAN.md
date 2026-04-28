@@ -61,7 +61,7 @@ WorkspaceCoordinator.active = Workspace(directory: …)
 | 5 | MCP `X-Workspace` header | **done** | v2-ready wire protocol |
 | 6 | UI (File menu, window title, Settings, first-run sheet) | **done** | macOS only |
 | 7 | Test coverage sweep | **done** | fill gaps from prior phases |
-| 8 | Documentation (README, .mcp.json, CLAUDE.md) | pending | final commit |
+| 8 | Documentation (README, .mcp.json, CLAUDE.md) | **done** | final commit |
 
 ## Per-phase log
 
@@ -404,7 +404,26 @@ re-running. Not a workspace regression.
 
 ### Phase 8 — Documentation
 
-(pending)
+**Status:** complete.
+
+**Files modified:**
+- `README.md`:
+  - Added a top-level **Workspaces** section after First Launch:
+    layout, resolution order, UI commands, workspace-scoped vs app-global
+    settings.
+  - Updated **Setup for Claude Code** + **Setup for Claude Desktop** with
+    `--workspace` examples and the recommendation rationale.
+  - Updated **Prerequisites** to mention workspace alignment between bridge
+    arg and running app.
+- `.mcp.json`: added `--workspace` arg in the example so cloned-repo users
+  see the recommended pattern.
+- `CLAUDE.md`:
+  - Database section: `Database.shared` → `Database.current`, with a note
+    that the active DB can change across launches.
+  - New **Workspaces and settings scope** subsection — clarifies which
+    settings belong in `app_settings` (workspace-scoped) vs.
+    `WorkspaceDefaults` (app-global). Future Claude sessions touching
+    settings won't accidentally put them in the wrong place.
 
 ## Risks & open issues
 

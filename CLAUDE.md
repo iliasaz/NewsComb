@@ -78,11 +78,19 @@ This project uses [GRDB.swift](https://github.com/groue/GRDB.swift) for SQLite p
 
 ### Database access
 
-- Use a shared `Database` singleton for database access throughout the app.
-- Use `database.read { db in ... }` for read operations.
-- Use `database.write { db in ... }` for write operations.
+- Access the active workspace's database via `Database.current` — a workspace-aware accessor backed by `WorkspaceCoordinator`.
+- Do **not** reintroduce a `Database.shared` singleton. The active database can change at app launch (workspace switch via relaunch); call sites must read `Database.current` each time rather than capturing a reference.
+- Use `Database.current.read { db in ... }` for read operations.
+- Use `Database.current.write { db in ... }` for write operations.
 - Use GRDB's query interface for type-safe queries (e.g., `Model.filter(...).fetchAll(db)`).
 - Use raw SQL with parameterized arguments for complex upserts and joins.
+
+### Workspaces and settings scope
+
+- A **workspace** is a directory containing `newscomb.sqlite`. The user picks the active workspace via `--workspace` CLI arg / `NEWSCOMB_WORKSPACE` env / Settings UI / File menu.
+- **Workspace-scoped settings** live in the per-DB `app_settings` table (`AppSettings` model). New settings about LLM/embedding/RAG/feeds/themes go here. They differ across workspaces.
+- **App-global settings** live in `UserDefaults` via `WorkspaceDefaults`. Today only `lastOpenedWorkspace` and `recentWorkspaces` are global. Add new global settings only when they truly persist across workspaces (e.g., a global theme preference).
+- See `NewsCombApp/Services/WorkspaceCoordinator.swift` for the bootstrap and switch-workspace flow, and `WORKSPACE_PLAN.md` for the design rationale.
 
 
 ## Logging instructions
