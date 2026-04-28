@@ -28,9 +28,40 @@ final class WorkspaceCoordinator {
 
     private let logger = Logger(subsystem: "com.newscomb.app", category: "WorkspaceCoordinator")
     private let defaults: WorkspaceDefaults
+    private let busyReasonsProvider: @MainActor () -> [String]
 
-    init(defaults: WorkspaceDefaults = .shared) {
+    init(
+        defaults: WorkspaceDefaults = .shared,
+        busyReasonsProvider: @escaping @MainActor () -> [String] = WorkspaceCoordinator.defaultBusyReasons
+    ) {
         self.defaults = defaults
+        self.busyReasonsProvider = busyReasonsProvider
+    }
+
+    /// Reasons the app currently can't accept a workspace switch. Empty when safe.
+    /// Reads observed VM state — SwiftUI views observing this re-render when
+    /// the underlying flags change.
+    var busyReasons: [String] {
+        busyReasonsProvider()
+    }
+
+    var canSwitchWorkspace: Bool {
+        busyReasons.isEmpty
+    }
+
+    /// Production busy-reasons provider. Inspects shared view models for
+    /// in-flight long-running operations.
+    @MainActor
+    static func defaultBusyReasons() -> [String] {
+        var reasons: [String] = []
+        let main = MainViewModel.shared
+        if main.isProcessingHypergraph { reasons.append("processing knowledge graph") }
+        if main.isRefreshing { reasons.append("refreshing feeds") }
+        if main.isImportingOPML { reasons.append("importing OPML") }
+        if main.isResettingGraph { reasons.append("resetting knowledge graph") }
+        if main.isSimplifyingGraph { reasons.append("simplifying graph") }
+        if main.isClassifying { reasons.append("classifying nodes") }
+        return reasons
     }
 
     /// Opens (or creates) the workspace rooted at `directory`: builds the
@@ -129,6 +160,41 @@ final class WorkspaceCoordinator {
 
         // 5. Nothing found — UI must show a first-run picker
         return .needsSelection
+    }
+
+    // MARK: - Switching
+
+    enum SwitchError: Error, LocalizedError, Equatable {
+        case busy(reasons: [String])
+
+        var errorDescription: String? {
+            switch self {
+            case .busy(let reasons):
+                return "Cannot switch workspace while busy: " + reasons.joined(separator: ", ")
+            }
+        }
+    }
+
+    /// Validates that no long-running jobs are in flight, then persists the
+    /// target directory as the last-opened workspace (so a relaunch resolves it
+    /// via Phase 3's bootstrap flow).
+    ///
+    /// **Does not relaunch the app** — that's the caller's responsibility. For
+    /// v1, the File-menu / Settings UI relaunches via `NSApplication`. This
+    /// keeps the coordinator decoupled from AppKit and gives every workspace a
+    /// fresh process state without complex tear-down inside the running app.
+    @discardableResult
+    func switchWorkspace(to directory: URL) throws -> Workspace {
+        let reasons = busyReasons
+        if !reasons.isEmpty {
+            logger.notice("Switch refused — busy: \(reasons.joined(separator: ", "), privacy: .public)")
+            throw SwitchError.busy(reasons: reasons)
+        }
+        let target = Workspace(directory: directory)
+        defaults.lastOpenedWorkspace = target.directory
+        defaults.pushRecent(target.directory)
+        logger.notice("Switch staged to '\(target.directory.path(percentEncoded: false), privacy: .public)' — caller must relaunch")
+        return target
     }
 
     /// Extracts `<path>` from `--workspace <path>` or `--workspace=<path>`.

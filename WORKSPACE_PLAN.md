@@ -57,7 +57,7 @@ WorkspaceCoordinator.active = Workspace(directory: …)
 | 1 | Foundation types (Workspace, WorkspaceCoordinator skeleton, WorkspaceDefaults) | **done** | new files only, no behavior change |
 | 2 | Database refactor (`init(directory:)`, `Database.current`, rename ~55 sites) | **done** | mechanical |
 | 3 | App launch + legacy migration | **done** | wires bootstrap into `NewsCombApp.init` |
-| 4 | Workspace switch operation | pending | refuse-while-busy is core invariant |
+| 4 | Workspace switch operation | **done** | refuse-while-busy is core invariant; v1 ships as "stage + relaunch" |
 | 5 | MCP `X-Workspace` header | pending | v2-ready wire protocol |
 | 6 | UI (File menu, window title, Settings, first-run sheet) | pending | macOS only |
 | 7 | Test coverage sweep | pending | fill gaps from prior phases |
@@ -193,7 +193,44 @@ sanity check). SwiftLint clean (4 pre-existing warnings unchanged).
 
 ### Phase 4 — Workspace switch operation
 
-(pending)
+**Status:** complete. 9 unit tests, all green. SwiftLint clean.
+
+**Design decision:** rather than tear down `Database.current` and rebuild
+`MainViewModel` while SwiftUI views hold references (fragile), v1 ships as
+"stage + relaunch". `switchWorkspace(to:)` validates and persists; the UI
+relaunches the app, and Phase 3's `bootstrap()` resolves the new workspace
+cleanly. Same UX, dramatically less complexity.
+
+**Files modified:**
+- `NewsCombApp/Services/WorkspaceCoordinator.swift`:
+  - Added `busyReasonsProvider: () -> [String]` (injectable for tests).
+  - Added `var busyReasons: [String]` and `var canSwitchWorkspace: Bool`.
+  - Added `static func defaultBusyReasons()` that inspects `MainViewModel.shared`
+    for in-flight operations: hypergraph processing, RSS refresh, OPML import,
+    graph reset, graph simplification, node classification.
+  - Added `enum SwitchError: Error, LocalizedError, Equatable` with
+    `.busy(reasons:)` case.
+  - Added `switchWorkspace(to:) throws -> Workspace` — validates busy state,
+    persists target as last-opened, pushes to recents. **Does not relaunch.**
+
+**Files added:**
+- `NewsCombAppTests/WorkspaceCoordinatorSwitchTests.swift` (9 tests):
+  - Busy gating (true/false).
+  - Switch succeeds when not busy / refuses when busy / lists all reasons.
+  - Persists last-opened + pushes to recents.
+  - Does NOT change `active` or open the database (relaunch will).
+  - Error message formatting.
+
+**Deviations from plan:**
+- "Rebuild MainViewModel" became unnecessary because we relaunch instead.
+  Caller (Phase 6 UI) is responsible for the actual `NSApplication.terminate` +
+  `Process.run("open <bundle path>")` choreography.
+- `busyReasonsProvider` is injectable rather than hardcoded so tests don't
+  depend on `MainViewModel.shared` state.
+
+**Follow-ups:**
+- Phase 6: UI handles the relaunch choreography after `switchWorkspace(to:)`
+  succeeds. Show an alert with "busy because…" reasons when it throws.
 
 ### Phase 5 — MCP X-Workspace assertion
 
