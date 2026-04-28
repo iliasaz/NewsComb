@@ -58,7 +58,7 @@ WorkspaceCoordinator.active = Workspace(directory: …)
 | 2 | Database refactor (`init(directory:)`, `Database.current`, rename ~55 sites) | **done** | mechanical |
 | 3 | App launch + legacy migration | **done** | wires bootstrap into `NewsCombApp.init` |
 | 4 | Workspace switch operation | **done** | refuse-while-busy is core invariant; v1 ships as "stage + relaunch" |
-| 5 | MCP `X-Workspace` header | pending | v2-ready wire protocol |
+| 5 | MCP `X-Workspace` header | **done** | v2-ready wire protocol |
 | 6 | UI (File menu, window title, Settings, first-run sheet) | pending | macOS only |
 | 7 | Test coverage sweep | pending | fill gaps from prior phases |
 | 8 | Documentation (README, .mcp.json, CLAUDE.md) | pending | final commit |
@@ -234,7 +234,49 @@ cleanly. Same UX, dramatically less complexity.
 
 ### Phase 5 — MCP X-Workspace assertion
 
-(pending)
+**Status:** complete. 14 unit tests, all green. Existing MCPToolTests still pass.
+
+**Files added:**
+- `NewsCombApp/MCP/MCPWorkspaceValidator.swift` — pure value-level validator.
+  `validate(requestedHeader:active:) -> ValidationFailure?` decides allow vs.
+  reject. Two failure cases: `.noActiveWorkspace(requested:)` and
+  `.mismatch(active:requested:)`. JSON-RPC error code -32001 (server-defined).
+
+**Files modified:**
+- `NewsCombApp/MCP/MCPHTTPServer.swift`:
+  - `dispatchRequest` checks the `X-Workspace` header before routing to a
+    transport. Mismatch → 400 Bad Request with a JSON-RPC error body.
+  - Added `validateWorkspaceHeader(_:)` (hops to MainActor for the active
+    workspace lookup).
+  - Added `static func makeJSONRPCErrorHTTPResponse(requestId:code:message:)` —
+    constructs HTTP/1.1 400 with JSON body, escapes quotes/backslashes.
+  - Added `static func extractRequestId(from:)` — extracts the JSON-RPC `id`
+    (string or int) from a request body.
+- `NewsCombMCPBridge/Sources/main.swift`:
+  - Parses `--workspace <path>` / `--workspace=<path>` from `CommandLine.arguments`.
+  - Falls back to `NEWSCOMB_WORKSPACE` env var.
+  - When set, sends `X-Workspace: <path>` on every POST so the app can assert.
+
+**Files added (tests):**
+- `NewsCombAppTests/MCPWorkspaceValidatorTests.swift` (14 tests):
+  - 4 allow-path tests (no header / empty / matching / matching-with-trailing-slash).
+  - 2 reject-path tests (no active workspace / mismatch).
+  - 3 message-formatting tests.
+  - 5 JSON-RPC response-formatting + ID-extraction tests.
+
+**Backward compatibility:** Bridges that don't send `X-Workspace` (older
+versions, manual curl, third-party clients) are accepted unchanged. Only
+explicit assertions are checked.
+
+**v2 readiness:** The wire protocol (`--workspace <path>` → `X-Workspace`
+header → server-side dispatch) is the same shape v2 will use for routing to
+multiple app processes by port. v1 only validates equality; v2 will add a
+discovery step. **No future config changes required for users.**
+
+**Follow-ups:**
+- Phase 6: surface a "MCP rejected" notification in the app UI when an
+  `X-Workspace` mismatch is logged (so the user knows to switch the workspace).
+- Phase 8: update `.mcp.json` examples to show `--workspace` arg.
 
 ### Phase 6 — UI
 
