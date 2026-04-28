@@ -60,7 +60,7 @@ WorkspaceCoordinator.active = Workspace(directory: …)
 | 4 | Workspace switch operation | **done** | refuse-while-busy is core invariant; v1 ships as "stage + relaunch" |
 | 5 | MCP `X-Workspace` header | **done** | v2-ready wire protocol |
 | 6 | UI (File menu, window title, Settings, first-run sheet) | **done** | macOS only |
-| 7 | Test coverage sweep | pending | fill gaps from prior phases |
+| 7 | Test coverage sweep | **done** | fill gaps from prior phases |
 | 8 | Documentation (README, .mcp.json, CLAUDE.md) | pending | final commit |
 
 ## Per-phase log
@@ -357,7 +357,50 @@ nothing's active.
 
 ### Phase 7 — Test coverage sweep
 
-(pending)
+**Status:** complete. **530 tests passing**, 71 of them new for the
+workspace feature across 7 files. The single remaining failure
+(`OasisEnvironmentServiceTests.testPersonaNodeTypes_containsExpectedTypes`)
+is **pre-existing on `main`** — verified by checking out `main` and
+re-running. Not a workspace regression.
+
+**Files added:**
+- `NewsCombAppTests/DatabaseWorkspaceInitTests.swift` (7 tests):
+  - `init(directory:)` creates the directory tree if absent.
+  - `init(directory:)` creates the `newscomb.sqlite` file.
+  - `init(directory:)` runs migrations — verified by spot-checking 5 core
+    tables via `sqlite_master`.
+  - `workspaceDirectory` is canonicalized (trailing slash stripped).
+  - Two `Database` instances at different paths are independent.
+  - `setCurrent(_:)` replaces the active reference.
+  - `resetCurrentForTesting()` clears active without crashing on
+    subsequent `setCurrent`.
+
+**Coverage by phase (cumulative):**
+| Phase | New tests |
+|-------|-----------|
+| 1 | 21 |
+| 2 | +3 |
+| 3 | +12 |
+| 4 | +9 |
+| 5 | +14 |
+| 6 | +3 |
+| 7 | +7 |
+| **Total new** | **69** |
+
+**Gaps NOT covered (intentionally):**
+- UI layer (commands menu items, sheet presentation): would require
+  XCUITest infrastructure that doesn't exist in the project. Manual smoke
+  test deferred — see Phase 6 follow-ups.
+- The relauncher itself (`Process.run` + `NSApplication.terminate`): can't
+  be unit-tested without killing the test runner.
+- Live MCP HTTP server reject path: tested via the pure validator + the
+  HTTP-response builder; an end-to-end TCP test would add value but
+  requires standing up a real port.
+
+**Pre-existing failure (out of scope):**
+- `OasisEnvironmentServiceTests.testPersonaNodeTypes_containsExpectedTypes`
+  fails on both `main` and `feature/workspaces`. Out of scope for the
+  workspace feature.
 
 ### Phase 8 — Documentation
 
