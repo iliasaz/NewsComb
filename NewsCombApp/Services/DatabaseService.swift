@@ -629,9 +629,6 @@ public final class Database: Sendable {
 
             // Create or recreate vec0 virtual tables with the configured embedding dimension
             try createVec0Tables(db)
-
-            // Seed default RSS sources if none exist
-            try seedDefaultRSSSources(db)
         }
     }
 
@@ -774,28 +771,25 @@ public final class Database: Sendable {
         Self.logger.info("Default settings seeded successfully")
     }
 
-    /// Seeds default RSS sources into the database.
-    /// Only seeds if no sources exist yet (first app launch) AND the
-    /// `feed_seed_suppressed` flag isn't set (workspace explicitly provisioned
-    /// empty).
-    private func seedDefaultRSSSources(_ db: GRDB.Database) throws {
-        // Honor explicit opt-out — set by `WorkspaceCoordinator.provisionNewWorkspace`.
-        let isSuppressed = try AppSettings
-            .filter(AppSettings.Columns.key == AppSettings.feedSeedSuppressed)
-            .fetchOne(db) != nil
-        if isSuppressed {
-            Self.logger.info("RSS feed seeding suppressed for this workspace")
-            return
+    /// Inserts the curated default tech-news RSS feeds into this workspace.
+    /// User-invoked from Settings → Feed Settings → "Seed Default Tech Feeds".
+    /// Never runs implicitly during migration: new workspaces start empty so
+    /// the user can choose feeds appropriate to their domain.
+    ///
+    /// Uses `INSERT OR IGNORE` keyed on `url`, so calling repeatedly is
+    /// idempotent — only feeds whose URLs aren't already present get inserted.
+    /// Returns the number of feeds actually inserted.
+    @discardableResult
+    public func seedDefaultRSSFeeds() throws -> Int {
+        try dbQueue.write { db in
+            try Self.insertDefaultRSSFeeds(db)
         }
+    }
 
-        // Check if any sources already exist
-        let sourceCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM rss_source") ?? 0
-        guard sourceCount == 0 else {
-            Self.logger.info("RSS sources already exist, skipping seed")
-            return
-        }
-
-        // Default curated feed sources
+    /// Implementation of the default-feed insert. Static so callers running
+    /// inside an existing write transaction can reuse it without nesting.
+    @discardableResult
+    static func insertDefaultRSSFeeds(_ db: GRDB.Database) throws -> Int {
         let defaultSources: [(url: String, title: String)] = [
             // Cloud Providers
             ("https://aws.amazon.com/blogs/aws/feed", "AWS Blog"),
@@ -821,14 +815,16 @@ public final class Database: Sendable {
             ("https://mshibanami.github.io/GitHubTrendingRSS/weekly/all.xml", "GitHub Trending"),
         ]
 
+        var inserted = 0
         for source in defaultSources {
             try db.execute(
                 sql: "INSERT OR IGNORE INTO rss_source (url, title) VALUES (?, ?)",
                 arguments: [source.url, source.title]
             )
+            inserted += db.changesCount
         }
-
-        Self.logger.info("Default RSS sources seeded: \(defaultSources.count) sources")
+        Self.logger.info("Default RSS feeds: inserted \(inserted) of \(defaultSources.count) (rest already present)")
+        return inserted
     }
 
     func read<T>(_ block: (GRDB.Database) throws -> T) throws -> T {

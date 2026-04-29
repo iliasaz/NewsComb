@@ -183,34 +183,20 @@ final class WorkspaceCoordinatorCopySettingsTests: XCTestCase {
         XCTAssertEqual(count, 0, "Provisioned workspace should have no RSS feeds")
     }
 
-    func testProvisionedWorkspaceDoesNotReseedFeedsAfterReopen() throws {
+    func testProvisionedWorkspaceDoesNotAcquireFeedsAfterReopen() throws {
         let sourceDir = tempRoot.appending(path: "Source")
         let targetDir = tempRoot.appending(path: "Target")
         try sut.openWorkspace(at: sourceDir)
         try sut.provisionNewWorkspace(at: targetDir)
 
-        // First reopen — runs migrate again (which would re-seed if the flag
-        // weren't honored).
-        do {
+        // Two consecutive reopens — migrate runs each time, but auto-seeding
+        // is gone so feeds remain empty regardless.
+        for _ in 0..<2 {
             let reopened = try Database(directory: targetDir)
             let count = try reopened.dbQueue.read { db in
                 try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM rss_source")
             }
-            XCTAssertEqual(count, 0, "Reopen #1: feeds must stay empty")
-            XCTAssertEqual(
-                try readSetting(AppSettings.feedSeedSuppressed, in: reopened),
-                "1",
-                "Suppression flag should still be set after reopen"
-            )
-        }
-
-        // Second reopen — defensive: the flag still survives multiple opens.
-        do {
-            let reopened = try Database(directory: targetDir)
-            let count = try reopened.dbQueue.read { db in
-                try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM rss_source")
-            }
-            XCTAssertEqual(count, 0, "Reopen #2: feeds must stay empty")
+            XCTAssertEqual(count, 0, "Reopens must not introduce feeds")
         }
     }
 

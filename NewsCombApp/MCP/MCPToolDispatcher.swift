@@ -40,6 +40,12 @@ enum MCPToolDispatcher {
                 result = try await MCPQueryKnowledgeGraphTool.run(arguments: arguments)
             case "refresh_feeds":
                 result = await MCPRefreshFeedsTool.run(arguments: arguments)
+            case "create_manual_feed":
+                result = try await MCPCreateManualFeedTool.run(arguments: arguments)
+            case "ingest_article":
+                result = try await MCPIngestArticleTool.run(arguments: arguments)
+            case "refresh_article":
+                result = try await MCPRefreshArticleTool.run(arguments: arguments)
             case "process_knowledge_graph":
                 result = await MCPProcessKnowledgeGraphTool.run(arguments: arguments)
             case "cancel_knowledge_graph_processing":

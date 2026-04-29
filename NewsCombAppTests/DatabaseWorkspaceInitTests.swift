@@ -97,4 +97,67 @@ final class DatabaseWorkspaceInitTests: XCTestCase {
         Database.setCurrent(db)
         XCTAssertEqual(Database.current.workspaceDirectory, dir.canonicalDirectoryURL)
     }
+
+    // MARK: - Default RSS feed seeding (explicit, opt-in)
+
+    func testFirstOpenLeavesFeedsEmpty() throws {
+        let dir = tempRoot.appending(path: "FirstOpen")
+        let db = try Database(directory: dir)
+        let count = try db.dbQueue.read {
+            try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM rss_source") ?? 0
+        }
+        XCTAssertEqual(count, 0, "Brand-new workspaces must NOT auto-seed feeds")
+    }
+
+    func testSeedDefaultRSSFeedsInsertsFullDefaultSet() throws {
+        let dir = tempRoot.appending(path: "ExplicitSeed")
+        let db = try Database(directory: dir)
+
+        let inserted = try db.seedDefaultRSSFeeds()
+        XCTAssertGreaterThan(inserted, 0, "First seed should insert at least one feed")
+
+        let count = try db.dbQueue.read {
+            try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM rss_source") ?? 0
+        }
+        XCTAssertEqual(count, inserted, "Total feeds should equal what was just inserted")
+    }
+
+    func testSeedDefaultRSSFeedsIsIdempotent() throws {
+        let dir = tempRoot.appending(path: "Idempotent")
+        let db = try Database(directory: dir)
+
+        let firstRun = try db.seedDefaultRSSFeeds()
+        let secondRun = try db.seedDefaultRSSFeeds()
+        XCTAssertGreaterThan(firstRun, 0)
+        XCTAssertEqual(secondRun, 0, "Re-seeding should insert nothing — defaults already present")
+
+        let count = try db.dbQueue.read {
+            try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM rss_source") ?? 0
+        }
+        XCTAssertEqual(count, firstRun, "Total count must not double after a second seed call")
+    }
+
+    /// Regression: deleting all feeds and re-opening must NOT re-seed (since
+    /// auto-seeding is gone, this is now trivially true — but we keep the
+    /// test as a guard against any future re-introduction of auto-seeding).
+    func testDeletedFeedsDoNotReturnAfterReopen() throws {
+        let dir = tempRoot.appending(path: "DeleteAndReopen")
+
+        let initial = try Database(directory: dir)
+        try initial.seedDefaultRSSFeeds()
+        let initialCount = try initial.dbQueue.read {
+            try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM rss_source") ?? 0
+        }
+        XCTAssertGreaterThan(initialCount, 0)
+
+        try initial.dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM rss_source")
+        }
+
+        let reopened = try Database(directory: dir)
+        let reopenedCount = try reopened.dbQueue.read {
+            try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM rss_source") ?? 0
+        }
+        XCTAssertEqual(reopenedCount, 0, "Deleted feeds must stay deleted across reopens")
+    }
 }

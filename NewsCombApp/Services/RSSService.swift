@@ -88,6 +88,16 @@ struct RSSService {
             )
         }
 
+        // Manual feeds carry MCP-ingested articles only; there is no remote RSS to fetch.
+        if ArticleIngestionService.isManualSourceURL(source.url) {
+            return FetchResult(
+                sourceId: sourceId,
+                sourceName: source.title ?? source.url,
+                itemCount: 0,
+                error: nil
+            )
+        }
+
         guard let url = URL(string: source.url) else {
             return FetchResult(
                 sourceId: sourceId,

@@ -53,10 +53,28 @@ struct SettingsView: View {
             .onChange(of: viewModel.articleAgeLimitDays) {
                 viewModel.saveArticleAgeLimitDays()
             }
+
+            HStack {
+                Text("Seed Default Tech Feeds")
+                Spacer()
+                Button("Add Default Feeds", systemImage: "plus.rectangle.on.folder") {
+                    viewModel.seedDefaultFeeds()
+                }
+            }
         } header: {
             Text("Feed Settings")
         } footer: {
-            Text("Only fetch articles published within the last \(viewModel.articleAgeLimitDays) day\(viewModel.articleAgeLimitDays == 1 ? "" : "s"). Older articles will be skipped.")
+            Text("Only fetch articles published within the last \(viewModel.articleAgeLimitDays) day\(viewModel.articleAgeLimitDays == 1 ? "" : "s"). Older articles will be skipped. Use \"Add Default Feeds\" to insert a curated set of cloud, AI, and tech-news feeds — already-present URLs are skipped.")
+        }
+        .alert("Default Feeds", isPresented: .init(
+            get: { viewModel.seedFeedsResultMessage != nil },
+            set: { if !$0 { viewModel.seedFeedsResultMessage = nil } }
+        )) {
+            Button("OK") { viewModel.seedFeedsResultMessage = nil }
+        } message: {
+            if let message = viewModel.seedFeedsResultMessage {
+                Text(message)
+            }
         }
     }
 
