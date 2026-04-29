@@ -14,6 +14,7 @@ struct SettingsView: View {
             knowledgeExtractionSection
             analysisModelSection
             algorithmParametersSection
+            clusterLabelingPromptSection
             extractionPromptsSection
             deepAnalysisPromptsSection
             socialSimulationSection
@@ -490,6 +491,38 @@ struct SettingsView: View {
             Text("Algorithm Parameters")
         } footer: {
             Text("Fine-tune knowledge extraction, node merging, and query parameters.")
+        }
+    }
+
+    private var clusterLabelingPromptSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Cluster Labeling Prompt")
+                        .font(.headline)
+                    Spacer()
+                    Button("Reset to Default") {
+                        viewModel.resetClusterLabelingPromptToDefault()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+                }
+
+                TextEditor(text: $viewModel.clusterLabelingSystemPrompt)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 160)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(.rect(cornerRadius: 8))
+                    .onChange(of: viewModel.clusterLabelingSystemPrompt) {
+                        viewModel.saveClusterLabelingSystemPrompt()
+                    }
+            }
+        } header: {
+            Text("Theme Clustering")
+        } footer: {
+            Text("Used by the analysis LLM at the end of theme clustering to give each cluster a title and one-paragraph summary. Edit for non-news corpora (docs, codebases, scientific or legal text) where the news framing produces awkward labels.")
         }
     }
 

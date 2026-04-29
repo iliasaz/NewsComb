@@ -1283,6 +1283,7 @@ struct LLMSettings: Sendable {
     // Custom prompts (nil means use defaults)
     var extractionSystemPrompt: String?
     var distillationSystemPrompt: String?
+    var clusterLabelingPrompt: String?
 
     /// Whether per-chunk distillation runs before entity extraction.
     var distillationEnabled: Bool = AppSettings.defaultDistillationEnabled

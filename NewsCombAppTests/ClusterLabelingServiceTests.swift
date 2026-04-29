@@ -1,9 +1,97 @@
 import XCTest
+import GRDB
 @testable import NewsCombApp
 
 final class ClusterLabelingServiceTests: XCTestCase {
 
     private let service = ClusterLabelingService()
+
+    // MARK: - System Prompt Configurability
+
+    func testClusterLabelingSystemPromptKey() {
+        XCTAssertEqual(
+            AppSettings.clusterLabelingSystemPrompt,
+            "cluster_labeling_system_prompt",
+            "Settings key must stay stable — changing it orphans existing user overrides in workspaces."
+        )
+    }
+
+    func testDefaultClusterLabelingPromptHasExpectedContent() {
+        let prompt = AppSettings.defaultClusterLabelingPrompt
+        XCTAssertFalse(prompt.isEmpty, "Default cluster labeling prompt must not be empty")
+        XCTAssertTrue(
+            prompt.contains("title"),
+            "Prompt must instruct the LLM to produce a title field"
+        )
+        XCTAssertTrue(
+            prompt.contains("summary"),
+            "Prompt must instruct the LLM to produce a summary field"
+        )
+        XCTAssertTrue(
+            prompt.contains("{\"title\": \"...\", \"summary\": \"...\"}"),
+            "Prompt must specify the exact JSON shape the parser expects"
+        )
+    }
+
+    func testLLMSettingsClusterLabelingPromptDefaultsToNil() {
+        let settings = LLMSettings()
+        XCTAssertNil(
+            settings.clusterLabelingPrompt,
+            "Field defaults to nil so call sites fall back to AppSettings.defaultClusterLabelingPrompt"
+        )
+    }
+
+    func testLLMSettingsCarriesClusterLabelingOverride() {
+        var settings = LLMSettings()
+        settings.clusterLabelingPrompt = "custom override"
+        XCTAssertEqual(settings.clusterLabelingPrompt, "custom override")
+    }
+
+    func testClusterLabelingPromptRoundTripsThroughInMemoryDB() throws {
+        let dbQueue = try DatabaseQueue()
+        try dbQueue.write { db in
+            try db.execute(sql: """
+                CREATE TABLE app_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key TEXT NOT NULL UNIQUE,
+                    value TEXT NOT NULL
+                )
+            """)
+            try db.execute(
+                sql: "INSERT INTO app_settings (key, value) VALUES (?, ?)",
+                arguments: [AppSettings.clusterLabelingSystemPrompt, "Custom labeling instructions for codebase corpus."]
+            )
+        }
+
+        try dbQueue.read { db in
+            let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.clusterLabelingSystemPrompt)
+                .fetchOne(db)
+            XCTAssertEqual(setting?.value, "Custom labeling instructions for codebase corpus.")
+        }
+    }
+
+    func testClusterLabelingPromptMissingRowReturnsNil() throws {
+        // When no row exists for the key, AppSettings.filter returns nil and the
+        // service falls back to AppSettings.defaultClusterLabelingPrompt at the call site.
+        let dbQueue = try DatabaseQueue()
+        try dbQueue.write { db in
+            try db.execute(sql: """
+                CREATE TABLE app_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key TEXT NOT NULL UNIQUE,
+                    value TEXT NOT NULL
+                )
+            """)
+        }
+
+        try dbQueue.read { db in
+            let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.clusterLabelingSystemPrompt)
+                .fetchOne(db)
+            XCTAssertNil(setting)
+        }
+    }
 
     // MARK: - parseResponse Tests
 
