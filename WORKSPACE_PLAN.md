@@ -425,6 +425,58 @@ re-running. Not a workspace regression.
     `WorkspaceDefaults` (app-global). Future Claude sessions touching
     settings won't accidentally put them in the wrong place.
 
+## Post-v1 enhancements (shipped)
+
+### Enhancement A — Open Default Workspace button
+
+`WorkspaceSettingsSection` gained a third action button between "Reveal in
+Finder" and "Switch Workspace…": **Open Default Workspace** (house icon).
+Disabled when the active workspace already is `Workspace.legacyDirectory`,
+or when busy. Routes through the same `switchWorkspace` + relaunch flow.
+
+Refactor: pulled the alert/relaunch choreography out of the panel-driven
+path into a shared `attemptSwitch(to:)` helper so the new button reuses it.
+
+### Enhancement B — Copy app_settings on New Workspace
+
+When the user creates a new workspace via **File → New Workspace…**, all
+key/value rows in the current workspace's `app_settings` table are copied
+into the new workspace before relaunch. Carries over LLM keys, model
+selections, prompts, algorithm parameters — everything the user customized.
+
+**Files modified:**
+- `WorkspaceCoordinator.swift` — added `copyAppSettings(from:to:)` and the
+  convenience `copyAppSettingsFromCurrent(to:)`. Both open the source +
+  target databases transiently (so `Database.current` is unaffected) and
+  upsert source rows into target by key.
+- `WorkspaceCommands.swift` — `attemptSwitch(to:copyIfNew:)` calls
+  `copyAppSettingsFromCurrent` only when `copyIfNew == true` and the target
+  has no `newscomb.sqlite` yet. **File → New Workspace…** passes `true`;
+  **File → Open Workspace…** and **Open Recent** pass `false`. The Settings
+  pane's "Switch Workspace…" button has open-existing semantics — also
+  `false`. Failure during the copy aborts the switch (better than relaunching
+  with an unexpectedly-default workspace).
+
+**Files added:**
+- `WorkspaceCoordinatorCopySettingsTests.swift` (7 tests):
+  - Overwrites target seed defaults with source values.
+  - Carries source-only keys (e.g. `openrouter_key`) into target.
+  - Preserves target seed keys the source lacks (forward-compat with new
+    schema-seeded settings).
+  - Counts all source rows.
+  - `copyAppSettingsFromCurrent` returns `false` when no active workspace.
+  - `copyAppSettingsFromCurrent` returns `false` when target equals active.
+  - `copyAppSettingsFromCurrent` succeeds end-to-end with a real value.
+
+**Known limitation (documented inline):** if the source workspace had a
+non-default `embedding_dimension`, the copied setting can mismatch the
+target's vec0 tables (which are sized at the seed-default dimension during
+migration). Brand-new workspaces have no embeddings yet, so the existing
+dimension-mismatch reset flow rebuilds the vec0 tables on first use.
+
+**README** updated under the Workspaces section to mention that
+File → New Workspace inherits settings.
+
 ## Risks & open issues
 
 - **MainViewModel rebuild on switch**: holds many SwiftUI bindings via

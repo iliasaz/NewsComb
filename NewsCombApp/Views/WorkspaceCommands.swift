@@ -26,7 +26,7 @@ struct WorkspaceCommands: Commands {
             Menu("Open Recent Workspace") {
                 ForEach(coordinator.recentWorkspaces, id: \.self) { url in
                     Button(url.lastPathComponent) {
-                        attemptSwitch(to: url)
+                        attemptSwitch(to: url, copyIfNew: false)
                     }
                 }
                 if !coordinator.recentWorkspaces.isEmpty {
@@ -64,7 +64,7 @@ struct WorkspaceCommands: Commands {
         panel.message = "Choose a folder for the new NewsComb workspace. The folder may be empty or contain an existing newscomb.sqlite."
         panel.prompt = "Use Folder"
         if panel.runModal() == .OK, let url = panel.url {
-            attemptSwitch(to: url)
+            attemptSwitch(to: url, copyIfNew: true)
         }
     }
 
@@ -77,12 +77,20 @@ struct WorkspaceCommands: Commands {
         panel.message = "Choose a folder containing a NewsComb workspace."
         panel.prompt = "Open Workspace"
         if panel.runModal() == .OK, let url = panel.url {
-            attemptSwitch(to: url)
+            attemptSwitch(to: url, copyIfNew: false)
         }
     }
 
-    private func attemptSwitch(to url: URL) {
+    /// Routes a workspace switch through `WorkspaceCoordinator.switchWorkspace`,
+    /// optionally copying `app_settings` from the current workspace first if
+    /// the target is brand-new (used for File → New Workspace…). Failure during
+    /// settings copy aborts the switch — better to surface the error than
+    /// relaunch into a workspace with default settings the user didn't expect.
+    private func attemptSwitch(to url: URL, copyIfNew: Bool) {
         do {
+            if copyIfNew && Self.isNewWorkspace(at: url) {
+                _ = try coordinator.copyAppSettingsFromCurrent(to: url)
+            }
             _ = try coordinator.switchWorkspace(to: url)
             confirmAndRelaunch(to: url)
         } catch let error as WorkspaceCoordinator.SwitchError {
@@ -96,6 +104,12 @@ struct WorkspaceCommands: Commands {
                 message: error.localizedDescription
             )
         }
+    }
+
+    /// True when the target folder doesn't already contain a `newscomb.sqlite`.
+    private static func isNewWorkspace(at url: URL) -> Bool {
+        let dbFile = url.appending(path: Workspace.databaseFileName)
+        return !FileManager.default.fileExists(atPath: dbFile.path(percentEncoded: false))
     }
 
     private func confirmAndRelaunch(to url: URL) {

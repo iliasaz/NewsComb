@@ -75,11 +75,11 @@ NewsComb picks the active workspace on launch using the first match it finds:
 
 ### Managing workspaces from the UI
 
-- **File → New Workspace…** (⇧⌘N) — pick or create a folder.
-- **File → Open Workspace…** (⇧⌘O) — open an existing workspace folder.
+- **File → New Workspace…** (⇧⌘N) — pick or create a folder. When the folder is brand-new, the current workspace's settings (LLM provider + API keys, embedding model, prompts, algorithm parameters) are copied into the new one so you don't have to reconfigure.
+- **File → Open Workspace…** (⇧⌘O) — open an existing workspace folder. No settings copy — the target's own settings are used.
 - **File → Open Recent Workspace** — last 10 workspaces.
 - **File → Reveal Workspace in Finder**.
-- **Settings → Workspace** — shows the active path and a Switch Workspace button.
+- **Settings → Workspace** — shows the active path, a **Switch Workspace…** button, and an **Open Default Workspace** button that returns to the legacy `~/Library/Application Support/NewsComb/` location.
 
 Switching workspaces relaunches the app so each workspace gets a clean process state. NewsComb refuses to switch while long-running jobs (knowledge graph processing, RSS refresh, OPML import, theme clustering, etc.) are in flight — wait for them to finish or cancel them first.
 

@@ -176,6 +176,61 @@ final class WorkspaceCoordinator {
         return .needsSelection
     }
 
+    // MARK: - Settings copy
+
+    /// Copies every row in the source workspace's `app_settings` table into
+    /// the target workspace's `app_settings` table (UPSERT by key). Used when
+    /// the user creates a new workspace and wants their LLM keys, model
+    /// selections, prompts, and algorithm parameters carried over instead of
+    /// reset to defaults.
+    ///
+    /// Both databases are opened transiently; `Database.current` is unchanged.
+    /// The target's migration runs (creating tables and seeding defaults)
+    /// before the upsert, so any new defaults the source's DB doesn't know
+    /// about are preserved.
+    ///
+    /// **Note**: a copied `embedding_dimension` setting can mismatch the
+    /// target's vec0 tables (which were created at the seed-default
+    /// dimension). Since a brand-new workspace has no embeddings yet, the
+    /// existing dimension-mismatch reset flow will rebuild the vec0 tables
+    /// at the right size on first use.
+    func copyAppSettings(from source: URL, to target: URL) throws {
+        let sourceDB = try Database(directory: source)
+        let targetDB = try Database(directory: target)
+
+        let rows = try sourceDB.dbQueue.read { db in
+            try AppSettings.fetchAll(db)
+        }
+
+        try targetDB.dbQueue.write { db in
+            for setting in rows {
+                try db.execute(
+                    sql: """
+                        INSERT INTO app_settings (key, value) VALUES (?, ?)
+                        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                    """,
+                    arguments: [setting.key, setting.value]
+                )
+            }
+        }
+
+        logger.notice(
+            "Copied \(rows.count, privacy: .public) app_settings rows from \(source.path(percentEncoded: false), privacy: .public) to \(target.path(percentEncoded: false), privacy: .public)"
+        )
+    }
+
+    /// Convenience: copies from the currently-active workspace to `target`.
+    /// Returns `true` if a copy actually happened, `false` if there was no
+    /// active workspace or `target` was already the active workspace.
+    @discardableResult
+    func copyAppSettingsFromCurrent(to target: URL) throws -> Bool {
+        guard let active else { return false }
+        let canonicalTarget = target.canonicalDirectoryURL
+        guard active.directory != canonicalTarget else { return false }
+        try copyAppSettings(from: active.directory, to: canonicalTarget)
+        return true
+    }
+
     // MARK: - Switching
 
     enum SwitchError: Error, LocalizedError, Equatable {

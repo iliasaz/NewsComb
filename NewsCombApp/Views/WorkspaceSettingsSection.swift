@@ -8,6 +8,10 @@ struct WorkspaceSettingsSection: View {
 
     @Bindable var coordinator: WorkspaceCoordinator
 
+    private var isOnDefault: Bool {
+        coordinator.active?.directory == Workspace.legacyDirectory.canonicalDirectoryURL
+    }
+
     var body: some View {
         Section {
             if let active = coordinator.active {
@@ -26,9 +30,18 @@ struct WorkspaceSettingsSection: View {
                     Button("Reveal in Finder", systemImage: "folder") {
                         NSWorkspace.shared.activateFileViewerSelecting([active.directory])
                     }
+                    Button("Open Default Workspace", systemImage: "house") {
+                        switchToDefault()
+                    }
+                    .disabled(isOnDefault || !coordinator.canSwitchWorkspace)
+                    .help(
+                        isOnDefault
+                            ? "You're already using the default workspace at \(Workspace.legacyDirectory.path(percentEncoded: false))."
+                            : "Switch to the legacy default workspace at \(Workspace.legacyDirectory.path(percentEncoded: false))."
+                    )
                     Spacer()
                     Button("Switch Workspace…", systemImage: "rectangle.2.swap") {
-                        switchWorkspace()
+                        switchToPickedFolder()
                     }
                     .disabled(!coordinator.canSwitchWorkspace)
                 }
@@ -50,7 +63,9 @@ struct WorkspaceSettingsSection: View {
         }
     }
 
-    private func switchWorkspace() {
+    // MARK: - Actions
+
+    private func switchToPickedFolder() {
         let panel = NSOpenPanel()
         panel.canCreateDirectories = true
         panel.canChooseDirectories = true
@@ -59,33 +74,51 @@ struct WorkspaceSettingsSection: View {
         panel.message = "Choose a workspace folder."
         panel.prompt = "Open Workspace"
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        attemptSwitch(to: url)
+    }
 
+    private func switchToDefault() {
+        attemptSwitch(to: Workspace.legacyDirectory)
+    }
+
+    private func attemptSwitch(to url: URL) {
         do {
             _ = try coordinator.switchWorkspace(to: url)
-            let alert = NSAlert()
-            alert.messageText = "Relaunch NewsComb?"
-            alert.informativeText = "NewsComb will quit and reopen with the workspace at:\n\n\(url.path(percentEncoded: false))"
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: "Relaunch")
-            alert.addButton(withTitle: "Cancel")
-            if alert.runModal() == .alertFirstButtonReturn {
-                WorkspaceRelauncher.relaunchApp()
-            }
+            confirmAndRelaunch(to: url)
         } catch let error as WorkspaceCoordinator.SwitchError {
-            let alert = NSAlert()
-            alert.messageText = "Cannot switch workspace"
-            alert.informativeText = error.errorDescription ?? "Unknown error"
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
+            showAlert(
+                title: "Cannot switch workspace",
+                message: error.errorDescription ?? "Unknown error",
+                style: .warning
+            )
         } catch {
-            let alert = NSAlert()
-            alert.messageText = "Switch failed"
-            alert.informativeText = error.localizedDescription
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
+            showAlert(
+                title: "Switch failed",
+                message: error.localizedDescription,
+                style: .warning
+            )
         }
+    }
+
+    private func confirmAndRelaunch(to url: URL) {
+        let alert = NSAlert()
+        alert.messageText = "Relaunch NewsComb?"
+        alert.informativeText = "NewsComb will quit and reopen with the workspace at:\n\n\(url.path(percentEncoded: false))"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Relaunch")
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn {
+            WorkspaceRelauncher.relaunchApp()
+        }
+    }
+
+    private func showAlert(title: String, message: String, style: NSAlert.Style) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = style
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 }
 #endif
