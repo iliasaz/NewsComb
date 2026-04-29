@@ -1271,6 +1271,7 @@ struct LLMSettings: Sendable {
     // Custom prompts (nil means use defaults)
     var extractionSystemPrompt: String?
     var distillationSystemPrompt: String?
+    var clusterLabelingPrompt: String?
 
     // MARK: - Analysis LLM Helpers
 

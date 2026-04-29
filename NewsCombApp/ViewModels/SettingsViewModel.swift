@@ -120,6 +120,9 @@ class SettingsViewModel {
     var extractionSystemPrompt: String = AppSettings.defaultExtractionPrompt
     var distillationSystemPrompt: String = AppSettings.defaultDistillationPrompt
 
+    // Theme Clustering Prompt
+    var clusterLabelingSystemPrompt: String = AppSettings.defaultClusterLabelingPrompt
+
     // Deep Analysis Agent Prompts
     var engineerAgentPrompt: String = AppSettings.defaultEngineerAgentPrompt
     var hypothesizerAgentPrompt: String = AppSettings.defaultHypothesizerAgentPrompt
@@ -335,6 +338,10 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.distillationSystemPrompt).fetchOne(db) {
                     distillationSystemPrompt = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.clusterLabelingSystemPrompt).fetchOne(db) {
+                    clusterLabelingSystemPrompt = setting.value
                 }
 
                 // Load deep analysis agent prompts
@@ -733,6 +740,17 @@ class SettingsViewModel {
     func resetDistillationPromptToDefault() {
         distillationSystemPrompt = AppSettings.defaultDistillationPrompt
         saveDistillationSystemPrompt()
+    }
+
+    // MARK: - Theme Clustering Prompt Save Methods
+
+    func saveClusterLabelingSystemPrompt() {
+        saveAPIKey(key: AppSettings.clusterLabelingSystemPrompt, value: clusterLabelingSystemPrompt)
+    }
+
+    func resetClusterLabelingPromptToDefault() {
+        clusterLabelingSystemPrompt = AppSettings.defaultClusterLabelingPrompt
+        saveClusterLabelingSystemPrompt()
     }
 
     // MARK: - Deep Analysis Agent Prompts Save Methods

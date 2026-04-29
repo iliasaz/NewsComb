@@ -151,6 +151,9 @@ extension AppSettings {
     static let extractionSystemPrompt = "extraction_system_prompt"
     static let distillationSystemPrompt = "distillation_system_prompt"
 
+    // Theme Clustering Prompts
+    static let clusterLabelingSystemPrompt = "cluster_labeling_system_prompt"
+
     // Deep Analysis Agent Prompts
     static let engineerAgentPrompt = "engineer_agent_prompt"
     static let hypothesizerAgentPrompt = "hypothesizer_agent_prompt"
@@ -228,6 +231,37 @@ extension AppSettings {
     - Speculation or opinion
 
     Preserve technical terms, product names, and company names exactly as written.
+    """
+
+    /// Default cluster labeling prompt — produces a title + paragraph summary for each story theme cluster.
+    static let defaultClusterLabelingPrompt = """
+    You write concise, fact-dense summaries of news themes. You receive data \
+    extracted from multiple news articles that were automatically grouped together. \
+    Your job is to describe what is actually happening — who did what, to whom, \
+    and what was announced, decided, or discovered.
+
+    You will receive:
+    - Key entities (people, companies, products)
+    - Types of relationships between them
+    - Representative events in Subject-Verb-Object form, with source context \
+    from the original article text when available
+    - Source article headlines and publisher descriptions
+
+    Writing rules:
+    - Title: a specific, factual headline (under 10 words). Name the main actor \
+    or subject if one dominates. Do NOT start with a gerund.
+    - Summary: 2-5 sentences packed with specifics — names, products, numbers, \
+    actions. Lead with the most concrete fact, not a meta-description.
+    - NEVER start with "This topic", "This theme", "This cluster", or any \
+    third-person reference to the grouping itself. Jump straight into the facts.
+    - Name the actors and their actions. "AWS launched SageMaker Inference for \
+    custom Nova models" is good. "New infrastructure for deploying AI" is bad.
+    - If the grouped items share a clear thread, describe it. If they are loosely \
+    related or span several sub-topics, briefly list the key items rather than \
+    forcing a single narrative. Honesty about breadth beats false coherence.
+    - Only state facts present in the provided data.
+
+    Output EXACTLY this JSON: {"title": "...", "summary": "..."}
     """
 
     // MARK: - On-Device (Foundation Models) Settings

@@ -19,38 +19,6 @@ final class ClusterLabelingService: Sendable {
     private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "ClusterLabelingService")
 
-    // MARK: - System Prompt
-
-    private static let systemPrompt = """
-        You write concise, fact-dense summaries of news themes. You receive data \
-        extracted from multiple news articles that were automatically grouped together. \
-        Your job is to describe what is actually happening — who did what, to whom, \
-        and what was announced, decided, or discovered.
-
-        You will receive:
-        - Key entities (people, companies, products)
-        - Types of relationships between them
-        - Representative events in Subject-Verb-Object form, with source context \
-        from the original article text when available
-        - Source article headlines and publisher descriptions
-
-        Writing rules:
-        - Title: a specific, factual headline (under 10 words). Name the main actor \
-        or subject if one dominates. Do NOT start with a gerund.
-        - Summary: 2-5 sentences packed with specifics — names, products, numbers, \
-        actions. Lead with the most concrete fact, not a meta-description.
-        - NEVER start with "This topic", "This theme", "This cluster", or any \
-        third-person reference to the grouping itself. Jump straight into the facts.
-        - Name the actors and their actions. "AWS launched SageMaker Inference for \
-        custom Nova models" is good. "New infrastructure for deploying AI" is bad.
-        - If the grouped items share a clear thread, describe it. If they are loosely \
-        related or span several sub-topics, briefly list the key items rather than \
-        forcing a single narrative. Honesty about breadth beats false coherence.
-        - Only state facts present in the provided data.
-
-        Output EXACTLY this JSON: {"title": "...", "summary": "..."}
-        """
-
     // MARK: - Public API
 
     /// Generates LLM titles and summaries for all clusters in a build.
@@ -127,7 +95,7 @@ final class ClusterLabelingService: Sendable {
                                 exemplars: exemplars
                             )
                             let response = try await self.callLLM(
-                                systemPrompt: Self.systemPrompt,
+                                systemPrompt: settings.clusterLabelingPrompt ?? AppSettings.defaultClusterLabelingPrompt,
                                 userPrompt: userPrompt,
                                 settings: settings
                             )
@@ -510,6 +478,13 @@ final class ClusterLabelingService: Sendable {
                 .filter(AppSettings.Columns.key == AppSettings.analysisOpenRouterModel)
                 .fetchOne(db) {
                 settings.analysisOpenRouterModel = model.value
+            }
+
+            // Cluster-labeling system prompt (falls back to AppSettings.defaultClusterLabelingPrompt at the call site when nil)
+            if let prompt = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.clusterLabelingSystemPrompt)
+                .fetchOne(db) {
+                settings.clusterLabelingPrompt = prompt.value
             }
 
             return settings
