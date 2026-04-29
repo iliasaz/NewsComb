@@ -140,6 +140,70 @@ final class HypergraphServiceTests: XCTestCase {
         XCTAssertEqual(settings.embeddingOpenRouterModel, "openai/text-embedding-3-large")
     }
 
+    // MARK: - Distillation Toggle Tests
+
+    func testDistillationEnabledKeyAndDefault() {
+        XCTAssertEqual(AppSettings.distillationEnabled, "distillation_enabled")
+        XCTAssertFalse(
+            AppSettings.defaultDistillationEnabled,
+            "Distillation must default off — it's a 2x cost knob users opt into."
+        )
+    }
+
+    func testLLMSettingsDistillationDefault() {
+        let settings = LLMSettings()
+        XCTAssertEqual(settings.distillationEnabled, AppSettings.defaultDistillationEnabled)
+    }
+
+    func testDistillationEnabledRoundTripThroughInMemoryDB() throws {
+        let dbQueue = try DatabaseQueue()
+        try dbQueue.write { db in
+            try db.execute(sql: """
+                CREATE TABLE app_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key TEXT NOT NULL UNIQUE,
+                    value TEXT NOT NULL
+                )
+            """)
+            try db.execute(
+                sql: "INSERT INTO app_settings (key, value) VALUES (?, ?)",
+                arguments: [AppSettings.distillationEnabled, "true"]
+            )
+        }
+
+        try dbQueue.read { db in
+            let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.distillationEnabled)
+                .fetchOne(db)
+            XCTAssertEqual(setting?.value, "true")
+            XCTAssertEqual(Bool(setting?.value ?? ""), true)
+        }
+    }
+
+    func testDistillationEnabledParsesFalseString() throws {
+        let dbQueue = try DatabaseQueue()
+        try dbQueue.write { db in
+            try db.execute(sql: """
+                CREATE TABLE app_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key TEXT NOT NULL UNIQUE,
+                    value TEXT NOT NULL
+                )
+            """)
+            try db.execute(
+                sql: "INSERT INTO app_settings (key, value) VALUES (?, ?)",
+                arguments: [AppSettings.distillationEnabled, "false"]
+            )
+        }
+
+        try dbQueue.read { db in
+            let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.distillationEnabled)
+                .fetchOne(db)
+            XCTAssertEqual(Bool(setting?.value ?? ""), false)
+        }
+    }
+
     // MARK: - HypergraphStatistics Tests
 
     func testHypergraphStatisticsInitialization() {

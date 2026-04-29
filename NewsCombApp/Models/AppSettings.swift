@@ -151,6 +151,10 @@ extension AppSettings {
     static let extractionSystemPrompt = "extraction_system_prompt"
     static let distillationSystemPrompt = "distillation_system_prompt"
 
+    // Hypergraph Distillation Toggle
+    static let distillationEnabled = "distillation_enabled"
+    static let defaultDistillationEnabled = false
+
     // Theme Clustering Prompts
     static let clusterLabelingSystemPrompt = "cluster_labeling_system_prompt"
 

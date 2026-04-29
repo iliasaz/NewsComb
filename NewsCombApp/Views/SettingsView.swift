@@ -566,6 +566,15 @@ struct SettingsView: View {
                     .foregroundStyle(.blue)
                 }
 
+                Toggle("Enable distillation pre-processing", isOn: $viewModel.distillationEnabled)
+                    .onChange(of: viewModel.distillationEnabled) {
+                        viewModel.saveDistillationEnabled()
+                    }
+
+                Text("When on, each chunk runs an extra LLM call to strip marketing fluff and bylines before entity extraction. Doubles the LLM cost per chunk; useful for noisy sources.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 TextEditor(text: $viewModel.distillationSystemPrompt)
                     .font(.system(.body, design: .monospaced))
                     .frame(minHeight: 100)

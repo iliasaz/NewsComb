@@ -119,6 +119,7 @@ class SettingsViewModel {
     // Extraction Prompts
     var extractionSystemPrompt: String = AppSettings.defaultExtractionPrompt
     var distillationSystemPrompt: String = AppSettings.defaultDistillationPrompt
+    var distillationEnabled: Bool = AppSettings.defaultDistillationEnabled
 
     // Theme Clustering Prompt
     var clusterLabelingSystemPrompt: String = AppSettings.defaultClusterLabelingPrompt
@@ -338,6 +339,11 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.distillationSystemPrompt).fetchOne(db) {
                     distillationSystemPrompt = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.distillationEnabled).fetchOne(db),
+                   let value = Bool(setting.value) {
+                    distillationEnabled = value
                 }
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.clusterLabelingSystemPrompt).fetchOne(db) {
@@ -730,6 +736,10 @@ class SettingsViewModel {
 
     func saveDistillationSystemPrompt() {
         saveAPIKey(key: AppSettings.distillationSystemPrompt, value: distillationSystemPrompt)
+    }
+
+    func saveDistillationEnabled() {
+        saveAPIKey(key: AppSettings.distillationEnabled, value: String(distillationEnabled))
     }
 
     func resetExtractionPromptToDefault() {

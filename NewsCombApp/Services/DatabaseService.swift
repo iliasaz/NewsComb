@@ -730,6 +730,7 @@ public final class Database: Sendable {
             // Prompts
             (AppSettings.extractionSystemPrompt, AppSettings.defaultExtractionPrompt),
             (AppSettings.distillationSystemPrompt, AppSettings.defaultDistillationPrompt),
+            (AppSettings.distillationEnabled, String(AppSettings.defaultDistillationEnabled)),
             (AppSettings.clusterLabelingSystemPrompt, AppSettings.defaultClusterLabelingPrompt),
             (AppSettings.engineerAgentPrompt, AppSettings.defaultEngineerAgentPrompt),
             (AppSettings.hypothesizerAgentPrompt, AppSettings.defaultHypothesizerAgentPrompt),

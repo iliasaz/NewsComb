@@ -351,6 +351,7 @@ final class HypergraphService: Sendable {
         let settings = try loadSettings()
         logger.info("LLM Provider: \(settings.provider, privacy: .public)")
         logger.info("Embedding Provider: \(settings.embeddingProvider, privacy: .public)")
+        logger.info("Distillation enabled: \(settings.distillationEnabled, privacy: .public), prompt source: app_settings (\(settings.distillationSystemPrompt?.count ?? 0) chars)")
 
         // DocumentProcessor requires an OllamaService for its internal embedding pipeline.
         // The embeddings it produces are discarded in persistHypergraph and re-generated
@@ -379,6 +380,7 @@ final class HypergraphService: Sendable {
                 llmProvider: LoggingLLMProvider(wrapping: ollama),
                 ollamaService: ollama,
                 chatModel: model,
+                distillByDefault: settings.distillationEnabled,
                 extractionSystemPrompt: settings.extractionSystemPrompt,
                 distillationSystemPrompt: settings.distillationSystemPrompt
             )
@@ -405,6 +407,7 @@ final class HypergraphService: Sendable {
                 llmProvider: LoggingLLMProvider(wrapping: openRouter),
                 ollamaService: embeddingOllama,
                 chatModel: chatModel,
+                distillByDefault: settings.distillationEnabled,
                 extractionSystemPrompt: settings.extractionSystemPrompt,
                 distillationSystemPrompt: settings.distillationSystemPrompt
             )
@@ -425,6 +428,7 @@ final class HypergraphService: Sendable {
                 ollamaService: embeddingOllama,
                 chatModel: "apple-on-device",
                 chunkSize: chunkSize,
+                distillByDefault: settings.distillationEnabled,
                 extractionSystemPrompt: extractionPrompt,
                 distillationSystemPrompt: settings.distillationSystemPrompt
             )
@@ -572,6 +576,14 @@ final class HypergraphService: Sendable {
                 .fetchOne(db),
                !setting.value.isEmpty {
                 settings.distillationSystemPrompt = setting.value
+            }
+
+            // Distillation toggle (stored as "true"/"false" string)
+            if let setting = try AppSettings
+                .filter(AppSettings.Columns.key == AppSettings.distillationEnabled)
+                .fetchOne(db),
+               let value = Bool(setting.value) {
+                settings.distillationEnabled = value
             }
 
             return settings
@@ -1272,6 +1284,9 @@ struct LLMSettings: Sendable {
     var extractionSystemPrompt: String?
     var distillationSystemPrompt: String?
     var clusterLabelingPrompt: String?
+
+    /// Whether per-chunk distillation runs before entity extraction.
+    var distillationEnabled: Bool = AppSettings.defaultDistillationEnabled
 
     // MARK: - Analysis LLM Helpers
 
