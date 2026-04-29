@@ -75,6 +75,8 @@ class SettingsViewModel {
     var newSourceURL: String = ""
     var openRouterKey: String = ""
     var errorMessage: String?
+    /// Set after a successful default-feeds seed; the view shows it as an info alert.
+    var seedFeedsResultMessage: String?
 
     // LLM Configuration
     var llmProvider: LLMProviderOption = .none
@@ -631,6 +633,20 @@ class SettingsViewModel {
 
     func saveArticleAgeLimitDays() {
         saveAPIKey(key: AppSettings.articleAgeLimitDays, value: String(articleAgeLimitDays))
+    }
+
+    /// Inserts the curated default tech-news RSS feeds into the active workspace.
+    /// Idempotent — feeds whose URLs already exist are skipped.
+    func seedDefaultFeeds() {
+        do {
+            let inserted = try Database.current.seedDefaultRSSFeeds()
+            loadRSSSources()
+            seedFeedsResultMessage = inserted == 0
+                ? "All default feeds were already present. No new feeds added."
+                : "Added \(inserted) default tech feed\(inserted == 1 ? "" : "s")."
+        } catch {
+            errorMessage = "Failed to seed default feeds: \(error.localizedDescription)"
+        }
     }
 
     // MARK: - Algorithm Parameters Save Methods

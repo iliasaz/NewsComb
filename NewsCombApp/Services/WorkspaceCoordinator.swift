@@ -305,16 +305,14 @@ final class WorkspaceCoordinator {
     }
 
     /// Provisions a new workspace from the currently-active one for the
-    /// **File → New Workspace…** flow:
+    /// **File → New Workspace…** flow.
     ///
-    /// 1. Copies portable app settings from the active workspace (LLM keys,
-    ///    model selections, prompts, algorithm parameters).
-    /// 2. Sets `feed_seed_suppressed = "1"` in the new workspace so future
-    ///    migrations don't re-seed the curated default RSS feeds.
-    /// 3. Deletes the seeded RSS feeds the migration just inserted.
-    ///
-    /// The user picks feeds appropriate to the new workspace's domain rather
-    /// than inheriting the source workspace's feeds OR the seed defaults.
+    /// Copies portable app settings from the active workspace (LLM keys,
+    /// model selections, prompts, algorithm parameters) into the target.
+    /// The new workspace starts with an empty `rss_source` table — the user
+    /// picks feeds appropriate to the new domain via Settings → Feed Settings,
+    /// where a "Seed Default Tech Feeds" button is also available as a
+    /// shortcut.
     ///
     /// Returns `true` if provisioning happened, `false` if there was no
     /// active workspace or `target` already equals the active workspace.
@@ -324,29 +322,10 @@ final class WorkspaceCoordinator {
         let canonicalTarget = target.canonicalDirectoryURL
         guard active.directory != canonicalTarget else { return false }
 
-        // Step 1: copy portable settings (this also runs migrate on target,
-        // which seeds defaults including the curated RSS feed list).
         try copyAppSettings(from: active.directory, to: canonicalTarget)
 
-        // Steps 2 & 3: in a single write, suppress future seeding and clear
-        // the seeded rows. Doing both in one transaction guarantees a consistent
-        // post-state — either the workspace is "provisioned empty" or unchanged.
-        let targetDB = try Database(directory: canonicalTarget)
-        let removed = try targetDB.dbQueue.write { db -> Int in
-            try db.execute(
-                sql: """
-                    INSERT INTO app_settings (key, value) VALUES (?, ?)
-                    ON CONFLICT(key) DO UPDATE SET value = excluded.value
-                """,
-                arguments: [AppSettings.feedSeedSuppressed, "1"]
-            )
-            let before = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM rss_source") ?? 0
-            try db.execute(sql: "DELETE FROM rss_source")
-            return before
-        }
-
         logger.notice(
-            "Provisioned new workspace at \(canonicalTarget.path(percentEncoded: false), privacy: .public): copied settings, suppressed feed seeding, removed \(removed, privacy: .public) seeded feeds"
+            "Provisioned new workspace at \(canonicalTarget.path(percentEncoded: false), privacy: .public): copied settings, no feeds seeded"
         )
         return true
     }

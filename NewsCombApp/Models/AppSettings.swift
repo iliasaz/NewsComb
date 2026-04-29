@@ -47,13 +47,6 @@ extension AppSettings {
     /// Used to detect when tables need to be recreated after a dimension change.
     static let activeEmbeddingDimension = "active_embedding_dimension"
 
-    /// When set to "1", suppresses the default-RSS-feed seeding logic in
-    /// `Database.seedDefaultRSSSources`. Used by
-    /// `WorkspaceCoordinator.provisionNewWorkspace` to keep a freshly-created
-    /// workspace empty of feeds — the user picks feeds appropriate to the
-    /// new domain rather than inheriting the curated tech list.
-    static let feedSeedSuppressed = "feed_seed_suppressed"
-
     /// Returns the effective embedding dimension for the currently active provider.
     ///
     /// Nomic Embed Text v1.5 always produces 768-d vectors regardless of the

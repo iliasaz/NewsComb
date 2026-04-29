@@ -61,7 +61,7 @@ struct WorkspaceCommands: Commands {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.message = "Choose a folder for the new NewsComb workspace. The folder may be empty or contain an existing newscomb.sqlite."
+        panel.message = "Choose an empty folder for the new NewsComb workspace. To open an existing workspace, use Open Workspace… instead."
         panel.prompt = "Use Folder"
         if panel.runModal() == .OK, let url = panel.url {
             attemptSwitch(to: url, copyIfNew: true)
@@ -84,13 +84,25 @@ struct WorkspaceCommands: Commands {
     /// Routes a workspace switch through `WorkspaceCoordinator.switchWorkspace`,
     /// optionally provisioning the target as a brand-new workspace first
     /// (used for File → New Workspace…). Provisioning copies the current
-    /// workspace's portable settings, suppresses default-feed seeding, and
-    /// clears any seeded feeds. Failure during provisioning aborts the
-    /// switch — better to surface the error than relaunch into an
-    /// inconsistent workspace.
+    /// workspace's portable settings into the new database. Failure during
+    /// provisioning aborts the switch — better to surface the error than
+    /// relaunch into an inconsistent workspace.
+    ///
+    /// When `copyIfNew` is true, the target folder must not already contain a
+    /// `newscomb.sqlite`. We refuse rather than silently fall back to "open
+    /// existing" — the user explicitly chose New Workspace, and the silent
+    /// fallback was the cause of past reports of missing LLM keys in newly-
+    /// created workspaces.
     private func attemptSwitch(to url: URL, copyIfNew: Bool) {
         do {
-            if copyIfNew && Self.isNewWorkspace(at: url) {
+            if copyIfNew {
+                guard Self.isNewWorkspace(at: url) else {
+                    showError(
+                        title: "Folder already contains a workspace",
+                        message: "\(url.path(percentEncoded: false)) already has a newscomb.sqlite file. To start fresh, choose an empty folder. To open this workspace, use File → Open Workspace… instead."
+                    )
+                    return
+                }
                 _ = try coordinator.provisionNewWorkspace(at: url)
             }
             _ = try coordinator.switchWorkspace(to: url)
