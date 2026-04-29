@@ -4,7 +4,7 @@ import OSLog
 
 /// Service for managing user roles (personas with prompts).
 struct UserRoleService {
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "UserRoleService")
 
     // MARK: - CRUD Operations

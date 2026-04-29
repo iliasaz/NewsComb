@@ -29,7 +29,7 @@ struct GraphData {
 /// Service for loading graph data from the database.
 final class GraphDataService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
 
     /// Load the complete hypergraph from the database.
     func loadFullGraph() throws -> GraphData {

@@ -15,6 +15,28 @@ import Foundation
 
 let endpoint = URL(string: "http://127.0.0.1:63548/mcp")!
 let sessionHeader = "X-Session-Id"
+let workspaceHeader = "X-Workspace"
+
+/// The workspace path the bridge is bound to (from `--workspace <path>` /
+/// `--workspace=<path>` / `NEWSCOMB_WORKSPACE` env var). When set, every HTTP
+/// request asserts this workspace via the `X-Workspace` header. The app
+/// rejects with a JSON-RPC error if its active workspace doesn't match.
+let workspacePath: String? = {
+    var iterator = CommandLine.arguments.makeIterator()
+    _ = iterator.next() // executable name
+    while let arg = iterator.next() {
+        if arg == "--workspace" { return iterator.next() }
+        if arg.hasPrefix("--workspace=") {
+            let value = String(arg.dropFirst("--workspace=".count))
+            return value.isEmpty ? nil : value
+        }
+    }
+    if let env = ProcessInfo.processInfo.environment["NEWSCOMB_WORKSPACE"], !env.isEmpty {
+        return env
+    }
+    return nil
+}()
+
 let urlSession: URLSession = {
     let config = URLSessionConfiguration.ephemeral
     config.timeoutIntervalForRequest = 300
@@ -71,6 +93,11 @@ func postToApp(body: Data) async throws -> Data? {
     // Include session ID if we have one
     if let sessionId = currentSessionId {
         request.setValue(sessionId, forHTTPHeaderField: sessionHeader)
+    }
+
+    // Assert the bound workspace, if any, on every request.
+    if let workspacePath {
+        request.setValue(workspacePath, forHTTPHeaderField: workspaceHeader)
     }
 
     let (data, response) = try await urlSession.data(for: request)

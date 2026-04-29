@@ -2,7 +2,7 @@ import Foundation
 import MCP
 
 /// Registers all NewsComb MCP tools and dispatches tool calls.
-/// Uses the app's `Database.shared` directly — no separate database wrapper needed.
+/// Uses the app's `Database.current` directly — no separate database wrapper needed.
 struct MCPToolHandler: Sendable {
 
     /// All available tools with their JSON Schema definitions.

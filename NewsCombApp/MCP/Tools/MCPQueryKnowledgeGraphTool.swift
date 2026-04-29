@@ -8,13 +8,13 @@ import MCP
 /// Uses the app's existing services directly:
 /// - `NomicEmbeddingService.shared` for on-device embeddings
 /// - `HypergraphPathService` for BFS path finding
-/// - `Database.shared` for all queries
+/// - `Database.current` for all queries
 /// - `ContextCollector.extractRelation(from:)` for edge label extraction
 ///
 /// Returns assembled context for the MCP client to synthesize — does NOT generate an LLM answer.
 enum MCPQueryKnowledgeGraphTool {
 
-    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) async throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.current) async throws -> String {
         guard let question = arguments["question"]?.stringValue, !question.isEmpty else {
             throw MCPToolError.missingParameter("question")
         }

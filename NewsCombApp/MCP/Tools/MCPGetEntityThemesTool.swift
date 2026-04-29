@@ -6,7 +6,7 @@ import MCP
 /// edges fall into each theme. Answers questions like "which story themes is OpenAI
 /// involved in, and which is the most prominent?"
 enum MCPGetEntityThemesTool {
-    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.current) throws -> String {
         guard let entityLabel = arguments["entity_label"]?.stringValue, !entityLabel.isEmpty else {
             throw MCPToolError.missingParameter("entity_label")
         }

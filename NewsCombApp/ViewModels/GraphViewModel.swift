@@ -100,7 +100,7 @@ class GraphViewModel {
     private let graphDataService = GraphDataService()
 
     @ObservationIgnored
-    private let database = Database.shared
+    private let database = Database.current
 
     @ObservationIgnored
     private var layout = ForceDirectedLayout()

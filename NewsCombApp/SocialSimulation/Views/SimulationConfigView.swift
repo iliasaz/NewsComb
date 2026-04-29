@@ -225,7 +225,7 @@ struct SimulationConfigView: View {
         let personaTypes = AgentProfileService.personaNodeTypes
         do {
             let types = personaTypes.map { "'\($0)'" }.joined(separator: ", ")
-            try Database.shared.read { db in
+            try Database.current.read { db in
                 // Try typed persona nodes first
                 var nodes = try HypergraphNode.fetchAll(db, sql: """
                     SELECT n.*

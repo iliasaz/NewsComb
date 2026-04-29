@@ -8,7 +8,7 @@ import OSLog
 /// for context. Writes only to `social_*` and `agent_*` tables.
 final class SocialGraphService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "SocialGraphService")
 
     // MARK: - Agent Queries

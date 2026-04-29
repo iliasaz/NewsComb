@@ -6,7 +6,7 @@ import MCP
 /// Surfaces articles that bridge separate stories — useful for editorial analysis,
 /// trend correlation, and finding "hub" articles that touch many narratives.
 enum MCPFindArticlesAcrossThemesTool {
-    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.current) throws -> String {
         let minThemes = arguments["min_themes"]?.intValue ?? 2
         let limit = arguments["limit"]?.intValue ?? 20
 

@@ -7,8 +7,8 @@ import AppKit
 @main
 struct NewsCombApp: App {
     init() {
-        // Database is initialized lazily via Database.shared
-        _ = Database.shared
+        // Database is initialized lazily via Database.current
+        _ = Database.current
 
         #if canImport(AppKit)
         // Activate the app and bring it to front

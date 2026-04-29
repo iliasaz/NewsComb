@@ -6,7 +6,7 @@ import OSLog
 /// Implements the path-finding algorithm from the Python GraphReasoning library.
 final class HypergraphPathService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "HypergraphPathService")
 
     // MARK: - Types

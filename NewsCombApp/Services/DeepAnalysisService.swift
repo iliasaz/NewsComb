@@ -14,7 +14,7 @@ import OSLog
 /// The agents work sequentially, with each building on the previous output.
 final class DeepAnalysisService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "DeepAnalysisService")
 
     // MARK: - Callbacks

@@ -67,7 +67,7 @@ final class ThemeClusterViewModel {
 
     private let clusteringService = ClusteringService()
     private let clusterLabelingService = ClusterLabelingService()
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "ThemeClusterViewModel")
 
     // MARK: - Loading

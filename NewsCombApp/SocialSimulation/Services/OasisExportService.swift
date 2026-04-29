@@ -8,7 +8,7 @@ import OSLog
 /// configuration, and the Python simulation script.
 final class OasisExportService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "OasisExportService")
 
     // MARK: - Public API

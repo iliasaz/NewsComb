@@ -109,6 +109,20 @@ final class MCPHTTPServer: Sendable {
 
     private func dispatchRequest(_ request: MCP.HTTPRequest, on connection: NWConnection) {
         Task {
+            // Workspace-header check — reject mismatched bridges with a JSON-RPC error.
+            if let failure = await self.validateWorkspaceHeader(request) {
+                logger.warning("Workspace header validation failed: \(failure.message, privacy: .public)")
+                let httpData = Self.makeJSONRPCErrorHTTPResponse(
+                    requestId: Self.extractRequestId(from: request.body),
+                    code: failure.code,
+                    message: failure.message
+                )
+                connection.send(content: httpData, completion: .contentProcessed { _ in
+                    connection.cancel()
+                })
+                return
+            }
+
             let (transport, sessionId) = await self.resolveTransport(for: request)
             let response = await transport.handleRequest(request)
             let httpData = self.formatHTTPResponse(response, sessionId: sessionId)
@@ -116,6 +130,44 @@ final class MCPHTTPServer: Sendable {
                 connection.cancel()
             })
         }
+    }
+
+    private func validateWorkspaceHeader(_ request: MCP.HTTPRequest) async -> MCPWorkspaceValidator.ValidationFailure? {
+        let active = await MainActor.run { WorkspaceCoordinator.shared.active?.directory }
+        return MCPWorkspaceValidator.validate(
+            requestedHeader: request.header(MCPWorkspaceValidator.headerName),
+            active: active
+        )
+    }
+
+    /// Constructs an HTTP/1.1 400 response with a JSON-RPC error body.
+    static func makeJSONRPCErrorHTTPResponse(requestId: String?, code: Int, message: String) -> Data {
+        let escapedMessage = message.replacing("\\", with: "\\\\").replacing("\"", with: "\\\"")
+        let idJSON = requestId.map { "\"\($0)\"" } ?? "null"
+        let body = Data("""
+            {"jsonrpc":"2.0","id":\(idJSON),"error":{"code":\(code),"message":"\(escapedMessage)"}}
+            """.utf8)
+
+        var result = "HTTP/1.1 400 Bad Request\r\n"
+        result += "Content-Type: application/json\r\n"
+        result += "Content-Length: \(body.count)\r\n"
+        result += "Connection: close\r\n"
+        result += "\r\n"
+
+        var data = Data(result.utf8)
+        data.append(body)
+        return data
+    }
+
+    /// Extracts the JSON-RPC `id` from a request body (string or integer).
+    static func extractRequestId(from body: Data?) -> String? {
+        guard let body,
+              let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
+            return nil
+        }
+        if let id = json["id"] as? String { return id }
+        if let id = json["id"] as? Int { return String(id) }
+        return nil
     }
 
     // MARK: - Session Management

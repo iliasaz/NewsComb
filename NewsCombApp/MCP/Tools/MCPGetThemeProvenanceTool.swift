@@ -8,7 +8,7 @@ import MCP
 ///
 /// Complements `get_theme_details`, which only shows the top-10 exemplars.
 enum MCPGetThemeProvenanceTool {
-    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.shared) throws -> String {
+    static func run(arguments: [String: Value], database: any MCPDatabaseReader = Database.current) throws -> String {
         guard let clusterId = arguments["cluster_id"]?.intValue else {
             throw MCPToolError.missingParameter("cluster_id")
         }

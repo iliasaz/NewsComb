@@ -19,7 +19,7 @@ enum KeywordExtractionService {
     /// Falls back to rule-based extraction if the LLM is unavailable or fails.
     static func extractKeywords(
         from question: String,
-        database: any MCPDatabaseReader = Database.shared
+        database: any MCPDatabaseReader = Database.current
     ) async -> [String] {
         do {
             let settings = try loadSettings(database: database)

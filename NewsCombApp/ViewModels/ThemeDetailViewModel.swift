@@ -47,7 +47,7 @@ final class ThemeDetailViewModel {
 
     // MARK: - Internal
 
-    private let database = Database.shared
+    private let database = Database.current
     private let logger = Logger(subsystem: "com.newscomb", category: "ThemeDetailViewModel")
 
     init(cluster: StoryCluster) {

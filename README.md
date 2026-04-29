@@ -52,6 +52,44 @@ Since the app is not signed with an Apple Developer certificate, macOS will bloc
 
 After this one-time setup, the app will open normally.
 
+## Workspaces
+
+A **workspace** is a folder on disk that holds the SQLite database and any side artifacts for one knowledge base. NewsComb supports multiple workspaces so you can keep, say, a "Tech News" workspace separate from a "Confluence" workspace. Each workspace has its own settings, feeds, articles, knowledge graph, and theme clusters.
+
+### What's in a workspace
+
+```
+~/Documents/NewsComb-Workspaces/Tech/
+  newscomb.sqlite     ← all data and settings for this workspace
+```
+
+### Resolution order at launch
+
+NewsComb picks the active workspace on launch using the first match it finds:
+
+1. `--workspace <path>` command-line argument
+2. `NEWSCOMB_WORKSPACE` environment variable
+3. The last workspace you opened (remembered in `UserDefaults`)
+4. The legacy database at `~/Library/Application Support/NewsComb/newscomb.sqlite`, if present (existing installs migrate seamlessly)
+5. A first-run picker sheet — Create New Workspace or Open Existing
+
+### Managing workspaces from the UI
+
+- **File → New Workspace…** (⇧⌘N) — pick or create a folder. When the folder is brand-new, the current workspace's settings (LLM provider + API keys, embedding model, prompts, algorithm parameters) are copied into the new one so you don't have to reconfigure. Feeds are **not** copied — the new workspace starts empty so you can pick feeds appropriate to its domain.
+- **File → Open Workspace…** (⇧⌘O) — open an existing workspace folder. No settings copy — the target's own settings are used.
+- **File → Open Recent Workspace** — last 10 workspaces.
+- **File → Reveal Workspace in Finder**.
+- **Settings → Workspace** — shows the active path, a **Switch Workspace…** button, and an **Open Default Workspace** button that returns to the legacy `~/Library/Application Support/NewsComb/` location.
+
+Switching workspaces relaunches the app so each workspace gets a clean process state. NewsComb refuses to switch while long-running jobs (knowledge graph processing, RSS refresh, OPML import, theme clustering, etc.) are in flight — wait for them to finish or cancel them first.
+
+### App-global vs. workspace-scoped settings
+
+| Scope | Location | Examples |
+|-------|----------|----------|
+| **Workspace** | `app_settings` table inside each workspace's `newscomb.sqlite` | LLM model, embedding dimension, RAG params, feeds, themes |
+| **App-global** | `UserDefaults` | last-opened workspace, recent workspaces list |
+
 ## Setup
 
 ### Embeddings
@@ -133,11 +171,15 @@ Add the following to your project's `.mcp.json` file (create it in the repositor
   "mcpServers": {
     "newscomb": {
       "command": "/path/to/NewsComb/NewsCombMCPBridge/.build/release/newscomb-mcp-bridge",
-      "args": []
+      "args": ["--workspace", "/Users/you/Documents/NewsComb-Workspaces/Tech"]
     }
   }
 }
 ```
+
+The `--workspace` argument is **optional but recommended**. When set, the bridge asserts that the running NewsComb app is on the matching workspace; mismatches surface a clear JSON-RPC error rather than silently returning data from the wrong knowledge base. You can also pass the workspace via the `NEWSCOMB_WORKSPACE` environment variable.
+
+You can keep a separate `.mcp.json` per project, each pointing at a different workspace — open the matching workspace in NewsComb (File → Open Workspace…) before starting the Claude Code session.
 
 ### Setup for Claude Desktop
 
@@ -150,7 +192,7 @@ Add the same configuration to your Claude Desktop settings file:
   "mcpServers": {
     "newscomb": {
       "command": "/path/to/NewsComb/NewsCombMCPBridge/.build/release/newscomb-mcp-bridge",
-      "args": []
+      "args": ["--workspace", "/Users/you/Documents/NewsComb-Workspaces/Tech"]
     }
   }
 }
@@ -159,8 +201,9 @@ Add the same configuration to your Claude Desktop settings file:
 ### Prerequisites
 
 1. **NewsComb must be running** — launch the app before starting Claude Code. The MCP HTTP server starts automatically on app launch.
-2. The app must have RSS sources configured and articles fetched
-3. The knowledge extraction pipeline must have processed at least some articles (check Settings for extraction status)
+2. The running app must be on the workspace your `--workspace` arg names (or omit the arg to skip the check).
+3. The app must have RSS sources configured and articles fetched.
+4. The knowledge extraction pipeline must have processed at least some articles (check Settings for extraction status).
 
 ### Limitations
 

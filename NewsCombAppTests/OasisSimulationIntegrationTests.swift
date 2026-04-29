@@ -27,7 +27,7 @@ final class OasisSimulationIntegrationTests: XCTestCase {
         pythonPath = python
 
         // Load OpenRouter API key
-        let loadedApiKey: String? = try Database.shared.read { db in
+        let loadedApiKey: String? = try Database.current.read { db in
             try String.fetchOne(db, sql: "SELECT value FROM app_settings WHERE key = ?",
                                 arguments: [AppSettings.openRouterKey])
         }

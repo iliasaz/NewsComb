@@ -7,7 +7,7 @@ import OSLog
 /// or via direct LLM call when OASIS is stopped.
 final class AgentInterviewService: Sendable {
 
-    private let database = Database.shared
+    private let database = Database.current
     private let graphService = SocialGraphService()
     private let logger = Logger(subsystem: "com.newscomb", category: "AgentInterviewService")
 

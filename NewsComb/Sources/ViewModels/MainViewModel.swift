@@ -29,7 +29,7 @@ class MainViewModel {
     var totalItemsFetched = 0
     var errorMessage: String?
 
-    private let database = Database.shared
+    private let database = Database.current
 
     @ObservationIgnored
     private let rssService = RSSService()
