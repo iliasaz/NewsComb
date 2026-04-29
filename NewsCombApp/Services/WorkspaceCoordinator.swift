@@ -31,6 +31,12 @@ final class WorkspaceCoordinator {
     /// `recordActive(_:)` / `switchWorkspace(to:)` push to the recents list.
     private(set) var recentWorkspaces: [URL] = []
 
+    /// Set when `bootstrap()` failed to open an explicit-source workspace
+    /// (CLI arg or env var). `ContentView` observes this and presents an
+    /// alert so the user knows their explicit input was rejected, rather
+    /// than the failure being silently logged. `nil` when no error is pending.
+    private(set) var bootstrapError: BootstrapErrorState?
+
     private let logger = Logger(subsystem: "com.newscomb.app", category: "WorkspaceCoordinator")
     private let defaults: WorkspaceDefaults
     private let busyReasonsProvider: @MainActor () -> [String]
@@ -49,6 +55,34 @@ final class WorkspaceCoordinator {
     func removeRecent(_ url: URL) {
         defaults.removeRecent(url)
         recentWorkspaces = defaults.recentWorkspaces
+    }
+
+    // MARK: - Bootstrap error surfacing
+
+    /// Snapshot of a bootstrap failure suitable for SwiftUI presentation.
+    /// Equatable + Sendable so SwiftUI can diff it across renders.
+    struct BootstrapErrorState: Equatable, Sendable {
+        let directory: URL
+        let source: BootstrapSource
+        let message: String
+    }
+
+    /// Stores a failure produced by `bootstrap()` so the UI can present it.
+    func recordBootstrapError(_ error: BootstrapError) {
+        bootstrapError = BootstrapErrorState(
+            directory: error.directory,
+            source: error.source,
+            message: error.underlying.localizedDescription
+        )
+        logger.error(
+            "Recorded bootstrap error for \(error.directory.path(percentEncoded: false), privacy: .public): \(error.underlying.localizedDescription, privacy: .public)"
+        )
+    }
+
+    /// Clears any pending bootstrap error — typically called when the user
+    /// dismisses the alert presented by `ContentView`.
+    func clearBootstrapError() {
+        bootstrapError = nil
     }
 
     /// Reasons the app currently can't accept a workspace switch. Empty when safe.
@@ -118,6 +152,20 @@ final class WorkspaceCoordinator {
         case needsSelection
     }
 
+    /// Wraps an explicit-source bootstrap failure with the URL the user named,
+    /// so the UI alert can show *which* path was rejected rather than just an
+    /// opaque error string. Only thrown for `--workspace` / `NEWSCOMB_WORKSPACE`
+    /// — implicit sources continue to log + fall through.
+    struct BootstrapError: Error, LocalizedError {
+        let directory: URL
+        let source: BootstrapSource
+        let underlying: Error
+
+        var errorDescription: String? {
+            "Failed to open workspace at \(directory.path(percentEncoded: false)): \(underlying.localizedDescription)"
+        }
+    }
+
     /// Resolves the active workspace at app launch. Resolution order:
     /// 1. `--workspace <path>` CLI argument.
     /// 2. `NEWSCOMB_WORKSPACE` environment variable.
@@ -136,18 +184,26 @@ final class WorkspaceCoordinator {
         fileManager: FileManager = .default
     ) throws -> BootstrapResult {
 
-        // 1. CLI argument — explicit, errors propagate
+        // 1. CLI argument — explicit, errors propagate (wrapped so the UI knows which path)
         if let path = Self.parseWorkspaceArg(from: commandLineArgs) {
             let url = URL(filePath: path).canonicalDirectoryURL
-            let workspace = try openWorkspace(at: url)
-            return .opened(workspace, source: .commandLine(url))
+            do {
+                let workspace = try openWorkspace(at: url)
+                return .opened(workspace, source: .commandLine(url))
+            } catch {
+                throw BootstrapError(directory: url, source: .commandLine(url), underlying: error)
+            }
         }
 
-        // 2. Environment variable — explicit, errors propagate
+        // 2. Environment variable — explicit, errors propagate (wrapped)
         if let path = environment["NEWSCOMB_WORKSPACE"], !path.isEmpty {
             let url = URL(filePath: path).canonicalDirectoryURL
-            let workspace = try openWorkspace(at: url)
-            return .opened(workspace, source: .environment(url))
+            do {
+                let workspace = try openWorkspace(at: url)
+                return .opened(workspace, source: .environment(url))
+            } catch {
+                throw BootstrapError(directory: url, source: .environment(url), underlying: error)
+            }
         }
 
         // 3. Last opened — implicit, errors logged + fall through

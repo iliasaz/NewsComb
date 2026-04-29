@@ -199,4 +199,84 @@ final class WorkspaceCoordinatorBootstrapTests: XCTestCase {
             return XCTFail("Expected .needsSelection, got \(result)")
         }
     }
+
+    // MARK: - BootstrapError wrapping (explicit-source failures)
+
+    /// `/dev/null/...` can never be created as a directory on POSIX, so
+    /// `Database.init(directory:)` will throw — exercising the explicit-source
+    /// error path without relying on permissions or filesystem race conditions.
+    private static let unopenableDirectory = "/dev/null/newscomb-cannot-exist"
+
+    func testBootstrapWrapsCommandLineFailureAsBootstrapError() {
+        XCTAssertThrowsError(try sut.bootstrap(
+            commandLineArgs: ["NewsCombApp", "--workspace", Self.unopenableDirectory],
+            environment: [:],
+            legacyDirectory: tempRoot.appending(path: "fake-legacy")
+        )) { error in
+            guard let bootError = error as? WorkspaceCoordinator.BootstrapError else {
+                return XCTFail("Expected BootstrapError, got \(error)")
+            }
+            XCTAssertEqual(
+                bootError.directory,
+                URL(filePath: Self.unopenableDirectory).canonicalDirectoryURL
+            )
+            if case .commandLine = bootError.source { /* ok */ } else {
+                XCTFail("Expected .commandLine source, got \(bootError.source)")
+            }
+        }
+    }
+
+    func testBootstrapWrapsEnvironmentFailureAsBootstrapError() {
+        XCTAssertThrowsError(try sut.bootstrap(
+            commandLineArgs: ["NewsCombApp"],
+            environment: ["NEWSCOMB_WORKSPACE": Self.unopenableDirectory],
+            legacyDirectory: tempRoot.appending(path: "fake-legacy")
+        )) { error in
+            guard let bootError = error as? WorkspaceCoordinator.BootstrapError else {
+                return XCTFail("Expected BootstrapError, got \(error)")
+            }
+            if case .environment = bootError.source { /* ok */ } else {
+                XCTFail("Expected .environment source, got \(bootError.source)")
+            }
+        }
+    }
+
+    func testBootstrapErrorDescriptionMentionsPath() {
+        let bootError = WorkspaceCoordinator.BootstrapError(
+            directory: URL(filePath: "/tmp/Tech").canonicalDirectoryURL,
+            source: .commandLine(URL(filePath: "/tmp/Tech").canonicalDirectoryURL),
+            underlying: NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "disk full"])
+        )
+        let description = bootError.errorDescription ?? ""
+        XCTAssertTrue(description.contains("/tmp/Tech"))
+        XCTAssertTrue(description.contains("disk full"))
+    }
+
+    // MARK: - bootstrapError observable state
+
+    func testRecordBootstrapErrorPopulatesObservableState() {
+        XCTAssertNil(sut.bootstrapError)
+        let bootError = WorkspaceCoordinator.BootstrapError(
+            directory: URL(filePath: "/tmp/Tech").canonicalDirectoryURL,
+            source: .commandLine(URL(filePath: "/tmp/Tech").canonicalDirectoryURL),
+            underlying: NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "boom"])
+        )
+        sut.recordBootstrapError(bootError)
+        XCTAssertEqual(sut.bootstrapError?.directory, bootError.directory)
+        XCTAssertEqual(sut.bootstrapError?.message, "boom")
+        if case .commandLine = sut.bootstrapError?.source { /* ok */ } else {
+            XCTFail("Expected .commandLine source on recorded state")
+        }
+    }
+
+    func testClearBootstrapErrorResetsState() {
+        sut.recordBootstrapError(WorkspaceCoordinator.BootstrapError(
+            directory: URL(filePath: "/tmp/Tech").canonicalDirectoryURL,
+            source: .commandLine(URL(filePath: "/tmp/Tech").canonicalDirectoryURL),
+            underlying: NSError(domain: "test", code: 1)
+        ))
+        XCTAssertNotNil(sut.bootstrapError)
+        sut.clearBootstrapError()
+        XCTAssertNil(sut.bootstrapError)
+    }
 }

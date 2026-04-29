@@ -19,10 +19,16 @@ public final class Database: Sendable {
 
     /// The database for the currently-active workspace.
     ///
-    /// During the workspace-feature transition, this lazy-bootstraps to the
-    /// legacy directory (`~/Library/Application Support/NewsComb/`) if no active
-    /// workspace has been set yet. Phase 3 will set the active workspace
-    /// explicitly at app launch, making the fallback dead code.
+    /// Production callers always run after `WorkspaceCoordinator.shared.bootstrap()`
+    /// has set the active database, so the fast path returns the cached value.
+    /// The lazy-fallback to `Workspace.legacyDirectory` is a safety net for two
+    /// edge cases: (a) iOS / legacy entry points that haven't been migrated to
+    /// run `bootstrap()` explicitly, and (b) `MainViewModel.shared`'s eager
+    /// `Database.current` capture during the brief window between an
+    /// explicit-source bootstrap failure and the user picking a different
+    /// workspace via the first-run sheet. `WorkspaceCoordinator.bootstrapError`
+    /// is the user-visible signal that the explicit source was rejected — see
+    /// `ContentView`'s alert.
     public static var current: Database {
         active.withLock { holder in
             if let db = holder { return db }

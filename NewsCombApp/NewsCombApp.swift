@@ -18,6 +18,12 @@ struct NewsCombApp: App {
             case .needsSelection:
                 logger.notice("No workspace configured at launch; ContentView will show first-run picker")
             }
+        } catch let bootError as WorkspaceCoordinator.BootstrapError {
+            // Explicit-source failure (CLI arg / env var). Record on the
+            // coordinator so ContentView can present an alert; Database.current's
+            // lazy fallback keeps the app functional in the meantime.
+            logger.error("Workspace bootstrap failed: \(bootError.errorDescription ?? "unknown", privacy: .public)")
+            WorkspaceCoordinator.shared.recordBootstrapError(bootError)
         } catch {
             logger.error("Workspace bootstrap failed: \(error.localizedDescription, privacy: .public)")
         }
