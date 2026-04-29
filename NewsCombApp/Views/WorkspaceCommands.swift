@@ -82,14 +82,16 @@ struct WorkspaceCommands: Commands {
     }
 
     /// Routes a workspace switch through `WorkspaceCoordinator.switchWorkspace`,
-    /// optionally copying `app_settings` from the current workspace first if
-    /// the target is brand-new (used for File → New Workspace…). Failure during
-    /// settings copy aborts the switch — better to surface the error than
-    /// relaunch into a workspace with default settings the user didn't expect.
+    /// optionally provisioning the target as a brand-new workspace first
+    /// (used for File → New Workspace…). Provisioning copies the current
+    /// workspace's portable settings, suppresses default-feed seeding, and
+    /// clears any seeded feeds. Failure during provisioning aborts the
+    /// switch — better to surface the error than relaunch into an
+    /// inconsistent workspace.
     private func attemptSwitch(to url: URL, copyIfNew: Bool) {
         do {
             if copyIfNew && Self.isNewWorkspace(at: url) {
-                _ = try coordinator.copyAppSettingsFromCurrent(to: url)
+                _ = try coordinator.provisionNewWorkspace(at: url)
             }
             _ = try coordinator.switchWorkspace(to: url)
             confirmAndRelaunch(to: url)

@@ -486,6 +486,27 @@ metadata key), append them there.
 **README** updated under the Workspaces section to mention that
 File → New Workspace inherits settings.
 
+### Enhancement B.1 — New workspace starts feed-empty
+
+A subtler issue surfaced after Enhancement B shipped: even though
+`copyAppSettings` doesn't touch `rss_source`, the target's `Database.init`
+runs `seedDefaultRSSSources` which inserts ~20 curated tech feeds. Worse,
+its only guard is "is `rss_source` empty?" — so deleting the seeded rows
+post-hoc would just trigger re-seeding on the next migrate.
+
+**Fix shipped:**
+- New `AppSettings.feedSeedSuppressed` key.
+- `Database.seedDefaultRSSSources` now early-returns when this flag is set.
+- `WorkspaceCoordinator.provisionNewWorkspace(at:)` composes
+  `copyAppSettings` + sets the suppression flag + deletes the seeded rows
+  in a single write transaction.
+- `WorkspaceCommands.attemptSwitch(copyIfNew: true)` now calls
+  `provisionNewWorkspace` instead of `copyAppSettingsFromCurrent`.
+- 5 new tests, including a reopen test that simulates the relaunch and
+  verifies the suppression flag survives a fresh migrate cycle.
+
+Result: a new workspace starts with zero feeds, even after relaunch.
+
 ## Risks & open issues
 
 - **MainViewModel rebuild on switch**: holds many SwiftUI bindings via

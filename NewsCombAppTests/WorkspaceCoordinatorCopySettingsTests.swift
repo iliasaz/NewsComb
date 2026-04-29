@@ -155,6 +155,79 @@ final class WorkspaceCoordinatorCopySettingsTests: XCTestCase {
 
     // MARK: - Non-portable schema-state keys
 
+    // MARK: - provisionNewWorkspace
+
+    func testProvisionNewWorkspaceCopiesSettings() throws {
+        let sourceDir = tempRoot.appending(path: "Source")
+        let targetDir = tempRoot.appending(path: "Target")
+        try sut.openWorkspace(at: sourceDir)
+        try writeSetting("openrouter_key", value: "sk-x-77", in: Database.current)
+
+        let provisioned = try sut.provisionNewWorkspace(at: targetDir)
+        XCTAssertTrue(provisioned)
+
+        let targetDB = try Database(directory: targetDir)
+        XCTAssertEqual(try readSetting("openrouter_key", in: targetDB), "sk-x-77")
+    }
+
+    func testProvisionNewWorkspaceLeavesNoFeeds() throws {
+        let sourceDir = tempRoot.appending(path: "Source")
+        let targetDir = tempRoot.appending(path: "Target")
+        try sut.openWorkspace(at: sourceDir)
+        try sut.provisionNewWorkspace(at: targetDir)
+
+        let targetDB = try Database(directory: targetDir)
+        let count = try targetDB.dbQueue.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM rss_source")
+        }
+        XCTAssertEqual(count, 0, "Provisioned workspace should have no RSS feeds")
+    }
+
+    func testProvisionedWorkspaceDoesNotReseedFeedsAfterReopen() throws {
+        let sourceDir = tempRoot.appending(path: "Source")
+        let targetDir = tempRoot.appending(path: "Target")
+        try sut.openWorkspace(at: sourceDir)
+        try sut.provisionNewWorkspace(at: targetDir)
+
+        // First reopen — runs migrate again (which would re-seed if the flag
+        // weren't honored).
+        do {
+            let reopened = try Database(directory: targetDir)
+            let count = try reopened.dbQueue.read { db in
+                try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM rss_source")
+            }
+            XCTAssertEqual(count, 0, "Reopen #1: feeds must stay empty")
+            XCTAssertEqual(
+                try readSetting(AppSettings.feedSeedSuppressed, in: reopened),
+                "1",
+                "Suppression flag should still be set after reopen"
+            )
+        }
+
+        // Second reopen — defensive: the flag still survives multiple opens.
+        do {
+            let reopened = try Database(directory: targetDir)
+            let count = try reopened.dbQueue.read { db in
+                try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM rss_source")
+            }
+            XCTAssertEqual(count, 0, "Reopen #2: feeds must stay empty")
+        }
+    }
+
+    func testProvisionReturnsFalseWhenNoActive() throws {
+        XCTAssertNil(sut.active)
+        let target = tempRoot.appending(path: "Target")
+        XCTAssertFalse(try sut.provisionNewWorkspace(at: target))
+    }
+
+    func testProvisionReturnsFalseWhenTargetEqualsActive() throws {
+        let dir = tempRoot.appending(path: "Same")
+        try sut.openWorkspace(at: dir)
+        XCTAssertFalse(try sut.provisionNewWorkspace(at: dir))
+    }
+
+    // MARK: - Schema-state exclusions
+
     func testCopyDoesNotOverwriteActiveEmbeddingDimension() throws {
         // active_embedding_dimension is schema metadata — it tracks the size
         // the vec0 tables were physically created with. Copying it would make

@@ -75,7 +75,7 @@ NewsComb picks the active workspace on launch using the first match it finds:
 
 ### Managing workspaces from the UI
 
-- **File → New Workspace…** (⇧⌘N) — pick or create a folder. When the folder is brand-new, the current workspace's settings (LLM provider + API keys, embedding model, prompts, algorithm parameters) are copied into the new one so you don't have to reconfigure.
+- **File → New Workspace…** (⇧⌘N) — pick or create a folder. When the folder is brand-new, the current workspace's settings (LLM provider + API keys, embedding model, prompts, algorithm parameters) are copied into the new one so you don't have to reconfigure. Feeds are **not** copied — the new workspace starts empty so you can pick feeds appropriate to its domain.
 - **File → Open Workspace…** (⇧⌘O) — open an existing workspace folder. No settings copy — the target's own settings are used.
 - **File → Open Recent Workspace** — last 10 workspaces.
 - **File → Reveal Workspace in Finder**.

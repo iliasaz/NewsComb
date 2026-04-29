@@ -769,8 +769,19 @@ public final class Database: Sendable {
     }
 
     /// Seeds default RSS sources into the database.
-    /// Only seeds if no sources exist yet (first app launch).
+    /// Only seeds if no sources exist yet (first app launch) AND the
+    /// `feed_seed_suppressed` flag isn't set (workspace explicitly provisioned
+    /// empty).
     private func seedDefaultRSSSources(_ db: GRDB.Database) throws {
+        // Honor explicit opt-out — set by `WorkspaceCoordinator.provisionNewWorkspace`.
+        let isSuppressed = try AppSettings
+            .filter(AppSettings.Columns.key == AppSettings.feedSeedSuppressed)
+            .fetchOne(db) != nil
+        if isSuppressed {
+            Self.logger.info("RSS feed seeding suppressed for this workspace")
+            return
+        }
+
         // Check if any sources already exist
         let sourceCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM rss_source") ?? 0
         guard sourceCount == 0 else {
