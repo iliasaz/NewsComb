@@ -119,6 +119,7 @@ class SettingsViewModel {
     // Extraction Prompts
     var extractionSystemPrompt: String = AppSettings.defaultExtractionPrompt
     var distillationSystemPrompt: String = AppSettings.defaultDistillationPrompt
+    var distillationEnabled: Bool = AppSettings.defaultDistillationEnabled
 
     // Deep Analysis Agent Prompts
     var engineerAgentPrompt: String = AppSettings.defaultEngineerAgentPrompt
@@ -335,6 +336,11 @@ class SettingsViewModel {
 
                 if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.distillationSystemPrompt).fetchOne(db) {
                     distillationSystemPrompt = setting.value
+                }
+
+                if let setting = try AppSettings.filter(AppSettings.Columns.key == AppSettings.distillationEnabled).fetchOne(db),
+                   let value = Bool(setting.value) {
+                    distillationEnabled = value
                 }
 
                 // Load deep analysis agent prompts
@@ -723,6 +729,10 @@ class SettingsViewModel {
 
     func saveDistillationSystemPrompt() {
         saveAPIKey(key: AppSettings.distillationSystemPrompt, value: distillationSystemPrompt)
+    }
+
+    func saveDistillationEnabled() {
+        saveAPIKey(key: AppSettings.distillationEnabled, value: String(distillationEnabled))
     }
 
     func resetExtractionPromptToDefault() {

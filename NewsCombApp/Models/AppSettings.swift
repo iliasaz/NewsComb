@@ -151,6 +151,10 @@ extension AppSettings {
     static let extractionSystemPrompt = "extraction_system_prompt"
     static let distillationSystemPrompt = "distillation_system_prompt"
 
+    // Hypergraph Distillation Toggle
+    static let distillationEnabled = "distillation_enabled"
+    static let defaultDistillationEnabled = false
+
     // Deep Analysis Agent Prompts
     static let engineerAgentPrompt = "engineer_agent_prompt"
     static let hypothesizerAgentPrompt = "hypothesizer_agent_prompt"
