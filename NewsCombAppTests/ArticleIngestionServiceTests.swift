@@ -135,6 +135,86 @@ final class ArticleIngestionServiceTests: XCTestCase {
         }
     }
 
+    func testIngestArticleDoesNotCreateProcessingStatusOnFreshIngest() throws {
+        // Fresh ingest must not insert an article_hypergraph row; the
+        // requeue UPDATE should match zero rows. The next batch
+        // process_knowledge_graph run will pick this article up via the
+        // `ah.id IS NULL` branch of the unprocessed-articles query.
+        let service = makeService()
+        let source = try service.createManualFeed(title: "Notes")
+        let body = String(repeating: "fresh body content. ", count: 10)
+
+        let item = try service.ingestArticle(
+            sourceId: source.id!,
+            title: "Hello",
+            body: body,
+            guid: "stable-guid"
+        )
+
+        try dbQueue.read { db in
+            let count = try Int.fetchOne(
+                db,
+                sql: "SELECT COUNT(*) FROM article_hypergraph WHERE feed_item_id = ?",
+                arguments: [item.id!]
+            )!
+            XCTAssertEqual(count, 0, "Fresh ingest must not create an article_hypergraph row")
+        }
+    }
+
+    func testIngestArticleRequeuesAlreadyProcessedArticleOnUpsert() throws {
+        // Re-ingesting an article that has already been processed by the
+        // hypergraph pipeline must flip its processing_status to 'failed'
+        // so the next process_knowledge_graph run re-extracts from the
+        // (now updated) body. Without this, the article's chunks and
+        // graph entities would silently remain attached to the old body.
+        let service = makeService()
+        let source = try service.createManualFeed(title: "Notes")
+        let body1 = String(repeating: "original body. ", count: 12)
+
+        let item = try service.ingestArticle(
+            sourceId: source.id!,
+            title: "v1",
+            body: body1,
+            guid: "stable-guid"
+        )
+
+        // Simulate the article having been processed by HypergraphService.
+        try dbQueue.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO article_hypergraph (feed_item_id, processing_status, chunk_count)
+                    VALUES (?, 'completed', 4)
+                """,
+                arguments: [item.id!]
+            )
+        }
+
+        // Re-ingest with new body, same guid.
+        let body2 = String(repeating: "revised body. ", count: 12)
+        _ = try service.ingestArticle(
+            sourceId: source.id!,
+            title: "v2",
+            body: body2,
+            guid: "stable-guid"
+        )
+
+        try dbQueue.read { db in
+            let status = try String.fetchOne(
+                db,
+                sql: "SELECT processing_status FROM article_hypergraph WHERE feed_item_id = ?",
+                arguments: [item.id!]
+            )
+            XCTAssertEqual(status, "failed", "Re-ingest must requeue the article for reprocessing")
+
+            let rowCount = try Int.fetchOne(
+                db,
+                sql: "SELECT COUNT(*) FROM article_hypergraph WHERE feed_item_id = ?",
+                arguments: [item.id!]
+            )!
+            XCTAssertEqual(rowCount, 1, "Requeue must update in place, not insert a duplicate row")
+        }
+    }
+
     func testIngestArticleRejectsTooShortBody() throws {
         let service = makeService()
         let source = try service.createManualFeed(title: "Notes")
@@ -363,6 +443,15 @@ final class ArticleIngestionServiceTests: XCTestCase {
                 author TEXT,
                 fetched_at REAL NOT NULL DEFAULT (unixepoch()),
                 UNIQUE(source_id, guid)
+            );
+            CREATE TABLE article_hypergraph (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                feed_item_id INTEGER NOT NULL REFERENCES feed_item(id) ON DELETE CASCADE,
+                processed_at REAL NOT NULL DEFAULT (unixepoch()),
+                processing_status TEXT NOT NULL DEFAULT 'pending',
+                error_message TEXT,
+                chunk_count INTEGER DEFAULT 0,
+                UNIQUE(feed_item_id)
             );
         """)
     }

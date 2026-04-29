@@ -188,6 +188,20 @@ struct ArticleIngestionService: Sendable {
                 throw IngestionError.feedItemNotFound(-1)
             }
 
+            // Requeue for hypergraph extraction. On a fresh ingest no
+            // article_hypergraph row exists yet so this UPDATE matches zero
+            // rows; on a re-ingest of an already-processed article the row's
+            // status flips to 'failed', which is what HypergraphService's
+            // unprocessed-articles query (`ah.id IS NULL OR ah.processing_status = 'failed'`)
+            // looks for. Without this, a re-ingest would silently leave the
+            // graph extracted from the old body.
+            if let rowId = row.id {
+                try db.execute(
+                    sql: "UPDATE article_hypergraph SET processing_status = 'failed' WHERE feed_item_id = ?",
+                    arguments: [rowId]
+                )
+            }
+
             logger.info("Ingested article #\(row.id ?? -1, privacy: .public) into feed #\(sourceId, privacy: .public)")
             return row
         }
