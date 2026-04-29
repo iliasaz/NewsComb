@@ -167,6 +167,75 @@ struct MCPToolHandler: Sendable {
                 annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true)
             ),
             Tool(
+                name: "create_manual_feed",
+                description: "Create a 'manual' feed — a container for articles ingested directly via MCP (e.g. when no RSS source exists). The feed is stored as an rss_source row with a synthetic 'manual:' URL that the regular RSS refresh path skips. Use the returned source_id with ingest_article.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "title": .object([
+                            "type": .string("string"),
+                            "description": .string("Human-readable feed title shown in the UI.")
+                        ])
+                    ]),
+                    "required": .array([.string("title")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false)
+            ),
+            Tool(
+                name: "ingest_article",
+                description: "Ingest a single article into an existing manual feed. Body is stored as full_content. Re-calling with the same (source_id, guid) — or same source_id and link, when guid is omitted — updates the existing row instead of creating a duplicate. Refuses to ingest into real RSS feeds.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "source_id": .object([
+                            "type": .string("integer"),
+                            "description": .string("ID of the manual feed (returned by create_manual_feed).")
+                        ]),
+                        "title": .object([
+                            "type": .string("string"),
+                            "description": .string("Article title.")
+                        ]),
+                        "body": .object([
+                            "type": .string("string"),
+                            "description": .string("Full article text (Markdown or plain text). Minimum 100 chars after trimming.")
+                        ]),
+                        "link": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional canonical URL. When omitted, a synthetic 'manual:item:<uuid>' is generated. Used as the dedup key when guid is not provided.")
+                        ]),
+                        "author": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional author name.")
+                        ]),
+                        "pub_date": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional publication date as ISO8601 (e.g. 2026-04-29T12:00:00Z).")
+                        ]),
+                        "guid": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional explicit GUID. Defaults to link. Determines upsert behavior under (source_id, guid).")
+                        ])
+                    ]),
+                    "required": .array([.string("source_id"), .string("title"), .string("body")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "refresh_article",
+                description: "Re-fetch full_content for a single article from its link, independently of the parent feed. Uses the same Postlight extraction pipeline as the RSS refresh. Updates the link if the page now redirects elsewhere. Rejects articles whose link scheme is not http(s) (e.g. manually-composed articles with no real source URL).",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "feed_item_id": .object([
+                            "type": .string("integer"),
+                            "description": .string("ID of the article to refresh (from get_recent_articles or feed_item.id).")
+                        ])
+                    ]),
+                    "required": .array([.string("feed_item_id")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
                 name: "process_knowledge_graph",
                 description: "Trigger LLM extraction over unprocessed articles — equivalent to the 'Process Knowledge Graph' toolbar button. Persists new entities, relationships, embeddings, and auto-simplifies the graph. The UI shows live progress.",
                 inputSchema: .object([

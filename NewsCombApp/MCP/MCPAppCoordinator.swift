@@ -40,6 +40,78 @@ final class MCPAppCoordinator {
         }
     }
 
+    // MARK: - Article ingestion (manual feeds)
+
+    /// Creates a manual feed (synthetic-URL `rss_source`) so MCP-supplied
+    /// articles have a parent container.
+    func createManualFeed(title: String) -> String {
+        logger.info("MCP triggered createManualFeed title=\(title, privacy: .public)")
+        let service = ArticleIngestionService()
+        do {
+            let source = try service.createManualFeed(title: title)
+            mainViewModel.loadSources()
+            let id = source.id ?? -1
+            return "Created manual feed #\(id): '\(source.title ?? "")'. Use ingest_article with source_id=\(id) to add articles."
+        } catch let error as ArticleIngestionService.IngestionError {
+            return "Create manual feed failed: \(error.localizedDescription)"
+        } catch {
+            return "Create manual feed failed: \(error.localizedDescription)"
+        }
+    }
+
+    /// Inserts an MCP-supplied article into an existing manual feed.
+    func ingestArticle(
+        sourceId: Int64,
+        title: String,
+        body: String,
+        link: String?,
+        author: String?,
+        pubDate: Date?,
+        guid: String?
+    ) -> String {
+        logger.info("MCP triggered ingestArticle sourceId=\(sourceId, privacy: .public) title=\(title, privacy: .public)")
+        let service = ArticleIngestionService()
+        do {
+            let item = try service.ingestArticle(
+                sourceId: sourceId,
+                title: title,
+                body: body,
+                link: link,
+                author: author,
+                pubDate: pubDate,
+                guid: guid
+            )
+            mainViewModel.loadSources()
+            let id = item.id ?? -1
+            return "Ingested article #\(id) into feed #\(sourceId): '\(item.title)' (\(item.fullContent?.count ?? 0) chars)."
+        } catch let error as ArticleIngestionService.IngestionError {
+            return "Ingest article failed: \(error.localizedDescription)"
+        } catch {
+            return "Ingest article failed: \(error.localizedDescription)"
+        }
+    }
+
+    /// Re-fetches `full_content` for a single article via the Postlight pipeline.
+    func refreshArticle(feedItemId: Int64) async -> String {
+        logger.info("MCP triggered refreshArticle feedItemId=\(feedItemId, privacy: .public)")
+        let service = ArticleIngestionService()
+        do {
+            let outcome = try await service.refreshArticle(feedItemId: feedItemId)
+            mainViewModel.loadSources()
+            let delta = outcome.contentLengthDelta
+            let sign = delta >= 0 ? "+" : ""
+            var msg = "Refreshed article #\(outcome.feedItemId): \(outcome.previousContentLength) → \(outcome.newContentLength) chars (\(sign)\(delta))."
+            if outcome.linkChanged {
+                msg += " Link redirected to \(outcome.newLink)."
+            }
+            return msg
+        } catch let error as ArticleIngestionService.IngestionError {
+            return "Refresh article failed: \(error.localizedDescription)"
+        } catch {
+            return "Refresh article failed: \(error.localizedDescription)"
+        }
+    }
+
     // MARK: - Knowledge graph processing
 
     /// Triggers the same action as the "Process Knowledge Graph" toolbar button.
