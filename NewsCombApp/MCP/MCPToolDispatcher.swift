@@ -8,6 +8,7 @@ enum MCPToolDispatcher {
 
     private static let logger = Logger(subsystem: "com.newscomb.app", category: "MCPTools")
 
+    // swiftlint:disable:next cyclomatic_complexity
     static func dispatch(
         toolName: String,
         arguments: [String: Value]
@@ -78,6 +79,24 @@ enum MCPToolDispatcher {
                 result = try MCPGetEntityThemesTool.run(arguments: arguments)
             case "find_articles_across_themes":
                 result = try MCPFindArticlesAcrossThemesTool.run(arguments: arguments)
+            case "get_settings":
+                result = try await MCPGetSettingsTool.run(arguments: arguments)
+            case "update_settings":
+                result = try await MCPUpdateSettingsTool.run(arguments: arguments)
+            case "list_parameter_presets":
+                result = try await MCPListParameterPresetsTool.run(arguments: arguments)
+            case "get_parameter_preset":
+                result = try await MCPGetParameterPresetTool.run(arguments: arguments)
+            case "apply_parameter_preset":
+                result = try await MCPApplyParameterPresetTool.run(arguments: arguments)
+            case "create_parameter_preset":
+                result = try await MCPCreateParameterPresetTool.run(arguments: arguments)
+            case "update_parameter_preset":
+                result = try await MCPUpdateParameterPresetTool.run(arguments: arguments)
+            case "delete_parameter_preset":
+                result = try await MCPDeleteParameterPresetTool.run(arguments: arguments)
+            case "reset_parameter_preset":
+                result = try await MCPResetParameterPresetTool.run(arguments: arguments)
             default:
                 throw MCPToolError(message: "Unknown tool: \(toolName)")
             }

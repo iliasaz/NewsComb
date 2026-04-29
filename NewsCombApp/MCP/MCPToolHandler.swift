@@ -1,8 +1,11 @@
+// swiftlint:disable file_length
+
 import Foundation
 import MCP
 
 /// Registers all NewsComb MCP tools and dispatches tool calls.
 /// Uses the app's `Database.current` directly — no separate database wrapper needed.
+// swiftlint:disable:next type_body_length
 struct MCPToolHandler: Sendable {
 
     /// All available tools with their JSON Schema definitions.
@@ -537,6 +540,234 @@ struct MCPToolHandler: Sendable {
                     ])
                 ]),
                 annotations: .init(readOnlyHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "get_settings",
+                description: """
+                    Read workspace-scoped app_settings rows grouped by SettingsCategory \
+                    (extraction, clustering, rag, analysis, llm, feeds, simulation). \
+                    Secret values (API keys) are returned as '<redacted>' unless \
+                    include_secrets is true. Output is a JSON object keyed by category, \
+                    where each value is a {key: string-value} map. Missing rows surface \
+                    as empty strings so the schema is stable.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "category": .object([
+                            "type": .string("string"),
+                            "enum": .array([
+                                .string("extraction"),
+                                .string("clustering"),
+                                .string("rag"),
+                                .string("analysis"),
+                                .string("llm"),
+                                .string("feeds"),
+                                .string("simulation")
+                            ]),
+                            "description": .string("Optional. If omitted, returns all categories.")
+                        ]),
+                        "include_secrets": .object([
+                            "type": .string("boolean"),
+                            "default": .bool(false),
+                            "description": .string("If true, return raw API key values; otherwise '<redacted>'.")
+                        ])
+                    ])
+                ]),
+                annotations: .init(readOnlyHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "update_settings",
+                description: """
+                    Update workspace-scoped app_settings rows for a single SettingsCategory. \
+                    All keys must belong to the named category, and every value is validated \
+                    against the same bounds the SettingsView Steppers enforce. Validation is \
+                    atomic: if any value is invalid, the entire batch is rejected and no rows \
+                    are written. After a successful write, side-effects fire automatically \
+                    (e.g. changing an LLM embedding setting rebuilds the sqlite-vec tables).
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "category": .object([
+                            "type": .string("string"),
+                            "enum": .array([
+                                .string("extraction"),
+                                .string("clustering"),
+                                .string("rag"),
+                                .string("analysis"),
+                                .string("llm"),
+                                .string("feeds"),
+                                .string("simulation")
+                            ]),
+                            "description": .string("The settings category to update.")
+                        ]),
+                        "settings": .object([
+                            "type": .string("object"),
+                            "description": .string("Map of setting key → string value. All keys must belong to the named category. All values are validated before any write."),
+                            "additionalProperties": .object(["type": .string("string")])
+                        ])
+                    ]),
+                    "required": .array([.string("category"), .string("settings")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "list_parameter_presets",
+                description: """
+                    List every parameter preset in the workspace. Built-in presets \
+                    (News Intelligence, Codebase Intelligence) sort first; user-defined \
+                    presets follow alphabetically. Returns a JSON array of objects with \
+                    name, description, is_builtin, and updated_at.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([:])
+                ]),
+                annotations: .init(readOnlyHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "get_parameter_preset",
+                description: """
+                    Fetch a single parameter preset by name, including the parsed \
+                    settings dictionary. Secret values (API keys) are returned as \
+                    '<redacted>' unless include_secrets is true.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "name": .object([
+                            "type": .string("string"),
+                            "description": .string("Preset name (case-sensitive).")
+                        ]),
+                        "include_secrets": .object([
+                            "type": .string("boolean"),
+                            "default": .bool(false),
+                            "description": .string("If true, return raw API key values; otherwise '<redacted>'.")
+                        ])
+                    ]),
+                    "required": .array([.string("name")])
+                ]),
+                annotations: .init(readOnlyHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "apply_parameter_preset",
+                description: """
+                    Apply a parameter preset to the workspace's app_settings. Every \
+                    setting in the preset is validated atomically before any write — \
+                    if any value is invalid the entire batch is rejected. After a \
+                    successful write, side-effects fire automatically (e.g. embedding \
+                    dimension changes rebuild the vec0 tables).
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "name": .object([
+                            "type": .string("string"),
+                            "description": .string("Preset name to apply.")
+                        ])
+                    ]),
+                    "required": .array([.string("name")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "create_parameter_preset",
+                description: """
+                    Create a new user-defined parameter preset. All settings are \
+                    validated against the same bounds as update_settings. Keys that \
+                    don't belong to a known SettingsCategory are rejected. Fails if \
+                    a preset with the given name already exists — use \
+                    update_parameter_preset to modify an existing preset.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "name": .object([
+                            "type": .string("string"),
+                            "description": .string("Unique preset name.")
+                        ]),
+                        "description": .object([
+                            "type": .string("string"),
+                            "description": .string("Human-readable description shown in the picker.")
+                        ]),
+                        "settings": .object([
+                            "type": .string("object"),
+                            "description": .string("Map of setting key → string value. All values are validated."),
+                            "additionalProperties": .object(["type": .string("string")])
+                        ])
+                    ]),
+                    "required": .array([.string("name"), .string("description"), .string("settings")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false)
+            ),
+            Tool(
+                name: "update_parameter_preset",
+                description: """
+                    Update an existing parameter preset. Description and settings are \
+                    optional — omitted fields are preserved. Settings are merged into \
+                    the preset's existing settings_json (overwrite by key). Built-in \
+                    presets can be edited; their is_builtin flag is never changed. \
+                    Validation is atomic.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "name": .object([
+                            "type": .string("string"),
+                            "description": .string("Preset name to update.")
+                        ]),
+                        "description": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional. New description; if omitted the existing one is preserved.")
+                        ]),
+                        "settings": .object([
+                            "type": .string("object"),
+                            "description": .string("Optional. Map of setting key → string value to merge into the preset."),
+                            "additionalProperties": .object(["type": .string("string")])
+                        ])
+                    ]),
+                    "required": .array([.string("name")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false)
+            ),
+            Tool(
+                name: "delete_parameter_preset",
+                description: """
+                    Delete a user-defined parameter preset. Built-in presets are \
+                    protected — call reset_parameter_preset on a built-in to restore \
+                    its seeded defaults instead.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "name": .object([
+                            "type": .string("string"),
+                            "description": .string("Preset name to delete.")
+                        ])
+                    ]),
+                    "required": .array([.string("name")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false)
+            ),
+            Tool(
+                name: "reset_parameter_preset",
+                description: """
+                    Reset a built-in parameter preset to its seeded defaults. For \
+                    user-defined presets this is a friendly no-op (no error). Use \
+                    this to undo edits to News Intelligence or Codebase Intelligence.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "name": .object([
+                            "type": .string("string"),
+                            "description": .string("Preset name to reset.")
+                        ])
+                    ]),
+                    "required": .array([.string("name")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false)
             ),
             Tool(
                 name: "query_knowledge_graph",

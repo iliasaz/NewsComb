@@ -429,6 +429,35 @@ final class MCPAppCoordinator {
         }
     }
 
+    // MARK: - Settings updates
+
+    /// Side-effect hook invoked by `update_settings` after a successful write.
+    ///
+    /// `update_settings` is purely a write to the per-workspace `app_settings`
+    /// table. Most categories are read fresh by their downstream consumers on
+    /// the next pipeline run, so no eager invalidation is needed. The one
+    /// exception is `.llm`: if `embedding_provider` or `embedding_dimension`
+    /// changed, the `vec0` virtual tables must be dropped and recreated at
+    /// the new dimension before any further embedding work can happen.
+    /// `Database.rebuildVec0TablesIfNeeded()` is a no-op if the dimension
+    /// already matches, so calling it unconditionally is safe and cheap.
+    func didUpdateSettings(category: SettingsCategory) async {
+        switch category {
+        case .llm:
+            do {
+                try await Database.current.rebuildVec0TablesIfNeeded()
+            } catch {
+                logger.error(
+                    "Failed to rebuild vec0 tables after LLM settings change: \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        case .extraction, .clustering, .rag, .analysis, .feeds, .simulation:
+            // No immediate side effect: the next pipeline run reads the new
+            // values directly from `app_settings`.
+            break
+        }
+    }
+
     // MARK: - Status snapshots
 
     /// Snapshot of all in-flight UI operations for `get_app_status`.

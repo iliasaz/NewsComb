@@ -624,12 +624,71 @@ public final class Database: Sendable {
                 CREATE INDEX IF NOT EXISTS idx_agent_interview_agent ON agent_interview(agent_id);
             """)
 
+            // Parameter preset table (named bundles of app_settings values)
+            try Self.createParameterPresetTable(db)
+
             // Seed default settings if they don't exist
             try seedDefaultSettings(db)
+
+            // Seed built-in parameter presets (News Intelligence, Codebase Intelligence)
+            try Self.seedDefaultPresets(db)
 
             // Create or recreate vec0 virtual tables with the configured embedding dimension
             try createVec0Tables(db)
         }
+    }
+
+    /// Creates the `parameter_preset` table and its name index.
+    /// Static so tests can run the same DDL against an in-memory database
+    /// without invoking the full `migrate()` path (which initializes vec0
+    /// virtual tables and the rest of the workspace schema).
+    static func createParameterPresetTable(_ db: GRDB.Database) throws {
+        try db.execute(sql: """
+            CREATE TABLE IF NOT EXISTS parameter_preset (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                settings_json TEXT NOT NULL,
+                is_builtin INTEGER NOT NULL DEFAULT 0,
+                created_at REAL NOT NULL DEFAULT (unixepoch()),
+                updated_at REAL NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE INDEX IF NOT EXISTS idx_parameter_preset_name ON parameter_preset(name);
+        """)
+    }
+
+    /// Seeds the built-in parameter presets (`News Intelligence`,
+    /// `Codebase Intelligence`) using `INSERT OR IGNORE` so user edits are
+    /// never overwritten on subsequent app launches. Static for the same
+    /// reason as `createParameterPresetTable`: tests can call it directly.
+    static func seedDefaultPresets(_ db: GRDB.Database) throws {
+        let builtins: [(name: String, description: String)] = [
+            (ParameterPreset.newsIntelligenceName, ParameterPreset.newsIntelligenceDescription),
+            (ParameterPreset.codebaseIntelligenceName, ParameterPreset.codebaseIntelligenceDescription)
+        ]
+
+        for builtin in builtins {
+            guard let settings = ParameterPreset.builtinSettings(forPresetNamed: builtin.name) else {
+                continue
+            }
+            let data = try JSONSerialization.data(
+                withJSONObject: settings,
+                options: [.sortedKeys]
+            )
+            guard let json = String(data: data, encoding: .utf8) else {
+                continue
+            }
+            try db.execute(
+                sql: """
+                    INSERT OR IGNORE INTO parameter_preset
+                        (name, description, settings_json, is_builtin)
+                    VALUES (?, ?, ?, 1)
+                """,
+                arguments: [builtin.name, builtin.description, json]
+            )
+        }
+
+        Self.logger.info("Default parameter presets seeded successfully")
     }
 
     /// Creates (or recreates if the dimension changed) the vec0 virtual tables.
@@ -835,5 +894,23 @@ public final class Database: Sendable {
 
     func write<T>(_ block: (GRDB.Database) throws -> T) throws -> T {
         try dbQueue.write(block)
+    }
+
+    /// Re-runs `createVec0Tables` inside a write transaction, dropping and
+    /// recreating the vec0 virtual tables if `embedding_dimension` (or the
+    /// effective dimension implied by `embedding_provider`) has changed
+    /// since the tables were last created.
+    ///
+    /// Idempotent: if the active dimension already matches the desired
+    /// dimension, this is a no-op aside from refreshing
+    /// `active_embedding_dimension`.
+    ///
+    /// Called by `MCPAppCoordinator.didUpdateSettings(.llm)` after the
+    /// MCP `update_settings` tool changes any LLM-category setting that
+    /// could affect embeddings.
+    func rebuildVec0TablesIfNeeded() async throws {
+        try await dbQueue.write { [self] db in
+            try self.createVec0Tables(db)
+        }
     }
 }
