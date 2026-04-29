@@ -468,11 +468,20 @@ selections, prompts, algorithm parameters — everything the user customized.
   - `copyAppSettingsFromCurrent` returns `false` when target equals active.
   - `copyAppSettingsFromCurrent` succeeds end-to-end with a real value.
 
-**Known limitation (documented inline):** if the source workspace had a
-non-default `embedding_dimension`, the copied setting can mismatch the
-target's vec0 tables (which are sized at the seed-default dimension during
-migration). Brand-new workspaces have no embeddings yet, so the existing
-dimension-mismatch reset flow rebuilds the vec0 tables on first use.
+**Schema-state setting exclusion:** `active_embedding_dimension` is
+**not** copied. It tracks the dimension the target's vec0 virtual tables
+were physically created with — copying it from source would lie about
+on-disk schema and silently disable the rebuild path in
+`Database.migrate.createVec0Tables`. By leaving it untouched, the next
+migration after a workspace switch sees `active_embedding_dimension`
+(target's seeded value) ≠ `embedding_dimension` (copied from source),
+detects the mismatch, drops + recreates the vec0 tables at the right
+size, and updates `active_embedding_dimension` to match. **Result:
+settings and schema are guaranteed in agreement on first use.**
+
+The exclusion list lives in `WorkspaceCoordinator.nonPortableSettingKeys`.
+When future schema-state settings are added (e.g. a "tables_built_with"
+metadata key), append them there.
 
 **README** updated under the Workspaces section to mention that
 File → New Workspace inherits settings.

@@ -178,32 +178,49 @@ final class WorkspaceCoordinator {
 
     // MARK: - Settings copy
 
-    /// Copies every row in the source workspace's `app_settings` table into
-    /// the target workspace's `app_settings` table (UPSERT by key). Used when
-    /// the user creates a new workspace and wants their LLM keys, model
-    /// selections, prompts, and algorithm parameters carried over instead of
-    /// reset to defaults.
+    /// Setting keys that describe **schema state on disk** rather than user
+    /// intent. These must NOT be copied between workspaces — copying them
+    /// would lie about the target's actual schema, breaking dimension-change
+    /// detection in `Database.migrate`.
+    ///
+    /// Currently just `active_embedding_dimension`, which records the dim the
+    /// vec0 virtual tables were last created with. Copying it would cause
+    /// `createVec0Tables` to think no rebuild is needed even when the
+    /// `embedding_dimension` setting was carried over from a workspace using
+    /// a different size. Leaving it untouched lets the next migration detect
+    /// the mismatch and rebuild the vec0 tables to match the user's intent.
+    private static let nonPortableSettingKeys: Set<String> = [
+        AppSettings.activeEmbeddingDimension
+    ]
+
+    /// Copies every portable row in the source workspace's `app_settings`
+    /// table into the target workspace's `app_settings` table (UPSERT by key).
+    /// Used when the user creates a new workspace and wants their LLM keys,
+    /// model selections, prompts, and algorithm parameters carried over
+    /// instead of reset to defaults.
     ///
     /// Both databases are opened transiently; `Database.current` is unchanged.
     /// The target's migration runs (creating tables and seeding defaults)
     /// before the upsert, so any new defaults the source's DB doesn't know
     /// about are preserved.
     ///
-    /// **Note**: a copied `embedding_dimension` setting can mismatch the
-    /// target's vec0 tables (which were created at the seed-default
-    /// dimension). Since a brand-new workspace has no embeddings yet, the
-    /// existing dimension-mismatch reset flow will rebuild the vec0 tables
-    /// at the right size on first use.
+    /// Schema-state keys (see `nonPortableSettingKeys`) are skipped so the
+    /// target's existing vec0-table dimension tracking remains accurate.
+    /// On first use, if the copied `embedding_dimension` differs from the
+    /// target's seed-default, `Database.migrate` detects the mismatch and
+    /// rebuilds the vec0 tables — putting settings and schema in agreement.
     func copyAppSettings(from source: URL, to target: URL) throws {
         let sourceDB = try Database(directory: source)
         let targetDB = try Database(directory: target)
 
-        let rows = try sourceDB.dbQueue.read { db in
+        let allRows = try sourceDB.dbQueue.read { db in
             try AppSettings.fetchAll(db)
         }
+        let portable = allRows.filter { !Self.nonPortableSettingKeys.contains($0.key) }
+        let skipped = allRows.count - portable.count
 
         try targetDB.dbQueue.write { db in
-            for setting in rows {
+            for setting in portable {
                 try db.execute(
                     sql: """
                         INSERT INTO app_settings (key, value) VALUES (?, ?)
@@ -215,7 +232,7 @@ final class WorkspaceCoordinator {
         }
 
         logger.notice(
-            "Copied \(rows.count, privacy: .public) app_settings rows from \(source.path(percentEncoded: false), privacy: .public) to \(target.path(percentEncoded: false), privacy: .public)"
+            "Copied \(portable.count, privacy: .public) app_settings rows (skipped \(skipped, privacy: .public) non-portable) from \(source.path(percentEncoded: false), privacy: .public) to \(target.path(percentEncoded: false), privacy: .public)"
         )
     }
 

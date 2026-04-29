@@ -152,4 +152,37 @@ final class WorkspaceCoordinatorCopySettingsTests: XCTestCase {
         let targetDB = try Database(directory: targetDir)
         XCTAssertEqual(try readSetting("openrouter_key", in: targetDB), "sk-current-99")
     }
+
+    // MARK: - Non-portable schema-state keys
+
+    func testCopyDoesNotOverwriteActiveEmbeddingDimension() throws {
+        // active_embedding_dimension is schema metadata — it tracks the size
+        // the vec0 tables were physically created with. Copying it would make
+        // `Database.migrate` skip the vec0 rebuild on next launch even though
+        // the carried-over `embedding_dimension` differs from on-disk schema.
+        let sourceDir = tempRoot.appending(path: "Source")
+        let targetDir = tempRoot.appending(path: "Target")
+        let sourceDB = try Database(directory: sourceDir)
+
+        // Source claims its tables are 1024-d (lying for the test — we don't
+        // actually rebuild here, we just want to verify the copy skips this key).
+        try writeSetting(AppSettings.activeEmbeddingDimension, value: "1024", in: sourceDB)
+        // Also bump the user-intent setting so the test is realistic.
+        try writeSetting(AppSettings.embeddingDimension, value: "1024", in: sourceDB)
+
+        // Capture the target's seeded value before the copy.
+        let targetDB = try Database(directory: targetDir)
+        let preCopyActiveDim = try readSetting(AppSettings.activeEmbeddingDimension, in: targetDB)
+
+        try sut.copyAppSettings(from: sourceDir, to: targetDir)
+
+        // User intent: should now match source.
+        XCTAssertEqual(try readSetting(AppSettings.embeddingDimension, in: targetDB), "1024")
+        // Schema state: must remain whatever the target's own migration set it to.
+        let postCopyActiveDim = try readSetting(AppSettings.activeEmbeddingDimension, in: targetDB)
+        XCTAssertEqual(
+            postCopyActiveDim, preCopyActiveDim,
+            "active_embedding_dimension must not be copied — it tracks the target's vec0 table size"
+        )
+    }
 }
