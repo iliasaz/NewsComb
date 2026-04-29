@@ -141,12 +141,25 @@ final class MCPHTTPServer: Sendable {
     }
 
     /// Constructs an HTTP/1.1 400 response with a JSON-RPC error body.
+    ///
+    /// The body is built via `JSONSerialization` so every character JSON
+    /// requires escaping (newlines, tabs, the full set of C0 control chars)
+    /// is handled correctly — not just `\\` and `"`.
     static func makeJSONRPCErrorHTTPResponse(requestId: String?, code: Int, message: String) -> Data {
-        let escapedMessage = message.replacing("\\", with: "\\\\").replacing("\"", with: "\\\"")
-        let idJSON = requestId.map { "\"\($0)\"" } ?? "null"
-        let body = Data("""
-            {"jsonrpc":"2.0","id":\(idJSON),"error":{"code":\(code),"message":"\(escapedMessage)"}}
-            """.utf8)
+        let payload: [String: Any] = [
+            "jsonrpc": "2.0",
+            "id": requestId ?? NSNull(),
+            "error": ["code": code, "message": message]
+        ]
+        let body: Data
+        if let serialized = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]) {
+            body = serialized
+        } else {
+            // Defensive fallback — `payload` only contains JSON-safe scalars,
+            // so JSONSerialization should never fail here. If it does, surface
+            // a generic JSON-RPC internal error rather than crashing.
+            body = Data(#"{"error":{"code":-32603,"message":"Internal error"},"id":null,"jsonrpc":"2.0"}"#.utf8)
+        }
 
         var result = "HTTP/1.1 400 Bad Request\r\n"
         result += "Content-Type: application/json\r\n"
