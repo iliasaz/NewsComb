@@ -3,6 +3,7 @@ import GRDB
 
 public final class Database: Sendable {
     public static let shared = Database()
+    public static var current: Database { shared }
 
     let dbQueue: DatabaseQueue
 
