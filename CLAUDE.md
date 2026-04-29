@@ -123,8 +123,9 @@ This project uses [GRDB.swift](https://github.com/groue/GRDB.swift) for SQLite p
 - **Always** write and execute tests for any functional change before declaring it done. Do not skip this step — code that compiles but isn't tested is not finished.
 - **Always** write UI tests when unit tests are not possible for UI-specific behavior.
 - **Always** run the relevant test suite after writing tests and verify all tests pass before declaring any task complete.
-- Run tests with: `xcodebuild test -scheme NewsCombApp -destination 'platform=macOS'`
-  - Under the dev-team-signed project config, the host app and the test bundle can resolve to different Team IDs in command-line builds, causing `dlopen` to refuse the xctest plug-in with a "different Team IDs" error ("Failed to load the test bundle"). When this happens, append `CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO` to skip signing for the local run. The compiled test bundle is unchanged; this only affects how it's loaded.
+- Run tests with: `xcodebuild test -scheme NewsCombApp -destination 'platform=macOS,arch=arm64' -skip-testing:NewsCombAppUITests`
+  - All targets (host app, NewsCombAppTests, NewsCombAppUITests) share team `6CGNH3LTV7`, so default signing works without any `CODE_SIGNING_ALLOWED=NO` workaround.
+  - `-skip-testing:NewsCombAppUITests` is recommended for headless command-line runs since UI tests require an interactive window-server session.
 - Place test files in the `NewsCombAppTests/` directory, matching the source file structure.
 - Use `XCTest` for all tests. Do not use third-party test frameworks without asking first.
 - Test pure logic in isolation — avoid depending on the live database or network in unit tests.
