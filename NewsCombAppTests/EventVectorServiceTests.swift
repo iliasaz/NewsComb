@@ -2,7 +2,7 @@ import Accelerate
 import XCTest
 @testable import NewsCombApp
 
-final class EventVectorServiceTests: XCTestCase {
+final class EventVectorServiceTests: IsolatedDatabaseTestCase {
 
     // MARK: - Event Vector Dimensions
 

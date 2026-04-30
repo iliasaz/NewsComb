@@ -29,18 +29,44 @@ public final class Database: Sendable {
     /// workspace via the first-run sheet. `WorkspaceCoordinator.bootstrapError`
     /// is the user-visible signal that the explicit source was rejected — see
     /// `ContentView`'s alert.
+    ///
+    /// Under XCTest the fallback opens a process-unique directory under
+    /// `temporaryDirectory` rather than the shared legacy path. This prevents
+    /// parallel `xcodebuild test` runners from racing on the same SQLite file
+    /// during migration — the failure mode tracked in issue #29.
     public static var current: Database {
         active.withLock { holder in
             if let db = holder { return db }
             do {
-                let db = try Database(directory: Workspace.legacyDirectory)
+                let db = try Database(directory: Self.lazyFallbackDirectory)
                 holder = db
                 return db
             } catch {
-                fatalError("Failed to lazy-bootstrap legacy database: \(error)")
+                fatalError("Failed to lazy-bootstrap database: \(error)")
             }
         }
     }
+
+    /// Directory used by `current`'s lazy fallback.
+    ///
+    /// Production: `Workspace.legacyDirectory` — the pre-workspace single-DB
+    /// path, preserved so callers that haven't been migrated to run
+    /// `WorkspaceCoordinator.bootstrap()` still find the user's existing data.
+    ///
+    /// XCTest (detected via the runner-injected `XCTestConfigurationFilePath`
+    /// env var): a process-unique directory under `temporaryDirectory`.
+    /// `xcodebuild test` parallelizes test classes across multiple runner
+    /// processes; without per-process isolation each process would race to
+    /// migrate the shared legacy SQLite file, occasionally crashing one
+    /// runner before any test executed. See issue #29.
+    private static let lazyFallbackDirectory: URL = {
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            let pid = ProcessInfo.processInfo.processIdentifier
+            return FileManager.default.temporaryDirectory
+                .appending(path: "NewsCombTestFallback-\(pid)-\(UUID().uuidString)")
+        }
+        return Workspace.legacyDirectory
+    }()
 
     /// Sets the active workspace's database. Called by `WorkspaceCoordinator`.
     public static func setCurrent(_ database: Database) {
