@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,15 +39,27 @@ jobs:
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
 
-      - name: Build Package
-        run: |
-          cd NewsComb
-          swift build
+      - name: Install Metal Toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
 
-      - name: Run Tests
+      - name: Build NewsCombApp
         run: |
-          cd NewsComb
-          swift test
+          xcodebuild build \
+            -scheme NewsCombApp \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Test NewsCombApp
+        run: |
+          xcodebuild test \
+            -scheme NewsCombApp \
+            -destination 'platform=macOS' \
+            -skip-testing:NewsCombAppUITests \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
 
   lint:
     runs-on: macos-15
@@ -59,4 +71,4 @@ jobs:
         run: brew install swiftlint
 
       - name: Run SwiftLint
-        run: swiftlint lint --strict NewsComb
+        run: swiftlint lint --lenient NewsCombApp

@@ -296,7 +296,7 @@ final class OasisEnvironmentServiceTests: XCTestCase {
         XCTAssertTrue(types.contains("person"))
         XCTAssertTrue(types.contains("organization"))
         XCTAssertTrue(types.contains("company"))
-        XCTAssertTrue(types.contains("government"))
+        XCTAssertTrue(types.contains("government_entity"))
         XCTAssertFalse(types.contains("concept"), "concept is not a persona type")
     }
 
