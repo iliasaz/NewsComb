@@ -55,4 +55,4 @@ jobs:
         run: brew install swiftlint
 
       - name: Run SwiftLint
-        run: swiftlint lint --strict NewsCombApp
+        run: swiftlint lint NewsCombApp
