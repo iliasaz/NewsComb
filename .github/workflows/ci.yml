@@ -39,15 +39,11 @@ jobs:
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
 
-      - name: Build Package
-        run: |
-          cd NewsComb
-          swift build
+      - name: Build NewsCombApp
+        run: xcodebuild build -scheme NewsCombApp -destination 'platform=macOS'
 
-      - name: Run Tests
-        run: |
-          cd NewsComb
-          swift test
+      - name: Test NewsCombApp
+        run: xcodebuild test -scheme NewsCombApp -destination 'platform=macOS'
 
   lint:
     runs-on: macos-15
@@ -59,4 +55,4 @@ jobs:
         run: brew install swiftlint
 
       - name: Run SwiftLint
-        run: swiftlint lint --strict NewsComb
+        run: swiftlint lint --strict NewsCombApp
