@@ -3,8 +3,21 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -38,6 +51,21 @@ jobs:
           # Skip macro fingerprint validation - required for Swift macros in CI
           defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidation -bool YES
+
+      # `Package.resolved` is .gitignored, so we key on inputs that *do* land in
+      # the checkout: the Xcode project (which records remote package URLs and
+      # version pins) and any local `Package.swift` (GRDBCustom, NewsCombMCPBridge).
+      # Branch-tracking remote packages advance silently relative to this key —
+      # that's fine; the cache then goes stale and xcodebuild re-resolves.
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('NewsCombApp.xcodeproj/project.pbxproj', '**/Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
 
       - name: Install Metal Toolchain
         run: xcodebuild -downloadComponent MetalToolchain
