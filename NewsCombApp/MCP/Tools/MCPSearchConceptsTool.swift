@@ -18,7 +18,7 @@ enum MCPSearchConceptsTool {
                 WHERE fts_node MATCH ?
                 ORDER BY rank
                 LIMIT ?
-            """, arguments: [query, limit])
+            """, arguments: [sanitizeForFTS5(query), limit])
         }
 
         guard !results.isEmpty else {

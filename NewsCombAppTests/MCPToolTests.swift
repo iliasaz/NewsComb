@@ -357,9 +357,11 @@ final class MCPSearchConceptsToolTests: XCTestCase {
         let db = try makeTestDatabase()
         try insertTestData(db.dbQueue)
 
-        // FTS5 prefix query: "NVI*" matches "NVIDIA", limit to 1 result
+        // Phrase-quoted query "NVIDIA" matches the single NVIDIA row; limit to 1.
+        // (FTS5 prefix wildcards like "NVI*" no longer flow through after the
+        // issue-#31 sanitizer wraps the query as a literal phrase.)
         let result = try MCPSearchConceptsTool.run(
-            arguments: ["query": .string("NVI*"), "limit": .int(1)],
+            arguments: ["query": .string("NVIDIA"), "limit": .int(1)],
             database: db
         )
         // Should only have 1 result entry (one "- **" line)

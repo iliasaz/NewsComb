@@ -18,7 +18,7 @@ enum MCPGetThemesTool {
                     WHERE fts_cluster MATCH ?
                     ORDER BY rank
                     LIMIT ?
-                """, arguments: [query, limit])
+                """, arguments: [sanitizeForFTS5(query), limit])
             } else {
                 return try Row.fetchAll(db, sql: """
                     SELECT cluster_id, label, size, summary, top_entities_json
