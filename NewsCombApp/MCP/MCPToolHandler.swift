@@ -239,6 +239,21 @@ struct MCPToolHandler: Sendable {
                 annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true)
             ),
             Tool(
+                name: "reprocess_article",
+                description: "Drop and re-extract knowledge graph state for a single article. Use after ingest_article when you want the graph to reflect the new body immediately rather than waiting for the next batch process_knowledge_graph run. Atomically deletes the article's chunks, edges, incidences, and provenance, then sweeps any nodes that became globally orphaned (no remaining incidences), then re-runs the per-article extraction pipeline. Returns counts of dropped and re-extracted rows.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "feed_item_id": .object([
+                            "type": .string("integer"),
+                            "description": .string("ID of the article to reprocess (from get_recent_articles or feed_item.id).")
+                        ])
+                    ]),
+                    "required": .array([.string("feed_item_id")])
+                ]),
+                annotations: .init(readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true)
+            ),
+            Tool(
                 name: "process_knowledge_graph",
                 description: "Trigger LLM extraction over unprocessed articles — equivalent to the 'Process Knowledge Graph' toolbar button. Persists new entities, relationships, embeddings, and auto-simplifies the graph. The UI shows live progress.",
                 inputSchema: .object([
