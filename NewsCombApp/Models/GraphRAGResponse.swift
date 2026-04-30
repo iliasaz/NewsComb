@@ -217,19 +217,23 @@ struct GraphRAGContext: Sendable {
         let edgeCount: Int
         /// Relation labels between consecutive nodes in the path.
         let edgeLabels: [String]
+        /// Provenance chunk texts from the edges that make up this path.
+        let evidenceChunks: [String]
 
         init(
             sourceConcept: String,
             targetConcept: String,
             intermediateNodes: [String] = [],
             edgeCount: Int,
-            edgeLabels: [String] = []
+            edgeLabels: [String] = [],
+            evidenceChunks: [String] = []
         ) {
             self.sourceConcept = sourceConcept
             self.targetConcept = targetConcept
             self.intermediateNodes = intermediateNodes
             self.edgeCount = edgeCount
             self.edgeLabels = edgeLabels
+            self.evidenceChunks = evidenceChunks
         }
     }
 
@@ -291,20 +295,31 @@ struct GraphRAGContext: Sendable {
         return parts.joined(separator: "\n\n")
     }
 
-    /// Formats a reasoning path as a readable string showing how concepts connect.
+    /// Formats a reasoning path as a readable string showing how concepts connect,
+    /// followed by every provenance chunk that supports any edge in the path.
+    /// Hyperedges can be corroborated by multiple chunks across articles; we
+    /// include all of them so the LLM can weigh consistent vs. contradictory
+    /// evidence rather than a single arbitrary snippet.
     private func formatReasoningPath(_ path: ReasoningPath) -> String {
+        let pathLine: String
         if path.intermediateNodes.isEmpty {
-            return "- \(path.sourceConcept) connects to \(path.targetConcept)"
+            pathLine = "- \(path.sourceConcept) connects to \(path.targetConcept)"
+        } else {
+            var pathParts: [String] = [path.sourceConcept]
+            for node in path.intermediateNodes {
+                pathParts.append("(via \(node))")
+            }
+            pathParts.append(path.targetConcept)
+            pathLine = "- " + pathParts.joined(separator: " → ")
         }
 
-        // Build the path string showing intermediate connections
-        var pathParts: [String] = [path.sourceConcept]
-        for node in path.intermediateNodes {
-            pathParts.append("(via \(node))")
+        guard !path.evidenceChunks.isEmpty else {
+            return pathLine
         }
-        pathParts.append(path.targetConcept)
-
-        return "- " + pathParts.joined(separator: " → ")
+        let evidenceLines = path.evidenceChunks
+            .map { "  evidence: \($0)" }
+            .joined(separator: "\n")
+        return pathLine + "\n" + evidenceLines
     }
 
     /// Formats an edge as a natural language relationship.

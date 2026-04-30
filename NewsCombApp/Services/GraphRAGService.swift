@@ -404,26 +404,41 @@ final class GraphRAGService: Sendable {
             }
         }
 
-        // Fetch edge labels from database
-        let edgeRelations: [Int64: String] = try database.read { db in
+        // Fetch edge labels and ALL provenance chunk texts in one read.
+        // A hyperedge can be supported by many article_edge_provenance rows
+        // (the same relation corroborated by multiple chunks across articles);
+        // we want the LLM to see every piece of evidence, not just one.
+        typealias EdgeInfo = (relation: String, chunkTexts: [String])
+        let edgeInfo: [Int64: EdgeInfo] = try database.read { db in
             guard !allEdgeIds.isEmpty else { return [:] }
             let placeholders = allEdgeIds.map { _ in "?" }.joined(separator: ", ")
             let sql = """
-                SELECT id, edge_id, label
-                FROM hypergraph_edge
-                WHERE id IN (\(placeholders))
+                SELECT he.id, he.edge_id, he.label, aep.chunk_text
+                FROM hypergraph_edge he
+                LEFT JOIN article_edge_provenance aep ON he.id = aep.edge_id
+                WHERE he.id IN (\(placeholders))
+                ORDER BY he.id, aep.id
             """
             let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(Array(allEdgeIds)))
 
-            var relations: [Int64: String] = [:]
+            var info: [Int64: EdgeInfo] = [:]
             for row in rows {
                 let id: Int64 = row["id"]
                 let edgeIdStr: String = row["edge_id"]
-                // Extract human-readable relation from edge_id, fall back to label column
                 let relation = ContextCollector.extractRelation(from: edgeIdStr) ?? row["label"] ?? "relates to"
-                relations[id] = relation
+                let chunkText: String? = row["chunk_text"]
+
+                if var existing = info[id] {
+                    if let chunkText, !chunkText.isEmpty {
+                        existing.chunkTexts.append(chunkText)
+                    }
+                    info[id] = existing
+                } else {
+                    let initial = (chunkText.map { $0.isEmpty ? [] : [$0] }) ?? []
+                    info[id] = (relation: relation, chunkTexts: initial)
+                }
             }
-            return relations
+            return info
         }
 
         return reports.map { report in
@@ -436,9 +451,23 @@ final class GraphRAGService: Sendable {
                 }
             }
 
-            // Get edge labels in order
+            // Get edge labels in path order.
             let edgeLabels = report.edgePath.map { edgeId in
-                edgeRelations[edgeId] ?? "relates to"
+                edgeInfo[edgeId]?.relation ?? "relates to"
+            }
+
+            // Collect every provenance chunk across every edge in the path.
+            // Order-preserving dedup: one chunk can produce several edges (a
+            // single sentence yielding multiple SVO triples), so the same
+            // chunk_text may legitimately appear under multiple edge IDs.
+            var seen: Set<String> = []
+            var evidenceChunks: [String] = []
+            for edgeId in report.edgePath {
+                guard let chunks = edgeInfo[edgeId]?.chunkTexts else { continue }
+                for chunk in chunks where !seen.contains(chunk) {
+                    seen.insert(chunk)
+                    evidenceChunks.append(chunk)
+                }
             }
 
             return GraphRAGContext.ReasoningPath(
@@ -446,7 +475,8 @@ final class GraphRAGService: Sendable {
                 targetConcept: report.pair.1,
                 intermediateNodes: uniqueIntermediates,
                 edgeCount: report.edgePath.count,
-                edgeLabels: edgeLabels
+                edgeLabels: edgeLabels,
+                evidenceChunks: evidenceChunks
             )
         }
     }
