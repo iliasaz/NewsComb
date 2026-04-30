@@ -91,6 +91,30 @@ final class MCPAppCoordinator {
         }
     }
 
+    /// Surgically drops one article's downstream graph state and re-runs
+    /// per-article extraction. Equivalent in effect to a "delete-and-reprocess
+    /// just this row" path that the batch upserts can't provide cleanly.
+    func reprocessArticle(feedItemId: Int64) async -> String {
+        logger.info("MCP triggered reprocessArticle feedItemId=\(feedItemId, privacy: .public)")
+        let service = HypergraphService()
+        do {
+            let outcome = try await service.reprocessArticle(feedItemId: feedItemId)
+            mainViewModel.loadHypergraphStats()
+            let stats = outcome.deletionStats
+            return """
+            Reprocessed article #\(outcome.feedItemId) in \(outcome.processingTimeMs)ms. \
+            Dropped \(stats.chunksDeleted) chunks, \(stats.edgesDeleted) edges, \
+            \(stats.provenanceDeleted) provenance rows, and swept \(stats.orphanNodesDeleted) orphan node(s). \
+            Re-extracted: \(outcome.chunksAdded) chunks, \(outcome.edgesAdded) edges, \
+            \(outcome.nodesAdded) participating node(s).
+            """
+        } catch let error as HypergraphServiceError {
+            return "Reprocess article failed: \(error.localizedDescription)"
+        } catch {
+            return "Reprocess article failed: \(error.localizedDescription)"
+        }
+    }
+
     /// Re-fetches `full_content` for a single article via the Postlight pipeline.
     func refreshArticle(feedItemId: Int64) async -> String {
         logger.info("MCP triggered refreshArticle feedItemId=\(feedItemId, privacy: .public)")

@@ -47,6 +47,8 @@ enum MCPToolDispatcher {
                 result = try await MCPIngestArticleTool.run(arguments: arguments)
             case "refresh_article":
                 result = try await MCPRefreshArticleTool.run(arguments: arguments)
+            case "reprocess_article":
+                result = try await MCPReprocessArticleTool.run(arguments: arguments)
             case "process_knowledge_graph":
                 result = await MCPProcessKnowledgeGraphTool.run(arguments: arguments)
             case "cancel_knowledge_graph_processing":

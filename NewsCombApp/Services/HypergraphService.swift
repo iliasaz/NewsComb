@@ -210,6 +210,185 @@ final class HypergraphService: Sendable {
         }
     }
 
+    /// Drops a single article's downstream hypergraph state and re-runs
+    /// per-article extraction. Use this when the article body changed and the
+    /// caller wants the graph to reflect the new body cleanly, instead of the
+    /// union of old + new orphaned by the batch path's upsert behavior.
+    ///
+    /// Steps (all deletes happen inside one write transaction; extraction
+    /// follows after the transaction commits):
+    ///   1. Drop provenance rows owned by this article.
+    ///   2. Drop edges sourced from this article's chunks (cascades incidences
+    ///      and any remaining provenance for those edges).
+    ///   3. Drop globally-orphaned nodes (no remaining incidences).
+    ///   4. Drop the article's chunks.
+    ///   5. Drop the `article_hypergraph` tracking row so re-extraction starts clean.
+    @MainActor
+    func reprocessArticle(feedItemId: Int64, detailCallback: DetailCallback? = nil) async throws -> ReprocessOutcome {
+        logger.info("Reprocessing article \(feedItemId): dropping downstream graph state")
+
+        let startTime = Date()
+        let deletionStats = try database.write { db in
+            try Self.deleteArticleGraphState(db: db, feedItemId: feedItemId)
+        }
+        logger.info(
+            "Reprocess deletes: \(deletionStats.chunksDeleted) chunks, \(deletionStats.edgesDeleted) edges, \(deletionStats.orphanNodesDeleted) orphan nodes, \(deletionStats.provenanceDeleted) provenance rows"
+        )
+
+        try await processArticle(feedItemId: feedItemId, detailCallback: detailCallback)
+
+        let chunksAdded = try database.read { db in
+            try Int.fetchOne(
+                db,
+                sql: "SELECT COUNT(*) FROM article_chunk WHERE feed_item_id = ?",
+                arguments: [feedItemId]
+            ) ?? 0
+        }
+        let edgesAdded = try database.read { db in
+            try Int.fetchOne(
+                db,
+                sql: """
+                    SELECT COUNT(*) FROM hypergraph_edge
+                    WHERE source_chunk_id IN (SELECT id FROM article_chunk WHERE feed_item_id = ?)
+                """,
+                arguments: [feedItemId]
+            ) ?? 0
+        }
+        let nodesAdded = try database.read { db in
+            try Int.fetchOne(
+                db,
+                sql: """
+                    SELECT COUNT(DISTINCT i.node_id)
+                    FROM hypergraph_incidence i
+                    JOIN hypergraph_edge e ON e.id = i.edge_id
+                    WHERE e.source_chunk_id IN (SELECT id FROM article_chunk WHERE feed_item_id = ?)
+                """,
+                arguments: [feedItemId]
+            ) ?? 0
+        }
+        let elapsedMs = Int(Date().timeIntervalSince(startTime) * 1000)
+
+        return ReprocessOutcome(
+            feedItemId: feedItemId,
+            chunksAdded: chunksAdded,
+            nodesAdded: nodesAdded,
+            edgesAdded: edgesAdded,
+            processingTimeMs: elapsedMs,
+            deletionStats: deletionStats
+        )
+    }
+
+    /// Performs the surgical delete chain inside a write transaction. Exposed
+    /// as a static helper so unit tests can exercise it against an in-memory
+    /// `DatabaseQueue` without touching `Database.current`. Must be called
+    /// inside a write transaction; `Database.write { ... }` runs the closure
+    /// as a single transaction.
+    static func deleteArticleGraphState(db: GRDB.Database, feedItemId: Int64) throws -> ReprocessDeletionStats {
+        // 1. Provenance rows owned by this article.
+        try db.execute(
+            sql: "DELETE FROM article_edge_provenance WHERE feed_item_id = ?",
+            arguments: [feedItemId]
+        )
+        let provenanceDeleted = db.changesCount
+
+        // 2. Edges sourced from this article's chunks. We capture their IDs
+        //    first so we can clean up the vec0-backed `event_vectors` and the
+        //    cluster-assignment table, neither of which has FK cascades.
+        //    `hypergraph_incidence` and remaining `article_edge_provenance`
+        //    rows DO cascade via real FKs.
+        let edgeIds: [Int64] = try Int64.fetchAll(
+            db,
+            sql: """
+                SELECT id FROM hypergraph_edge
+                WHERE source_chunk_id IN (SELECT id FROM article_chunk WHERE feed_item_id = ?)
+            """,
+            arguments: [feedItemId]
+        )
+        if !edgeIds.isEmpty {
+            // vec0 virtual tables don't support bulk IN-clause deletes — each
+            // event_id must be deleted by its own statement. Same constraint
+            // is enforced in `SettingsViewModel.deleteSource` and
+            // `MainViewModel.resetKnowledgeGraph`.
+            for edgeId in edgeIds {
+                try db.execute(
+                    sql: "DELETE FROM event_vectors WHERE event_id = ?",
+                    arguments: [edgeId]
+                )
+            }
+            let placeholders = Array(repeating: "?", count: edgeIds.count).joined(separator: ",")
+            let args = StatementArguments(edgeIds)
+            try db.execute(
+                sql: "DELETE FROM event_cluster WHERE event_id IN (\(placeholders))",
+                arguments: args
+            )
+            try db.execute(
+                sql: "DELETE FROM hypergraph_edge WHERE id IN (\(placeholders))",
+                arguments: args
+            )
+        }
+        let edgesDeleted = edgeIds.count
+
+        // 3. Globally orphan nodes. `node_embedding` is a vec0 virtual table
+        //    with no FK cascade, so its rows must be deleted explicitly;
+        //    `node_embedding_metadata` cascades on `hypergraph_node` deletion.
+        let orphanNodeIds: [Int64] = try Int64.fetchAll(
+            db,
+            sql: """
+                SELECT id FROM hypergraph_node
+                WHERE id NOT IN (SELECT DISTINCT node_id FROM hypergraph_incidence)
+            """
+        )
+        if !orphanNodeIds.isEmpty {
+            for nodeId in orphanNodeIds {
+                try db.execute(
+                    sql: "DELETE FROM node_embedding WHERE node_id = ?",
+                    arguments: [nodeId]
+                )
+            }
+            let placeholders = Array(repeating: "?", count: orphanNodeIds.count).joined(separator: ",")
+            let args = StatementArguments(orphanNodeIds)
+            try db.execute(
+                sql: "DELETE FROM hypergraph_node WHERE id IN (\(placeholders))",
+                arguments: args
+            )
+        }
+        let orphanNodesDeleted = orphanNodeIds.count
+
+        // 4. Chunks. `chunk_embedding` is a vec0 virtual table with no FK
+        //    cascade — clean its rows first. `chunk_embedding_metadata`
+        //    cascades on `article_chunk` deletion.
+        let chunkIds: [Int64] = try Int64.fetchAll(
+            db,
+            sql: "SELECT id FROM article_chunk WHERE feed_item_id = ?",
+            arguments: [feedItemId]
+        )
+        for chunkId in chunkIds {
+            try db.execute(
+                sql: "DELETE FROM chunk_embedding WHERE chunk_id = ?",
+                arguments: [chunkId]
+            )
+        }
+        try db.execute(
+            sql: "DELETE FROM article_chunk WHERE feed_item_id = ?",
+            arguments: [feedItemId]
+        )
+        let chunksDeleted = chunkIds.count
+
+        // 5. Tracking row. Without this, the unprocessed-articles query won't
+        //    pick the article up again on subsequent batch runs.
+        try db.execute(
+            sql: "DELETE FROM article_hypergraph WHERE feed_item_id = ?",
+            arguments: [feedItemId]
+        )
+
+        return ReprocessDeletionStats(
+            chunksDeleted: chunksDeleted,
+            edgesDeleted: edgesDeleted,
+            orphanNodesDeleted: orphanNodesDeleted,
+            provenanceDeleted: provenanceDeleted
+        )
+    }
+
     /// Processes all unprocessed articles with progress callback.
     /// Articles are processed in parallel with a configurable concurrency limit.
     /// Processing can be cancelled by calling `cancelProcessing()`.
@@ -1320,6 +1499,29 @@ struct HypergraphStatistics: Sendable {
     let processedArticles: Int
     let embeddingCount: Int
     let personaNodeCount: Int
+}
+
+/// Counts of rows deleted by `HypergraphService.deleteArticleGraphState`.
+/// `orphanNodesDeleted` is a global sweep — it counts every node whose
+/// remaining incidence count fell to zero, which may include nodes orphaned
+/// by previous reprocesses, not just by this article.
+struct ReprocessDeletionStats: Sendable, Equatable {
+    let chunksDeleted: Int
+    let edgesDeleted: Int
+    let orphanNodesDeleted: Int
+    let provenanceDeleted: Int
+}
+
+/// Result returned from `HypergraphService.reprocessArticle`. The `*Added`
+/// fields are post-reprocess counts scoped to this article, since the delete
+/// chain brought the article's graph state to zero before re-extraction ran.
+struct ReprocessOutcome: Sendable {
+    let feedItemId: Int64
+    let chunksAdded: Int
+    let nodesAdded: Int
+    let edgesAdded: Int
+    let processingTimeMs: Int
+    let deletionStats: ReprocessDeletionStats
 }
 
 enum HypergraphServiceError: Error, LocalizedError {
