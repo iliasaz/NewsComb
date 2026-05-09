@@ -41,6 +41,7 @@ class GraphViewModel {
         didSet {
             if connectionThreshold != oldValue {
                 expandedNodeIds.removeAll()
+            showingMatchesOnly = false
             }
         }
     }
@@ -53,6 +54,57 @@ class GraphViewModel {
 
     /// Custom node color hex value
     var nodeColorHex: String = AppSettings.defaultGraphNodeColor
+
+    /// When true, `visibleNodes` is restricted to nodes that participate in
+    /// the top-N longest paths instead of the connection-threshold filter.
+    var showingLongestPathsOnly = false
+
+    /// Set of node IDs that appear in the top longest paths (populated when
+    /// `showingLongestPathsOnly` is enabled).
+    var longestPathNodeIds: Set<Int64> = []
+
+    /// When true, `visibleNodes` is restricted to search-matched nodes plus
+    /// any node the user has expanded via double-click. Useful for drilling
+    /// into a search result without surrounding clutter.
+    var showingMatchesOnly = false
+
+    /// How many longest paths to show when the filter is active.
+    static let longestPathsCount = 10
+
+    /// Cached top-N longest paths over the current graph. Invalidated when
+    /// graph topology changes. Stored as `@ObservationIgnored` so reads
+    /// during view rendering can populate it without observation churn.
+    @ObservationIgnored
+    private var cachedLongestPaths: [[Int64]]?
+
+    /// Length (in nodes) of the single longest path in the current graph.
+    /// Returns 0 if the graph has no edges or no path could be found.
+    var longestPathLength: Int {
+        longestPaths().first?.count ?? 0
+    }
+
+    /// Compute (or return cached) top-N longest paths over the current graph.
+    func longestPaths() -> [[Int64]] {
+        if let cached = cachedLongestPaths { return cached }
+
+        let paths = LongestPathFinder.topLongestPaths(
+            nodes: nodes,
+            edges: edges,
+            count: Self.longestPathsCount
+        )
+        cachedLongestPaths = paths
+        return paths
+    }
+
+    /// Invalidate the longest-paths cache. Call after any topology change.
+    private func invalidateLongestPathsCache() {
+        cachedLongestPaths = nil
+        // Reset the filter too: cached node IDs are stale.
+        if showingLongestPathsOnly {
+            showingLongestPathsOnly = false
+            longestPathNodeIds = []
+        }
+    }
 
     // MARK: - Search State
 
@@ -134,9 +186,47 @@ class GraphViewModel {
 
     // MARK: - Computed Properties
 
-    /// Nodes visible after applying threshold filter and expansions
+    /// Nodes visible after applying the active filter mode.
+    ///
+    /// Three modes, mutually exclusive:
+    /// - **Matches only** (`showingMatchesOnly`): search hits ∪ expanded.
+    /// - **Longest paths** (`showingLongestPathsOnly`): nodes on the top-N
+    ///   longest paths.
+    /// - **Threshold** (default): degree ≥ threshold ∪ expanded.
     var visibleNodes: [GraphNode] {
-        nodes.filter { $0.degree >= connectionThreshold || expandedNodeIds.contains($0.id) }
+        Self.filterVisibleNodes(
+            nodes,
+            showingMatchesOnly: showingMatchesOnly,
+            showingLongestPathsOnly: showingLongestPathsOnly,
+            matchedNodeIds: matchedNodeIds,
+            expandedNodeIds: expandedNodeIds,
+            longestPathNodeIds: longestPathNodeIds,
+            connectionThreshold: connectionThreshold
+        )
+    }
+
+    /// Pure filter logic, exposed for unit testing without instantiating the
+    /// view model (which would touch `Database.current`).
+    nonisolated static func filterVisibleNodes(
+        _ nodes: [GraphNode],
+        showingMatchesOnly: Bool,
+        showingLongestPathsOnly: Bool,
+        matchedNodeIds: Set<Int64>,
+        expandedNodeIds: Set<Int64>,
+        longestPathNodeIds: Set<Int64>,
+        connectionThreshold: Int
+    ) -> [GraphNode] {
+        if showingMatchesOnly {
+            return nodes.filter {
+                matchedNodeIds.contains($0.id) || expandedNodeIds.contains($0.id)
+            }
+        }
+        if showingLongestPathsOnly {
+            return nodes.filter { longestPathNodeIds.contains($0.id) }
+        }
+        return nodes.filter {
+            $0.degree >= connectionThreshold || expandedNodeIds.contains($0.id)
+        }
     }
 
     /// Set of visible node IDs for efficient lookups
@@ -165,6 +255,7 @@ class GraphViewModel {
     func loadGraph() {
         isLoading = true
         errorMessage = nil
+        invalidateLongestPathsCache()
 
         do {
             let data = try graphDataService.loadFullGraph()
@@ -172,6 +263,7 @@ class GraphViewModel {
             edges = data.edges
             maxDegree = max(data.maxDegree, 1)
             expandedNodeIds.removeAll()
+            showingMatchesOnly = false
 
             // Calculate optimal threshold to show ~50 nodes
             connectionThreshold = calculateOptimalThreshold(targetCount: 50)
@@ -221,6 +313,7 @@ class GraphViewModel {
         isLoading = true
         errorMessage = nil
         focusedNodeId = nodeId
+        invalidateLongestPathsCache()
 
         do {
             let data = try graphDataService.loadNeighborhood(nodeId: nodeId)
@@ -228,6 +321,7 @@ class GraphViewModel {
             edges = data.edges
             maxDegree = max(data.maxDegree, 1)
             expandedNodeIds.removeAll()
+            showingMatchesOnly = false
 
             rebuildNodeIndex()
 
@@ -492,6 +586,98 @@ class GraphViewModel {
         updateNodePositionsFromLayout()
     }
 
+    // MARK: - Longest Paths Filter
+
+    /// Toggle the "show only top-N longest paths" filter.
+    ///
+    /// When enabling, computes the longest paths over the currently loaded
+    /// graph and stores the union of nodes that participate in them.
+    /// When disabling, clears the cached node set so the regular threshold
+    /// filter takes over again.
+    func toggleLongestPaths() {
+        if showingLongestPathsOnly {
+            showingLongestPathsOnly = false
+            longestPathNodeIds = []
+            return
+        }
+
+        let paths = longestPaths()
+        let pathNodeIds = Set(paths.flatMap { $0 })
+
+        guard !pathNodeIds.isEmpty else {
+            errorMessage = "Could not find any paths in the current graph."
+            return
+        }
+
+        // Mutually exclusive with the matches-only filter.
+        showingMatchesOnly = false
+        longestPathNodeIds = pathNodeIds
+        showingLongestPathsOnly = true
+    }
+
+    // MARK: - Focus on Search Match
+
+    /// Bring a search-result node into the visible graph and switch to the
+    /// matches-only filter so the user sees a small, connected island
+    /// centered on what they just clicked — not every search hit at once.
+    ///
+    /// Steps:
+    /// 1. Narrow `matchedNodeIds` to just this row, so only the clicked
+    ///    node is drawn yellow (the rest of the FTS hits stop dominating
+    ///    the canvas).
+    /// 2. Expand the node (loads its 1-hop neighbors into `expandedNodeIds`,
+    ///    which `filterVisibleNodes` unions with `matchedNodeIds`).
+    /// 3. Activate `showingMatchesOnly` (mutually exclusive with longest paths).
+    /// 4. Center the view on the matched node.
+    ///
+    /// The full `searchResults` panel data is preserved so the user can
+    /// click another row to pivot focus.
+    ///
+    /// `expandNode` is a no-op when the node isn't currently in `nodes`
+    /// (e.g., focused-view searches that match outside the loaded
+    /// neighborhood). The matched node itself stays visible through
+    /// `matchedNodeIds` regardless.
+    func focusOnSearchMatch(nodeId: Int64) {
+        matchedNodeIds = [nodeId]
+        expandNode(nodeId)
+
+        if showingLongestPathsOnly {
+            showingLongestPathsOnly = false
+            longestPathNodeIds = []
+        }
+        showingMatchesOnly = true
+
+        centerOnNode(nodeId)
+    }
+
+    // MARK: - Matches-Only Filter
+
+    /// Toggle the "show only search matches and expanded neighbors" filter.
+    ///
+    /// When enabled, `visibleNodes` is restricted to the union of
+    /// `matchedNodeIds` (search hits, drawn yellow) and `expandedNodeIds`
+    /// (nodes the user has revealed via double-click). Designed for the flow:
+    /// *search → see the yellow matches → double-click one to expand its
+    /// neighbors → keep drilling without other clutter on screen.*
+    func toggleMatchesOnly() {
+        if showingMatchesOnly {
+            showingMatchesOnly = false
+            return
+        }
+
+        guard !matchedNodeIds.isEmpty || !expandedNodeIds.isEmpty else {
+            errorMessage = "No search matches yet. Search for a node or edge first, then enable this filter."
+            return
+        }
+
+        // Mutually exclusive with the longest-paths filter.
+        if showingLongestPathsOnly {
+            showingLongestPathsOnly = false
+            longestPathNodeIds = []
+        }
+        showingMatchesOnly = true
+    }
+
     // MARK: - Node Color Settings
 
     /// Load the node color setting from the database.
@@ -564,6 +750,7 @@ class GraphViewModel {
 
             // Merge new data into the graph
             if !addedNodes.isEmpty {
+                invalidateLongestPathsCache()
                 nodes.append(contentsOf: addedNodes)
 
                 let existingEdgeIds = Set(edges.map(\.id))
