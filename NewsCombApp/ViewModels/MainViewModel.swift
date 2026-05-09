@@ -44,6 +44,12 @@ class MainViewModel {
     var opmlImportResult: OPMLImportResult?
     var opmlURLInput: String = ""
 
+    // Local-file (folder) import state
+    var isImportingFiles = false
+    var fileImportProgress: (processed: Int, total: Int) = (0, 0)
+    var currentImportingFile: String = ""
+    var fileImportResult: FileImportService.Outcome?
+
     // Feed statistics
     var newArticlesFromLastRefresh: Int = 0
     var lastRefreshTime: Date?
@@ -87,6 +93,9 @@ class MainViewModel {
 
     @ObservationIgnored
     private let nodeMergingService = NodeMergingService()
+
+    @ObservationIgnored
+    private let fileImportService = FileImportService()
 
     // MARK: - Computed Statistics
 
@@ -162,6 +171,40 @@ class MainViewModel {
             applyOPMLFeeds(feeds)
         } catch {
             errorMessage = "Failed to import OPML: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Local file (folder) import
+
+    /// Recursively imports every supported file under `rootURL` as articles in
+    /// a fresh manual feed. Mirrors the MCP `create_manual_feed` +
+    /// `ingest_article` tools so the feed appears identical to one created
+    /// from an MCP client. Knowledge-graph processing is *not* triggered
+    /// automatically — the user clicks "Process Knowledge Graph" afterward.
+    func importFolder(rootURL: URL, feedTitle: String) async {
+        guard !isImportingFiles else { return }
+        isImportingFiles = true
+        fileImportProgress = (0, 0)
+        currentImportingFile = ""
+        defer {
+            isImportingFiles = false
+            currentImportingFile = ""
+        }
+
+        do {
+            let outcome = try await fileImportService.importFolder(
+                rootURL: rootURL,
+                feedTitle: feedTitle
+            ) { @MainActor [weak self] processed, total, current in
+                self?.fileImportProgress = (processed, total)
+                self?.currentImportingFile = current
+            }
+            fileImportResult = outcome
+            loadSources()
+        } catch is CancellationError {
+            // User cancelled; not an error worth surfacing.
+        } catch {
+            errorMessage = "Folder import failed: \(error.localizedDescription)"
         }
     }
 
