@@ -766,6 +766,34 @@ struct GraphVisualizationView: View {
                 }
                 .help("Reload graph data")
 
+                Button(
+                    viewModel.showingLongestPathsOnly ? "All Nodes" : "Top 10 Paths",
+                    systemImage: viewModel.showingLongestPathsOnly
+                        ? "circle.grid.3x3"
+                        : "point.3.connected.trianglepath.dotted"
+                ) {
+                    viewModel.toggleLongestPaths()
+                }
+                .help(
+                    viewModel.showingLongestPathsOnly
+                        ? "Show all nodes again"
+                        : "Show only the top 10 longest paths"
+                )
+
+                Button(
+                    viewModel.showingMatchesOnly ? "Show All" : "Matches Only",
+                    systemImage: viewModel.showingMatchesOnly
+                        ? "line.3.horizontal.decrease.circle.fill"
+                        : "line.3.horizontal.decrease.circle"
+                ) {
+                    viewModel.toggleMatchesOnly()
+                }
+                .help(
+                    viewModel.showingMatchesOnly
+                        ? "Show all nodes again"
+                        : "Show only search matches and any nodes you've expanded from them"
+                )
+
                 Divider()
                     .frame(height: 20)
 
@@ -845,6 +873,7 @@ struct GraphVisualizationView: View {
                 StatRow(label: "Avg connections", value: String(format: "%.1f", averageDegree))
                 StatRow(label: "Isolated nodes", value: "\(isolatedNodeCount)")
                 StatRow(label: "Density", value: String(format: "%.2f%%", graphDensity * 100))
+                StatRow(label: "Longest path", value: "\(viewModel.longestPathLength) nodes")
             }
 
             // Top connected nodes

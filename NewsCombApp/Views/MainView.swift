@@ -14,6 +14,10 @@ struct MainView: View {
     @State private var exportSuccess: String?
     @State private var showingOPMLFilePicker = false
     @State private var showingOPMLURLInput = false
+    @State private var showingFolderPicker = false
+    @State private var pendingImportFolder: URL?
+    @State private var importFeedTitle: String = ""
+    @State private var showingImportTitleSheet = false
     @Environment(\.scenePhase) private var scenePhase
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -234,6 +238,13 @@ struct MainView: View {
                     Text("Added \(result.added) new feed\(result.added == 1 ? "" : "s"). \(result.skipped) already existed.")
                 }
             }
+            .modifier(FolderImportFlowModifier(
+                viewModel: viewModel,
+                showingFolderPicker: $showingFolderPicker,
+                showingImportTitleSheet: $showingImportTitleSheet,
+                pendingImportFolder: $pendingImportFolder,
+                importFeedTitle: $importFeedTitle
+            ))
         }
     }
 
@@ -658,10 +669,33 @@ struct MainView: View {
                 }
             }
             .disabled(viewModel.isImportingOPML)
+
+            Menu {
+                Button("From Folder...", systemImage: "folder.badge.plus") {
+                    showingFolderPicker = true
+                }
+            } label: {
+                if viewModel.isImportingFiles {
+                    Label {
+                        let p = viewModel.fileImportProgress
+                        if p.total > 0 {
+                            Text("Importing files \(p.processed)/\(p.total)...")
+                        } else {
+                            Text("Scanning folder...")
+                        }
+                    } icon: {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                } else {
+                    Label("Import Local Files", systemImage: "doc.badge.plus")
+                }
+            }
+            .disabled(viewModel.isImportingFiles)
         } header: {
             Text("Add RSS Feed")
         } footer: {
-            Text("Add RSS feed URLs individually, paste multiple URLs, or import from an OPML file.")
+            Text("Add RSS feed URLs individually, paste multiple URLs, import from an OPML file, or import a folder of local files (codebases, notes, PDFs) as articles.")
         }
     }
 

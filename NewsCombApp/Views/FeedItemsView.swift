@@ -37,6 +37,29 @@ struct FeedItemsView: View {
                         }
                     }
                 }
+                // Prefetch the next page when the user scrolls within
+                // `prefetchThreshold` rows of the bottom. Search is in-memory
+                // so we drive prefetch off the unfiltered `items` indices —
+                // skip prefetch while a search is active to avoid pulling in
+                // more rows the user can't see anyway.
+                .onAppear {
+                    if viewModel.searchText.isEmpty {
+                        viewModel.loadMoreIfNeeded(currentItem: item)
+                    }
+                }
+            }
+
+            if viewModel.isLoadingMore {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Loading more…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .listRowSeparator(.hidden)
             }
         }
         .navigationTitle(sourceName ?? "All Articles")
@@ -76,11 +99,14 @@ struct FeedItemsView: View {
             }
         }
         .onAppear {
-            if let sourceId {
-                viewModel.loadItems(forSourceId: sourceId)
-            } else {
-                viewModel.loadItems()
-            }
+            viewModel.loadInitial(forSourceId: sourceId)
+        }
+        // SwiftUI delivers `searchText` updates as the user types. Each
+        // change triggers a fresh SQL query — fast on the few-hundred-row
+        // tables this app sees, and the prefetch trigger is gated by
+        // `searchText.isEmpty` so we don't paginate during search.
+        .onChange(of: viewModel.searchText) { _, _ in
+            viewModel.performSearch()
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.errorMessage != nil },

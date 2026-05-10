@@ -113,7 +113,11 @@ struct GraphSearchOverlay: View {
 
             ForEach(matches) { match in
                 NodeMatchRow(match: match) {
-                    viewModel.loadNodeProvenance(nodeId: match.id)
+                    // Previously opened the source-article provenance sheet:
+                    // viewModel.loadNodeProvenance(nodeId: match.id)
+                    // Now: bring the node + its 1-hop neighbors into the
+                    // graph, mark them yellow, switch to matches-only view.
+                    viewModel.focusOnSearchMatch(nodeId: match.id)
                 }
             }
         }
