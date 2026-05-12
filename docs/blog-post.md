@@ -38,7 +38,7 @@ The real output: turning strategic awareness from an editorial process (humans r
 
 ## The Research Foundation
 
-We built on the **HyperGraphRAG** framework (Buehler, 2025), which introduced hypergraph-driven reasoning with affordable LLM-based knowledge construction. The paper demonstrated that small language models can extract high-quality Subject-Verb-Object triples from text, and that hypergraph topology enables multi-hop reasoning that traditional RAG cannot. This section covers the core algorithmic ideas that make the system work.
+We built on the hypergraph reasoning framework described by Stewart & Buehler (2026) in *Higher-Order Knowledge Representations for Agentic Scientific Reasoning*, which constructs hypergraph-based knowledge representations that faithfully encode multi-entity relationships and enables agentic reasoning via node-intersection graph traversal. The approach showed that small language models can extract high-quality Subject-Verb-Object triples from text, and that hypergraph topology enables multi-hop reasoning that traditional RAG cannot. This section covers the core algorithmic ideas that make the system work.
 
 ### Why a Hypergraph?
 
@@ -363,7 +363,9 @@ The pure-Swift implementation (`Services/UMAPService.swift` ~ 390 LOC) collapsed
 
 ## References
 
-- Buehler, M.J. (2025). "HyperGraphRAG: Hypergraph-Driven Reasoning and Affordable LLM-Based Knowledge Construction." arXiv:2601.04878.
+- Stewart, I.A., & Buehler, M.J. (2026). "Higher-Order Knowledge Representations for Agentic Scientific Reasoning." arXiv:2601.04878.
+- Luo, H., E, H., Chen, G., et al. (2025). "HyperGraphRAG: Retrieval-Augmented Generation via Hypergraph-Structured Knowledge Representation." arXiv:2503.21322.
+- Fan, D., Xue, Z., Liu, S., & Tan, Q. (2026). "Do We Still Need GraphRAG? Benchmarking RAG and GraphRAG for Agentic Search Systems." arXiv:2604.09666.
 - McInnes, L., Healy, J., & Melville, J. (2018). "UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction." arXiv:1802.03426.
 - Grootendorst, M. (2022). "BERTopic: Neural topic modeling with a class-based TF-IDF procedure."
 - Campello, R.J.G.B., Moulavi, D., & Sander, J. (2013). "Density-Based Clustering Based on Hierarchical Density Estimates." PAKDD 2013.

@@ -217,11 +217,16 @@ Add the same configuration to your Claude Desktop settings file:
 
 This project is inspired by and builds upon the hypergraph reasoning approach described in:
 
-**[HyperGraphRAG: Hypergraph-Driven Reasoning and Affordable LLM-Based Knowledge Construction](https://arxiv.org/pdf/2601.04878)**
+**[Higher-Order Knowledge Representations for Agentic Scientific Reasoning](https://arxiv.org/abs/2601.04878)**
 
-> Buehler, M.J. (2025). A novel approach using hypergraphs for knowledge organization and reasoning, enabling multi-hop traversal and affordable construction via small language models.
+> Stewart, I.A. & Buehler, M.J. (2026). Constructing hypergraph-based knowledge representations that faithfully encode multi-entity relationships, with agentic traversal via node-intersection constraints. arXiv:2601.04878v1.
 
 The original Python implementation is available at: [lamm-mit/HyperGraphReasoning](https://github.com/lamm-mit/HyperGraphReasoning)
+
+Related work that informed the design:
+
+- **[HyperGraphRAG: Retrieval-Augmented Generation via Hypergraph-Structured Knowledge Representation](https://arxiv.org/abs/2503.21322)** — Luo, H., E, H., Chen, G., et al. (2025). Represents n-ary relational facts as hyperedges with separate vector indexes for entities and hyperedges. arXiv:2503.21322v3.
+- **[Do We Still Need GraphRAG? Benchmarking RAG and GraphRAG for Agentic Search Systems](https://arxiv.org/abs/2604.09666)** — Fan, D., Xue, Z., Liu, S., & Tan, Q. (2026). Comparative evaluation of RAG versus GraphRAG for agentic search systems. arXiv:2604.09666v1.
 
 ### Technical Resources
 
