@@ -250,6 +250,60 @@ final class HypergraphServiceTests: XCTestCase {
         )
     }
 
+    // MARK: - Cancellation Propagation Tests
+
+    /// `processArticle`'s revised catch block must treat `CancellationError`
+    /// distinctly from other errors: cancellation resets the article to
+    /// `.pending` (so it's eligible to be retried), while other errors mark
+    /// it `.failed`. This guards the type-discrimination invariant the catch
+    /// block depends on.
+    func testCancellationErrorIsDistinctFromGenericError() {
+        let cancel: Error = CancellationError()
+        let generic: Error = HypergraphServiceError.noContent
+
+        XCTAssertTrue(cancel is CancellationError,
+                      "Sanity: CancellationError must be matchable with `is`")
+        XCTAssertFalse(generic is CancellationError,
+                       "Non-cancellation errors must not be matched as CancellationError, "
+                       + "otherwise the .pending reset would fire for ordinary failures.")
+    }
+
+    /// Cancelling the outer Task must propagate `Task.isCancelled` into a
+    /// child `TaskGroup`'s child tasks — this is the Swift Concurrency
+    /// guarantee that the cancellation fix relies on. If this ever stops
+    /// holding (e.g. because we restructure with `Task.detached`), the
+    /// Stop button will silently revert to the old "wait several minutes"
+    /// behavior, so pin the contract with a test.
+    func testTaskCancellationPropagatesToTaskGroupChildren() async {
+        let outer = Task<Bool, Never> {
+            await withTaskGroup(of: Bool.self, returning: Bool.self) { group in
+                group.addTask {
+                    // Long sleep that throws on cancellation. If propagation
+                    // works, this returns true within ~milliseconds, not 30s.
+                    do {
+                        try await Task.sleep(for: .seconds(30))
+                        return false
+                    } catch {
+                        return Task.isCancelled
+                    }
+                }
+                for await result in group {
+                    return result
+                }
+                return false
+            }
+        }
+
+        // Give the child task a moment to enter Task.sleep before we cancel.
+        try? await Task.sleep(for: .milliseconds(20))
+        outer.cancel()
+
+        let childSawCancellation = await outer.value
+        XCTAssertTrue(childSawCancellation,
+                      "TaskGroup children must observe Task.isCancelled when the outer Task is cancelled. "
+                      + "This is the propagation path that MainViewModel.cancelHypergraphProcessing() relies on.")
+    }
+
     // MARK: - AppSettings LLM Keys Tests
 
     func testAppSettingsLLMKeys() {

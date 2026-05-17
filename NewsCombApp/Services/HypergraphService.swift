@@ -167,6 +167,14 @@ final class HypergraphService: Sendable {
             let processingTime = Date().timeIntervalSince(startTime)
             logger.info("Text processing completed in \(String(format: "%.2f", processingTime))s")
 
+            // Cancellation gate: if Stop was pressed while the LLM was running,
+            // drop everything we just extracted and reset to .pending. The
+            // FoundationModels XPC call doesn't observe Task cancellation, so
+            // this is the first checkpoint after it returns — and it MUST run
+            // before any database writes so the article boundary stays atomic.
+            try Task.checkCancellation()
+            if isCancelled { throw CancellationError() }
+
             // Log hypergraph statistics
             let nodeCount = result.hypergraph.nodes.count
             let edgeCount = result.hypergraph.incidenceDict.count
@@ -198,6 +206,12 @@ final class HypergraphService: Sendable {
                 chunkCount: chunkCount
             )
             logger.info("Article \(feedItemId) processing completed successfully")
+        } catch is CancellationError {
+            // User pressed Stop. Reset to .pending so this article is eligible
+            // again on the next run, instead of being marked .failed.
+            logger.info("Article \(feedItemId) cancelled mid-flight; resetting to pending")
+            try? updateProcessingStatus(feedItemId: feedItemId, status: .pending)
+            throw CancellationError()
         } catch {
             // Mark as failed
             logger.error("Failed to process article \(feedItemId): \(error.localizedDescription, privacy: .public)")

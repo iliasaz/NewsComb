@@ -95,6 +95,12 @@ class MainViewModel {
     @ObservationIgnored
     private let nodeMergingService = NodeMergingService()
 
+    /// Handle to the inflight hypergraph processing call so the Stop button
+    /// can cancel it and propagate `Task.isCancelled` to every child task
+    /// running in the service's `withThrowingTaskGroup`.
+    @ObservationIgnored
+    private var hypergraphProcessingTask: Task<Int, Error>?
+
     @ObservationIgnored
     private let logger = Logger(subsystem: "com.newscomb", category: "MainViewModel")
 
@@ -725,20 +731,29 @@ class MainViewModel {
                 hypergraphProcessingStatus = "Repaired \(repaired) articles, processing\u{2026}"
             }
 
-            let processedCount = try await hypergraphService.processUnprocessedArticles(
-                progressCallback: { [weak self] processed, total, title in
-                    self?.hypergraphProgress = (processed, total)
-                    self?.hypergraphProcessingStatus = "Processing: \(title)"
-                },
-                detailCallback: { [weak self] detail in
-                    switch detail.kind {
-                    case .articleStarted(let title):
-                        self?.currentProcessingArticle = title
-                    case .entitiesExtracted(_, let entities):
-                        self?.recentlyExtractedEntities = entities
+            // Wrap in a Task so cancelHypergraphProcessing() can call .cancel()
+            // on it. That propagates Task.isCancelled into every child task in
+            // the service's TaskGroup, so they bail at the next checkpoint
+            // (immediately after their in-flight LanguageModelSession returns).
+            let task = Task { [hypergraphService] in
+                try await hypergraphService.processUnprocessedArticles(
+                    progressCallback: { [weak self] processed, total, title in
+                        self?.hypergraphProgress = (processed, total)
+                        self?.hypergraphProcessingStatus = "Processing: \(title)"
+                    },
+                    detailCallback: { [weak self] detail in
+                        switch detail.kind {
+                        case .articleStarted(let title):
+                            self?.currentProcessingArticle = title
+                        case .entitiesExtracted(_, let entities):
+                            self?.recentlyExtractedEntities = entities
+                        }
                     }
-                }
-            )
+                )
+            }
+            hypergraphProcessingTask = task
+            defer { hypergraphProcessingTask = nil }
+            let processedCount = try await task.value
 
             // Update stats before simplification
             loadHypergraphStats()
@@ -777,6 +792,13 @@ class MainViewModel {
             hypergraphProcessingStatus = "Cancelled at \(hypergraphProgress.processed)/\(hypergraphProgress.total)"
             // Update stats even on cancel - some articles may have been processed
             loadHypergraphStats()
+        } catch is CancellationError {
+            // Raw CancellationError can arrive if the outer Task is cancelled
+            // while we're suspended outside the service's TaskGroup (e.g. in
+            // the retry-delay `Task.sleep`). Treat identically to the typed
+            // cancellation above.
+            hypergraphProcessingStatus = "Cancelled at \(hypergraphProgress.processed)/\(hypergraphProgress.total)"
+            loadHypergraphStats()
         } catch {
             errorMessage = "Hypergraph processing failed: \(error.localizedDescription)"
             hypergraphProcessingStatus = "Failed"
@@ -788,7 +810,14 @@ class MainViewModel {
     }
 
     /// Cancels the current hypergraph processing operation.
+    ///
+    /// Two-step cancellation: cancel the wrapping Task (propagates
+    /// `Task.isCancelled` to every child task in the service's TaskGroup so
+    /// they bail at the next checkpoint after the in-flight LLM call returns),
+    /// and flip the service's manual flag (used by the batch-boundary checks
+    /// in `processUnprocessedArticles`).
     func cancelHypergraphProcessing() {
+        hypergraphProcessingTask?.cancel()
         hypergraphService.cancelProcessing()
         hypergraphProcessingStatus = "Cancelling..."
     }
