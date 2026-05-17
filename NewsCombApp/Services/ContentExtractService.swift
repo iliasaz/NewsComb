@@ -58,11 +58,14 @@ struct ContentExtractService {
             let (data, response) = try await Self.urlSession.data(for: request)
 
             // Get the final URL after redirects
-            let finalURL = (response as? HTTPURLResponse)?.url ?? url
+            let httpResponse = response as? HTTPURLResponse
+            let finalURL = httpResponse?.url ?? url
 
-            // Check if we got valid HTML
-            guard let html = String(data: data, encoding: .utf8) else {
-                logger.error("Content extraction failed for \(articleURL, privacy: .public): Could not decode response as UTF-8")
+            // Decode HTML using the server-declared charset when available, falling back
+            // to UTF-8 and then Windows-1252 (HTML's spec-default and a lossless fallback
+            // since every byte is a valid code point).
+            guard let html = Self.decodeHTML(data: data, response: httpResponse) else {
+                logger.error("Content extraction failed for \(articleURL, privacy: .public): Could not decode response with any known encoding")
                 return ExtractionResult(content: nil, finalURL: finalURL.absoluteString)
             }
 
@@ -158,6 +161,31 @@ struct ContentExtractService {
 
         logger.debug("Could not fetch README for GitHub repo: \(repoURL, privacy: .public)")
         return nil
+    }
+
+    /// Decode HTTP response bytes into a `String`, trying (in order):
+    /// 1. The charset declared in `Content-Type` (via `HTTPURLResponse.textEncodingName`)
+    /// 2. UTF-8
+    /// 3. Windows-1252 — HTML5's spec default and a lossless fallback (every byte maps
+    ///    to a valid code point, so it never fails). This catches sites like
+    ///    paulgraham.com that emit non-UTF-8 bytes with no declared charset.
+    static func decodeHTML(data: Data, response: HTTPURLResponse?) -> String? {
+        if let name = response?.textEncodingName {
+            let cfEncoding = CFStringConvertIANACharSetNameToEncoding(name as CFString)
+            if cfEncoding != kCFStringEncodingInvalidId {
+                let nsEncoding = CFStringConvertEncodingToNSStringEncoding(cfEncoding)
+                let encoding = String.Encoding(rawValue: nsEncoding)
+                if let decoded = String(data: data, encoding: encoding) {
+                    return decoded
+                }
+            }
+        }
+
+        if let decoded = String(data: data, encoding: .utf8) {
+            return decoded
+        }
+
+        return String(data: data, encoding: .windowsCP1252)
     }
 
     /// Check if a URL is a GitHub repository URL
