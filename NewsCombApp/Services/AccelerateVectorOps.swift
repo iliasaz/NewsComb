@@ -1,8 +1,20 @@
 import Accelerate
+import OSLog
 
 /// Optimized vector operations using Apple's Accelerate framework.
 /// Used for efficient cosine similarity and similarity matrix computations.
 struct AccelerateVectorOps {
+
+    /// A pair of vector indices and their similarity score. Nominal struct
+    /// rather than a labeled tuple so callers avoid the runtime tuple-metadata
+    /// cache lookups that showed up as hot frames in profiling.
+    struct SimilarPair: Sendable, Equatable {
+        let i: Int
+        let j: Int
+        let similarity: Float
+    }
+
+    private static let logger = Logger(subsystem: "com.newscomb", category: "AccelerateVectorOps")
 
     /// Cosine similarity between two vectors using vDSP.
     /// Returns a value between -1 and 1, where 1 means identical direction.
@@ -108,27 +120,133 @@ struct AccelerateVectorOps {
     /// Find all pairs of vectors with similarity above a threshold.
     /// Only returns pairs where i < j to avoid duplicates.
     ///
+    /// Uses a blocked matrix multiply (BLAS `cblas_sgemm`) so memory is
+    /// O(blockSize · N) instead of O(N²). For N = 143k that's ~1.2 GB at
+    /// blockSize = 2048 versus ~82 GB for the full similarity matrix.
+    ///
+    /// `cblas_sgemm` is the Accelerate BLAS path that uses the AMX coprocessor
+    /// and is internally multi-threaded — typically 50–100× faster than
+    /// `vDSP_mmul` for sizes like these on Apple Silicon. Passing `CblasTrans`
+    /// for B avoids a pre-transposed copy of the normalized matrix.
+    ///
     /// - Parameters:
-    ///   - embeddings: Array of embedding vectors
+    ///   - embeddings: Array of embedding vectors (must share dimension)
     ///   - threshold: Minimum similarity to include (default 0.9)
-    /// - Returns: Array of (index1, index2, similarity) tuples
+    ///   - blockSize: Number of rows processed per sgemm call. Larger values
+    ///     improve throughput; smaller values reduce peak RAM. The default of
+    ///     2048 is a good balance on Apple Silicon.
+    /// - Returns: Array of (index1, index2, similarity) tuples, sorted by
+    ///   similarity descending.
     static func findSimilarPairs(
         embeddings: [[Float]],
-        threshold: Float = 0.9
-    ) -> [(i: Int, j: Int, similarity: Float)] {
-        let simMatrix = cosineSimilarityMatrix(embeddings)
-        var pairs: [(i: Int, j: Int, similarity: Float)] = []
+        threshold: Float = 0.9,
+        blockSize: Int = 2048
+    ) -> [SimilarPair] {
+        let n = embeddings.count
+        guard n > 1 else { return [] }
+        guard let dim = embeddings.first?.count, dim > 0 else { return [] }
+        let block = max(1, min(blockSize, n))
+        let totalBlocks = (n + block - 1) / block
 
-        // Upper triangle only (i < j)
-        for i in 0..<simMatrix.count {
-            for j in (i + 1)..<simMatrix[i].count {
-                if simMatrix[i][j] > threshold {
-                    pairs.append((i: i, j: j, similarity: simMatrix[i][j]))
-                }
+        let startTime = ContinuousClock.now
+        logger.info("findSimilarPairs: n=\(n), dim=\(dim), block=\(block), blocks=\(totalBlocks), threshold=\(threshold)")
+
+        // 1. Normalize all embeddings into a flat row-major buffer.
+        //    Memory: n * dim * 4 bytes (e.g. ~220 MB for 143k × 384).
+        var normalized = [Float](repeating: 0, count: n * dim)
+        normalized.withUnsafeMutableBufferPointer { buf in
+            for i in 0..<n {
+                let embedding = embeddings[i]
+                guard embedding.count == dim else { continue }
+                var normSq: Float = 0
+                vDSP_svesq(embedding, 1, &normSq, vDSP_Length(dim))
+                let norm = sqrt(normSq)
+                guard norm > 0 else { continue }
+                var scale: Float = 1.0 / norm
+                let dest = buf.baseAddress!.advanced(by: i * dim)
+                vDSP_vsmul(embedding, 1, &scale, dest, 1, vDSP_Length(dim))
             }
         }
 
-        return pairs.sorted { $0.similarity > $1.similarity }
+        logger.info("findSimilarPairs: normalized in \(ContinuousClock.now - startTime)")
+
+        // 2. Block scratch: one reused buffer for each row stripe.
+        //    Memory: block * n * 4 bytes (e.g. ~1.2 GB for 2048 × 143k).
+        var blockResult = [Float](repeating: 0, count: block * n)
+        var pairs: [SimilarPair] = []
+        // Reserve a modest capacity so the early geometric-growth reallocations
+        // (which showed up as malloc/memmove hot frames) don't fire.
+        pairs.reserveCapacity(4096)
+
+        // Log progress at most ~20 times across the run so we get visible
+        // movement without flooding the log for huge graphs.
+        let logEvery = max(1, totalBlocks / 20)
+        var blockIndex = 0
+        var rowStart = 0
+        while rowStart < n {
+            let rows = min(block, n - rowStart)
+
+            // C (rows × n) = A_block (rows × dim) × normalizedᵀ (dim × n)
+            // Using cblas_sgemm with TransB lets us multiply by Aᵀ on the fly
+            // — no separately materialized transposed buffer needed.
+            normalized.withUnsafeBufferPointer { normPtr in
+                blockResult.withUnsafeMutableBufferPointer { resPtr in
+                    let aBlock = normPtr.baseAddress!.advanced(by: rowStart * dim)
+                    cblas_sgemm(
+                        CblasRowMajor,
+                        CblasNoTrans,            // A: rows × dim
+                        CblasTrans,              // B: n × dim, used as dim × n
+                        rows,                    // M
+                        n,                       // N
+                        dim,                     // K
+                        1.0,                     // alpha
+                        aBlock, dim,             // A, lda
+                        normPtr.baseAddress!, dim,  // B, ldb (full normalized)
+                        0.0,                     // beta
+                        resPtr.baseAddress!, n   // C, ldc
+                    )
+                }
+            }
+
+            // Scan upper triangle within this block: j must be > globalI.
+            // Tight raw-pointer + `while` loop on purpose — Range iteration
+            // (IndexingIterator / formIndex / bounds checks) was the top
+            // user-code hot path in profiling.
+            blockResult.withUnsafeBufferPointer { res in
+                let base = res.baseAddress!
+                var localI = 0
+                while localI < rows {
+                    let globalI = rowStart + localI
+                    let jStart = globalI + 1
+                    if jStart < n {
+                        let rowBase = base + localI * n
+                        var j = jStart
+                        while j < n {
+                            let sim = rowBase[j]
+                            if sim > threshold {
+                                pairs.append(SimilarPair(i: globalI, j: j, similarity: sim))
+                            }
+                            j &+= 1
+                        }
+                    }
+                    localI &+= 1
+                }
+            }
+
+            rowStart += rows
+            blockIndex += 1
+
+            if blockIndex == totalBlocks || blockIndex % logEvery == 0 {
+                let elapsed = ContinuousClock.now - startTime
+                logger.info("findSimilarPairs: block \(blockIndex)/\(totalBlocks) — \(pairs.count) pairs so far, elapsed \(elapsed)")
+            }
+        }
+
+        let totalElapsed = ContinuousClock.now - startTime
+        logger.info("findSimilarPairs: done in \(totalElapsed) — \(pairs.count) pairs above threshold \(threshold), sorting")
+        let sorted = pairs.sorted { $0.similarity > $1.similarity }
+        logger.info("findSimilarPairs: returning \(sorted.count) sorted pairs (total elapsed \(ContinuousClock.now - startTime))")
+        return sorted
     }
 
     /// Compute the L2 (Euclidean) distance between two vectors.

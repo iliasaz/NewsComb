@@ -1,6 +1,24 @@
 import XCTest
 @testable import NewsCombApp
 
+/// Deterministic, seedable PRNG so tests don't randomly straddle the threshold
+/// boundary. `cblas_sgemm` can produce ~1 ULP rounding differences at different
+/// internal blockings, so any test that compares pair counts across block sizes
+/// must keep all similarity values comfortably away from the threshold — easier
+/// when the inputs are reproducible.
+private struct SeededPRNG: RandomNumberGenerator {
+    private var state: UInt64
+    init(seed: UInt64) { self.state = seed | 1 }
+    mutating func next() -> UInt64 {
+        // SplitMix64 — small, well-distributed, good enough for tests.
+        state &+= 0x9E3779B97F4A7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
+        z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+        return z ^ (z >> 31)
+    }
+}
+
 final class AccelerateVectorOpsTests: XCTestCase {
 
     // MARK: - Cosine Similarity Tests
@@ -167,6 +185,111 @@ final class AccelerateVectorOpsTests: XCTestCase {
         let pairs = AccelerateVectorOps.findSimilarPairs(embeddings: embeddings, threshold: 0.5)
 
         XCTAssertTrue(pairs.isEmpty)
+    }
+
+    func testFindSimilarPairsBlockSizeIndependence() {
+        // The blocked implementation must return the same pairs for any
+        // block size from 1 up to and beyond N. This guards against
+        // off-by-one bugs at block boundaries (especially the upper-triangle
+        // mask that depends on the global row index).
+        var rng = SeededPRNG(seed: 0xC0FFEE_BADC0DE)
+        var embeddings: [[Float]] = []
+        for _ in 0..<37 {
+            var vec = [Float]()
+            for _ in 0..<16 {
+                vec.append(Float.random(in: -1...1, using: &rng))
+            }
+            embeddings.append(vec)
+        }
+        // Inject a few near-duplicates so we get non-empty results.
+        embeddings.append(embeddings[3].map { $0 * 1.01 })
+        embeddings.append(embeddings[10].map { $0 + 0.001 })
+
+        let reference = AccelerateVectorOps.findSimilarPairs(
+            embeddings: embeddings, threshold: 0.5, blockSize: embeddings.count
+        )
+
+        for block in [1, 2, 3, 7, 16, 32, 64, 128] {
+            let actual = AccelerateVectorOps.findSimilarPairs(
+                embeddings: embeddings, threshold: 0.5, blockSize: block
+            )
+            XCTAssertEqual(actual.count, reference.count, "block=\(block) pair count mismatch")
+            for (a, r) in zip(actual, reference) {
+                XCTAssertEqual(a.i, r.i, "block=\(block) i mismatch")
+                XCTAssertEqual(a.j, r.j, "block=\(block) j mismatch")
+                XCTAssertEqual(a.similarity, r.similarity, accuracy: 1e-4, "block=\(block) sim mismatch")
+            }
+        }
+    }
+
+    func testFindSimilarPairsSortedDescending() {
+        // Three identical pairs at different similarity levels; verify the
+        // output is sorted highest-similarity first.
+        let embeddings: [[Float]] = [
+            [1, 0, 0],
+            [0.999, 0.001, 0],   // ~1.0
+            [0.95, 0.05, 0],     // ~0.95
+            [0.92, 0.08, 0]      // ~0.92
+        ]
+
+        let pairs = AccelerateVectorOps.findSimilarPairs(embeddings: embeddings, threshold: 0.9, blockSize: 2)
+
+        XCTAssertGreaterThanOrEqual(pairs.count, 3)
+        for k in 1..<pairs.count {
+            XCTAssertGreaterThanOrEqual(pairs[k - 1].similarity, pairs[k].similarity)
+        }
+    }
+
+    func testFindSimilarPairsUpperTriangleOnly() {
+        // All pairs must satisfy i < j.
+        let embeddings: [[Float]] = (0..<20).map { idx in
+            var v = [Float](repeating: 0, count: 8)
+            v[idx % 8] = 1
+            v[(idx + 1) % 8] = Float(idx) * 0.05
+            return v
+        }
+        let pairs = AccelerateVectorOps.findSimilarPairs(embeddings: embeddings, threshold: 0.0, blockSize: 4)
+        for p in pairs {
+            XCTAssertLessThan(p.i, p.j)
+        }
+    }
+
+    func testFindSimilarPairsMatchesBruteForce() {
+        // Cross-check against a naive O(N²) reference computed via
+        // `cosineSimilarity` to confirm the blocked path is semantically
+        // identical to the original code path.
+        var rng = SeededPRNG(seed: 0xDEAD_BEEF_CAFE)
+        var embeddings: [[Float]] = []
+        for _ in 0..<24 {
+            var vec = [Float]()
+            for _ in 0..<12 {
+                vec.append(Float.random(in: -1...1, using: &rng))
+            }
+            embeddings.append(vec)
+        }
+
+        let threshold: Float = 0.3
+        var brute: [AccelerateVectorOps.SimilarPair] = []
+        for i in 0..<embeddings.count {
+            for j in (i + 1)..<embeddings.count {
+                let sim = AccelerateVectorOps.cosineSimilarity(embeddings[i], embeddings[j])
+                if sim > threshold {
+                    brute.append(AccelerateVectorOps.SimilarPair(i: i, j: j, similarity: sim))
+                }
+            }
+        }
+        brute.sort { $0.similarity > $1.similarity }
+
+        let actual = AccelerateVectorOps.findSimilarPairs(
+            embeddings: embeddings, threshold: threshold, blockSize: 5
+        )
+
+        XCTAssertEqual(actual.count, brute.count)
+        for (a, b) in zip(actual, brute) {
+            XCTAssertEqual(a.i, b.i)
+            XCTAssertEqual(a.j, b.j)
+            XCTAssertEqual(a.similarity, b.similarity, accuracy: 1e-4)
+        }
     }
 
     // MARK: - L2 Distance Tests

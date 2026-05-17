@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import GRDB
+import OSLog
 
 enum FetchStatus: Equatable, Hashable {
     case pending
@@ -93,6 +94,9 @@ class MainViewModel {
 
     @ObservationIgnored
     private let nodeMergingService = NodeMergingService()
+
+    @ObservationIgnored
+    private let logger = Logger(subsystem: "com.newscomb", category: "MainViewModel")
 
     @ObservationIgnored
     private let fileImportService = FileImportService()
@@ -750,13 +754,22 @@ class MainViewModel {
                     let result = try await nodeMergingService.simplifyHypergraph()
                     if result.mergedPairs > 0 {
                         simplifyMessage = ", merged \(result.mergedPairs) similar node\(result.mergedPairs == 1 ? "" : "s")"
+                    } else {
+                        simplifyMessage = ", no similar nodes to merge"
                     }
                     loadHypergraphStats()
                 } catch {
-                    // Simplification failure is non-fatal — log but don't block
-                    simplifyMessage = " (simplification failed)"
+                    // Simplification failure is non-fatal — log and surface the
+                    // reason so it isn't lost under the "Completed" status.
+                    logger.error("Hypergraph simplification failed: \(error.localizedDescription, privacy: .public)")
+                    simplifyMessage = " (simplification failed: \(error.localizedDescription))"
                 }
                 isSimplifyingGraph = false
+            } else if hypergraphStats == nil {
+                // canSimplifyGraph() returned false because stats failed to load —
+                // surface this rather than silently skipping the merge step.
+                logger.warning("Skipping simplification: hypergraph statistics unavailable")
+                simplifyMessage = " (simplification skipped: statistics unavailable)"
             }
 
             hypergraphProcessingStatus = "Completed: \(processedCount) articles processed\(simplifyMessage)"
@@ -785,7 +798,10 @@ class MainViewModel {
         do {
             hypergraphStats = try hypergraphService.getStatistics()
         } catch {
-            // Silently fail - stats are not critical
+            // Stats failure is non-fatal, but log it — a nil `hypergraphStats`
+            // causes `canSimplifyGraph()` to return false and silently skip
+            // the auto-merge step after extraction.
+            logger.error("Failed to load hypergraph statistics: \(error.localizedDescription, privacy: .public)")
         }
         checkEmbeddingDimensionMismatch()
     }

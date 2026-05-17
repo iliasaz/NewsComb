@@ -170,14 +170,14 @@ final class PCAService: Sendable {
                     CblasRowMajor,   // flat is row-major N×D
                     CblasUpper,      // fill upper triangle
                     CblasTrans,      // C = Aᵀ·A (D×N · N×D = D×D)
-                    Int32(d),        // N: order of C (d×d)
-                    Int32(n),        // K: number of rows of A (n samples)
+                    d,               // N: order of C (d×d)
+                    n,               // K: number of rows of A (n samples)
                     scale,           // alpha: fold 1/(n-1) into the multiply
                     flatBuf.baseAddress!, // A: N×D row-major data
-                    Int32(d),        // lda: leading dimension (row stride = d)
+                    d,               // lda: leading dimension (row stride = d)
                     0.0,             // beta: C starts as zero
                     covBuf.baseAddress!, // C: output D×D covariance matrix
-                    Int32(d)         // ldc: leading dimension of C
+                    d                // ldc: leading dimension of C
                 )
             }
         }
@@ -201,17 +201,17 @@ final class PCAService: Sendable {
     private func eigendecompose(matrix: inout [Float], eigenvalues: inout [Float], d: Int) {
         var jobz: CChar = CChar(Character("V").asciiValue!) // Compute eigenvectors
         var uplo: CChar = CChar(Character("U").asciiValue!) // Upper triangle
-        var n = Int32(d)
-        var lda = Int32(d)
-        var info: Int32 = 0
+        var n = d
+        var lda = d
+        var info = 0
 
         // Query optimal workspace size
         var workQuery: Float = 0
-        var lwork: Int32 = -1
+        var lwork = -1
         ssyev_(&jobz, &uplo, &n, &matrix, &lda, &eigenvalues, &workQuery, &lwork, &info)
 
-        lwork = Int32(workQuery)
-        var workspace = [Float](repeating: 0, count: Int(lwork))
+        lwork = Int(workQuery)
+        var workspace = [Float](repeating: 0, count: lwork)
         ssyev_(&jobz, &uplo, &n, &matrix, &lda, &eigenvalues, &workspace, &lwork, &info)
 
         if info != 0 {

@@ -32,11 +32,13 @@ final class NodeMergingService: Sendable {
         similarityThreshold: Float = defaultSimilarityThreshold,
         batchSize: Int = 500
     ) async throws -> MergeResult {
+        let overallStart = ContinuousClock.now
         logger.info("Starting hypergraph simplification with threshold \(similarityThreshold)")
 
         // 1. Load all nodes with embeddings
+        let loadStart = ContinuousClock.now
         let nodesWithEmbeddings = try loadNodesWithEmbeddings()
-        logger.info("Loaded \(nodesWithEmbeddings.count) nodes with embeddings")
+        logger.info("Loaded \(nodesWithEmbeddings.count) nodes with embeddings in \(ContinuousClock.now - loadStart)")
 
         guard nodesWithEmbeddings.count > 1 else {
             logger.info("Not enough nodes to merge")
@@ -48,26 +50,34 @@ final class NodeMergingService: Sendable {
         let embeddings = nodesWithEmbeddings.map { $0.embedding }
 
         // 3. Find similar pairs above threshold
+        logger.info("Searching for similar pairs across \(embeddings.count) embeddings…")
+        let pairsStart = ContinuousClock.now
         let similarPairs = AccelerateVectorOps.findSimilarPairs(
             embeddings: embeddings,
             threshold: similarityThreshold
         )
-        logger.info("Found \(similarPairs.count) pairs above threshold \(similarityThreshold)")
+        logger.info("Found \(similarPairs.count) pairs above threshold \(similarityThreshold) in \(ContinuousClock.now - pairsStart)")
 
         guard !similarPairs.isEmpty else {
             return MergeResult(mergedPairs: 0, nodesRemoved: 0, embeddingsRecomputed: 0)
         }
 
         // 4. Build merge plan: for each pair, keep the node with higher degree
+        logger.info("Building merge plan from \(similarPairs.count) pairs…")
+        let planStart = ContinuousClock.now
         let mergePlan = try buildMergePlan(
             nodeIds: nodeIds,
             similarPairs: similarPairs
         )
-        logger.info("Merge plan: \(mergePlan.count) nodes to merge")
+        logger.info("Merge plan: \(mergePlan.count) nodes to merge (built in \(ContinuousClock.now - planStart))")
 
         // 5. Execute merges
+        logger.info("Executing \(mergePlan.count) merges…")
+        let execStart = ContinuousClock.now
         let mergedCount = try executeMerges(mergePlan: mergePlan)
+        logger.info("Executed \(mergedCount) merges in \(ContinuousClock.now - execStart)")
 
+        logger.info("Simplification complete: merged \(mergedCount) nodes (total \(ContinuousClock.now - overallStart))")
         return MergeResult(
             mergedPairs: mergedCount,
             nodesRemoved: mergedCount,
@@ -123,13 +133,18 @@ final class NodeMergingService: Sendable {
 
     private func buildMergePlan(
         nodeIds: [Int64],
-        similarPairs: [(i: Int, j: Int, similarity: Float)]
+        similarPairs: [AccelerateVectorOps.SimilarPair]
     ) throws -> [MergeAction] {
         // Get degrees (edge count) for all nodes
+        let degreesStart = ContinuousClock.now
         let degrees = try getNodeDegrees(nodeIds: nodeIds)
+        logger.info("Fetched node degrees for \(nodeIds.count) nodes in \(ContinuousClock.now - degreesStart)")
 
         var mergeActions: [MergeAction] = []
         var alreadyMerged = Set<Int64>()
+
+        let logEvery = max(1, similarPairs.count / 10)
+        var processed = 0
 
         for pair in similarPairs {
             let nodeIdI = nodeIds[pair.i]
@@ -166,6 +181,11 @@ final class NodeMergingService: Sendable {
             ))
 
             alreadyMerged.insert(removeId)
+            processed += 1
+
+            if processed % logEvery == 0 {
+                logger.info("Merge plan progress: \(processed)/\(similarPairs.count) pairs evaluated, \(mergeActions.count) merges queued")
+            }
         }
 
         return mergeActions
@@ -174,17 +194,21 @@ final class NodeMergingService: Sendable {
     private func getNodeDegrees(nodeIds: [Int64]) throws -> [Int64: Int] {
         guard !nodeIds.isEmpty else { return [:] }
 
+        // Aggregate degrees over the entire incidence table instead of binding
+        // one placeholder per node. With ~143k nodes a `WHERE node_id IN (?,?…)`
+        // exceeds SQLite's SQLITE_MAX_VARIABLE_NUMBER (999 on older builds,
+        // 32,766 on newer ones). Orphan nodes never appear in `hypergraph_incidence`,
+        // and the caller already treats missing entries as degree 0.
         return try database.read { db in
-            let placeholders = nodeIds.map { _ in "?" }.joined(separator: ",")
             let sql = """
                 SELECT node_id, COUNT(*) as degree
                 FROM hypergraph_incidence
-                WHERE node_id IN (\(placeholders))
                 GROUP BY node_id
             """
 
-            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(nodeIds))
+            let rows = try Row.fetchAll(db, sql: sql)
             var degrees: [Int64: Int] = [:]
+            degrees.reserveCapacity(rows.count)
             for row in rows {
                 let nodeId: Int64 = row["node_id"]
                 let degree: Int = row["degree"]
@@ -208,14 +232,24 @@ final class NodeMergingService: Sendable {
 
     private func executeMerges(mergePlan: [MergeAction]) throws -> Int {
         var mergedCount = 0
+        var failedCount = 0
+        let logEvery = max(1, mergePlan.count / 20)
+        let startTime = ContinuousClock.now
 
-        for action in mergePlan {
+        for (index, action) in mergePlan.enumerated() {
             do {
                 try executeSingleMerge(action: action)
                 mergedCount += 1
                 logger.debug("Merged '\(action.removeLabel, privacy: .public)' into '\(action.keepLabel, privacy: .public)' (similarity: \(String(format: "%.3f", action.similarity)))")
             } catch {
+                failedCount += 1
                 logger.warning("Failed to merge node \(action.removeNodeId): \(error.localizedDescription, privacy: .public)")
+            }
+
+            let completed = index + 1
+            if completed == mergePlan.count || completed % logEvery == 0 {
+                let elapsed = ContinuousClock.now - startTime
+                logger.info("Merge progress: \(completed)/\(mergePlan.count) — \(mergedCount) merged, \(failedCount) failed, elapsed \(elapsed)")
             }
         }
 
