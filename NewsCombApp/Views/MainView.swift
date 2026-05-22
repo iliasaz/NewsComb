@@ -551,7 +551,7 @@ struct MainView: View {
                                 total: Double(viewModel.hypergraphProgress.total)
                             )
 
-                            Text("\(viewModel.hypergraphProgress.processed)/\(viewModel.hypergraphProgress.total) articles")
+                            Text("\(viewModel.hypergraphProgress.processed)/\(viewModel.hypergraphProgress.total) segments")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

@@ -713,9 +713,10 @@ class MainViewModel {
         recentlyExtractedEntities = []
 
         do {
-            // Set initial progress with total article count so the bar shows immediately
-            let totalArticles = getUnprocessedArticleCount()
-            hypergraphProgress = (0, totalArticles)
+            // The service reports progress at chunk granularity once it has split
+            // the articles; until then show an indeterminate state (total 0 hides
+            // the bar) rather than a misleading article count.
+            hypergraphProgress = (0, 0)
             hypergraphProcessingStatus = "Starting\u{2026}"
 
             // Repair provenance for articles affected by the chunk_index=0 bug.

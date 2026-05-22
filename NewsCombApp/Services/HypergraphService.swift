@@ -542,7 +542,6 @@ final class HypergraphService: Sendable {
         for article in articles {
             guard let id = article.id, let content = article.fullContent, !content.isEmpty else { continue }
             try updateProcessingStatus(feedItemId: id, status: .processing)
-            detailCallback?(.init(kind: .articleStarted(title: article.title)))
 
             let chunks = splitter.split(content)
             guard !chunks.isEmpty else {
@@ -563,8 +562,15 @@ final class HypergraphService: Sendable {
         }
 
         let totalArticles = progress.count
+        let totalChunks = jobs.count
         var completedArticles = 0
-        logger.info("Chunk pool: \(jobs.count) chunks across \(totalArticles) articles, window=\(maxConcurrent), attempts/chunk=\(cfg.maxChunkAttempts)")
+        var completedChunks = 0
+        logger.info("Chunk pool: \(totalChunks) chunks across \(totalArticles) articles, window=\(maxConcurrent), attempts/chunk=\(cfg.maxChunkAttempts)")
+
+        // Report progress at chunk granularity so the bar advances continuously.
+        // Article-level progress is too coarse here: one long article (many
+        // chunks) would leave the bar at 0 until all its chunks finish.
+        progressCallback?(0, totalChunks, "Starting\u{2026}")
 
         // Sliding-window chunk pool: keep up to maxConcurrent chunk extractions
         // in flight regardless of which article they belong to. A slow or empty
@@ -590,6 +596,11 @@ final class HypergraphService: Sendable {
                         }
                         ap.outstanding -= 1
 
+                        // Chunk-level progress: advances on every chunk, with the
+                        // title of the article that chunk belongs to.
+                        completedChunks += 1
+                        progressCallback?(completedChunks, totalChunks, ap.item.title)
+
                         if ap.outstanding == 0 {
                             // Last chunk for this article — persist it. Keep it in
                             // `progress` until persist succeeds so a cancel mid-persist
@@ -605,8 +616,13 @@ final class HypergraphService: Sendable {
                                 try await persistArticleResult(item: ap.item, content: ap.content, result: pr, chunkCount: ap.totalChunks, settings: settings)
                                 progress[result.articleID] = nil
                                 completedArticles += 1
-                                logger.info("Completed \(completedArticles)/\(totalArticles): \(ap.item.title, privacy: .public) — \(pr.nodeCount) nodes, \(pr.edgeCount) edges")
-                                progressCallback?(completedArticles, totalArticles, ap.item.title)
+                                logger.info("Completed \(completedArticles)/\(totalArticles) articles: \(ap.item.title, privacy: .public) — \(pr.nodeCount) nodes, \(pr.edgeCount) edges")
+                                // Surface the finished article's top entities so the
+                                // UI reflects articles crossing the finish line.
+                                detailCallback?(.init(kind: .entitiesExtracted(
+                                    articleTitle: ap.item.title,
+                                    entities: Array(ap.graph.nodes.prefix(8))
+                                )))
                             } catch is CancellationError {
                                 throw CancellationError()
                             } catch {
