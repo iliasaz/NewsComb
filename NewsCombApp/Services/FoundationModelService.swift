@@ -228,16 +228,18 @@ actor FoundationModelService: LLMProvider {
         }
     }
 
-    /// Converts a `GenerableExtractionResult` to `HypergraphJSON`.
+    /// Converts a `GenerableExtractionResult` to `HypergraphJSON`, collapsing
+    /// duplicate triples the model sometimes emits in a degenerate loop.
     @available(macOS 26.0, iOS 26.0, *)
     private func convertToHypergraphJSON(_ result: GenerableExtractionResult) -> HypergraphJSON {
-        let events = result.events.map { event in
-            Event(
-                source: event.source,
-                target: event.target,
-                relation: event.relation
-            )
+        let triples = result.events.map { (source: $0.source, relation: $0.relation, target: $0.target) }
+        let (deduped, dropped) = dedupeEvents(triples)
+        if dropped > 0 {
+            // Visible counterpart to the empty-extraction logging: the model
+            // looped on one relationship up to the schema's maximumCount.
+            logger.notice("Dropped \(dropped) duplicate event(s), kept \(deduped.count) — model emitted repeated triples (likely degenerate loop)")
         }
+        let events = deduped.map { Event(source: $0.source, target: $0.target, relation: $0.relation) }
         return HypergraphJSON(events: events)
     }
 
@@ -324,7 +326,8 @@ actor FoundationModelService: LLMProvider {
 func convertGenerableEventsToHypergraphJSON(
     events: [(source: [String], relation: String, target: [String])]
 ) -> HypergraphJSON {
-    let mapped = events.map { event in
+    let deduped = dedupeEvents(events).events
+    let mapped = deduped.map { event in
         Event(
             source: event.source,
             target: event.target,
@@ -332,4 +335,35 @@ func convertGenerableEventsToHypergraphJSON(
         )
     }
     return HypergraphJSON(events: mapped)
+}
+
+/// Collapses identical relationship triples the on-device model sometimes
+/// emits in a degenerate loop (e.g. 14 copies of one event, padding the array
+/// up to the schema's `maximumCount`). Without this, each copy becomes a
+/// distinct hyperedge because `toHypergraph` suffixes edge IDs with the array
+/// index — inflating edge counts, provenance rows, and clustering weights.
+///
+/// Two triples are duplicates when their relation and their source and target
+/// node sets match, compared case- and order-insensitively (so reordered or
+/// case-variant repeats also collapse). Keeps the first occurrence; returns the
+/// deduped triples and how many were dropped.
+func dedupeEvents(
+    _ events: [(source: [String], relation: String, target: [String])]
+) -> (events: [(source: [String], relation: String, target: [String])], dropped: Int) {
+    func normalizedSet(_ items: [String]) -> String {
+        items
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .sorted()
+            .joined(separator: "\u{1f}")  // unit separator — unlikely in entity text
+    }
+    var seen = Set<String>()
+    var kept: [(source: [String], relation: String, target: [String])] = []
+    for event in events {
+        let relation = event.relation.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let key = "\(relation)\u{1e}\(normalizedSet(event.source))\u{1e}\(normalizedSet(event.target))"
+        if seen.insert(key).inserted {
+            kept.append(event)
+        }
+    }
+    return (kept, events.count - kept.count)
 }

@@ -24,17 +24,22 @@ final class LoggingLLMProvider: LLMProvider, Sendable {
         model: String?,
         temperature: Double?
     ) async throws -> String {
-        logger.debug("── LLM chat request ──\n\(userPrompt, privacy: .public)")
-
-        let response = try await wrapped.chat(
-            systemPrompt: systemPrompt,
-            userPrompt: userPrompt,
-            model: model,
-            temperature: temperature
-        )
-
-        logger.debug("── LLM chat response ──\n\(response, privacy: .public)")
-        return response
+        // Log request + response as ONE entry. Under the concurrent chunk pool,
+        // separate request/response lines from different chunks interleave and
+        // can't be paired; a single entry keeps each prompt with its result.
+        do {
+            let response = try await wrapped.chat(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                model: model,
+                temperature: temperature
+            )
+            logger.debug("── LLM chat ──\nREQUEST:\n\(userPrompt, privacy: .public)\nRESPONSE:\n\(response, privacy: .public)")
+            return response
+        } catch {
+            logger.debug("── LLM chat (failed) ──\nREQUEST:\n\(userPrompt, privacy: .public)\nERROR: \(error.localizedDescription, privacy: .public)")
+            throw error
+        }
     }
 
     func generate<T: Decodable & Sendable>(
@@ -44,24 +49,28 @@ final class LoggingLLMProvider: LLMProvider, Sendable {
         model: String?,
         temperature: Double?
     ) async throws -> T {
-        logger.debug("── LLM generate request ──\n\(userPrompt, privacy: .public)")
+        do {
+            let result = try await wrapped.generate(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                responseType: responseType,
+                model: model,
+                temperature: temperature
+            )
 
-        let result = try await wrapped.generate(
-            systemPrompt: systemPrompt,
-            userPrompt: userPrompt,
-            responseType: responseType,
-            model: model,
-            temperature: temperature
-        )
-
-        if let encodable = result as? any Encodable,
-           let jsonData = try? JSONEncoder().encode(encodable),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            logger.debug("── LLM generate response ──\n\(jsonString, privacy: .public)")
-        } else {
-            logger.debug("── LLM generate response ── (type: \(String(describing: T.self), privacy: .public))")
+            let responseText: String
+            if let encodable = result as? any Encodable,
+               let jsonData = try? JSONEncoder().encode(encodable),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                responseText = jsonString
+            } else {
+                responseText = "(type: \(String(describing: T.self)))"
+            }
+            logger.debug("── LLM generate ──\nREQUEST:\n\(userPrompt, privacy: .public)\nRESPONSE:\n\(responseText, privacy: .public)")
+            return result
+        } catch {
+            logger.debug("── LLM generate (failed) ──\nREQUEST:\n\(userPrompt, privacy: .public)\nERROR: \(error.localizedDescription, privacy: .public)")
+            throw error
         }
-
-        return result
     }
 }

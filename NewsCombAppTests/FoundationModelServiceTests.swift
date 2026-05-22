@@ -164,6 +164,62 @@ final class FoundationModelServiceTests: XCTestCase {
         XCTAssertTrue(error.errorDescription!.localizedStandardContains("Apple Intelligence"))
     }
 
+    // MARK: - dedupeEvents Tests (degenerate-loop output)
+
+    func testDedupeEvents_collapsesExactDuplicates() {
+        // Mirrors the observed failure: one unique event + 14 identical copies.
+        var events: [(source: [String], relation: String, target: [String])] = [
+            (source: ["Clinical populations"], relation: "focus in", target: ["studies"])
+        ]
+        for _ in 0..<14 {
+            events.append((source: ["individuals with metabolic conditions"], relation: "include", target: ["studies"]))
+        }
+
+        let (deduped, dropped) = dedupeEvents(events)
+        XCTAssertEqual(deduped.count, 2, "1 unique + 1 of the repeated triple")
+        XCTAssertEqual(dropped, 13)
+    }
+
+    func testDedupeEvents_caseAndOrderInsensitiveWithinSets() {
+        let events: [(source: [String], relation: String, target: [String])] = [
+            (source: ["Apple", "Google"], relation: "compete in", target: ["AI", "Search"]),
+            (source: ["google", "apple"], relation: "Compete In", target: ["search", "ai"])  // same, reordered + recased
+        ]
+        let (deduped, dropped) = dedupeEvents(events)
+        XCTAssertEqual(deduped.count, 1)
+        XCTAssertEqual(dropped, 1)
+    }
+
+    func testDedupeEvents_keepsDistinctTriples() {
+        let events: [(source: [String], relation: String, target: [String])] = [
+            (source: ["A"], relation: "x", target: ["B"]),
+            (source: ["A"], relation: "y", target: ["B"]),   // different relation
+            (source: ["A"], relation: "x", target: ["C"])    // different target
+        ]
+        let (deduped, dropped) = dedupeEvents(events)
+        XCTAssertEqual(deduped.count, 3)
+        XCTAssertEqual(dropped, 0)
+    }
+
+    func testDedupeEvents_preservesFirstOccurrenceOrder() {
+        let events: [(source: [String], relation: String, target: [String])] = [
+            (source: ["First"], relation: "r", target: ["T"]),
+            (source: ["Second"], relation: "r", target: ["T"]),
+            (source: ["First"], relation: "r", target: ["T"])  // dup of #1
+        ]
+        let (deduped, _) = dedupeEvents(events)
+        XCTAssertEqual(deduped.map(\.source), [["First"], ["Second"]])
+    }
+
+    func testConvertGenerableEventsToHypergraphJSON_dedupes() {
+        // The conversion path used by all providers must apply dedup.
+        let events: [(source: [String], relation: String, target: [String])] = Array(
+            repeating: (source: ["X"], relation: "rel", target: ["Y"]), count: 5
+        )
+        let result = convertGenerableEventsToHypergraphJSON(events: events)
+        XCTAssertEqual(result.count, 1, "5 identical triples collapse to 1 edge")
+    }
+
     // MARK: - inputSnippet Tests (empty-extraction logging)
 
     func testInputSnippet_stripsContextWrapper() {
