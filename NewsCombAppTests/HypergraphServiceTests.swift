@@ -250,6 +250,75 @@ final class HypergraphServiceTests: XCTestCase {
         )
     }
 
+    // MARK: - Sliding-Window Concurrency Tests
+
+    /// Tracks live and peak concurrency plus completion order across tasks.
+    private actor WindowProbe {
+        private(set) var live = 0
+        private(set) var peak = 0
+        private(set) var completionOrder: [Int] = []
+
+        func enter() { live += 1; peak = max(peak, live) }
+        func leave(_ id: Int) { live -= 1; completionOrder.append(id) }
+    }
+
+    /// Mirrors HypergraphService's prime/drain/refill scheduler so we can pin
+    /// its invariants without the live DB/LLM. `durations[i]` is how long job
+    /// `i` "runs"; `process` records concurrency via the probe.
+    private func runSlidingWindow(
+        jobIDs: [Int],
+        maxConcurrent: Int,
+        process: @escaping @Sendable (Int) async -> Void
+    ) async {
+        await withTaskGroup(of: Void.self) { group in
+            var iterator = jobIDs.makeIterator()
+            var active = 0
+            while active < maxConcurrent, let id = iterator.next() {
+                group.addTask { await process(id) }
+                active += 1
+            }
+            while await group.next() != nil {
+                if let id = iterator.next() {
+                    group.addTask { await process(id) }
+                }
+            }
+        }
+    }
+
+    func testSlidingWindowNeverExceedsMaxConcurrent() async {
+        let probe = WindowProbe()
+        let maxConcurrent = 4
+        await runSlidingWindow(jobIDs: Array(0..<40), maxConcurrent: maxConcurrent) { id in
+            await probe.enter()
+            try? await Task.sleep(for: .milliseconds(id % 5 == 0 ? 30 : 3))
+            await probe.leave(id)
+        }
+        let peak = await probe.peak
+        let count = await probe.completionOrder.count
+        XCTAssertLessThanOrEqual(peak, maxConcurrent, "Window must never exceed maxConcurrent in flight")
+        XCTAssertEqual(peak, maxConcurrent, "With 40 jobs and a 4-slot window, all 4 slots should fill")
+        XCTAssertEqual(count, 40, "Every job must drain")
+    }
+
+    func testSlidingWindowKeepsWindowFullDespiteOneSlowJob() async {
+        // Job 0 is very slow; the rest are fast. The window must keep starting
+        // fast jobs behind the slow one instead of stalling — this is the bug
+        // the refactor fixes (a slow LLM call no longer blocks its batch).
+        let probe = WindowProbe()
+        await runSlidingWindow(jobIDs: Array(0..<20), maxConcurrent: 4) { id in
+            await probe.enter()
+            try? await Task.sleep(for: id == 0 ? .milliseconds(400) : .milliseconds(5))
+            await probe.leave(id)
+        }
+        let order = await probe.completionOrder
+        XCTAssertEqual(order.count, 20)
+        // The slow job (0) must NOT be among the first finishers; many fast
+        // jobs should complete while it is still running.
+        let slowJobPosition = order.firstIndex(of: 0)!
+        XCTAssertGreaterThan(slowJobPosition, 10,
+            "Fast jobs behind the slow one should complete first; the slow job blocking the window would put it near the front.")
+    }
+
     // MARK: - Cancellation Propagation Tests
 
     /// `processArticle`'s revised catch block must treat `CancellationError`

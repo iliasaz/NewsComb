@@ -224,6 +224,26 @@ final class HypergraphService: Sendable {
         }
     }
 
+    /// Runs one article through `processArticle`, mapping the outcome to a
+    /// `(FeedItem, success)` pair for the sliding-window scheduler.
+    ///
+    /// Re-throws `CancellationError` so the enclosing `ThrowingTaskGroup`
+    /// unwinds promptly; every other error is logged and reported as a
+    /// non-fatal failure so sibling articles keep processing and the failed
+    /// one is retried on the next pass.
+    @MainActor
+    private func runArticle(_ item: FeedItem, id: Int64, detailCallback: DetailCallback?) async throws -> (FeedItem, Bool) {
+        do {
+            try await processArticle(feedItemId: id, detailCallback: detailCallback)
+            return (item, true)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            logger.warning("Article failed: \(item.title, privacy: .public) — \(error.localizedDescription, privacy: .public)")
+            return (item, false)
+        }
+    }
+
     /// Drops a single article's downstream hypergraph state and re-runs
     /// per-article extraction. Use this when the article body changed and the
     /// caller wants the graph to reflect the new body cleanly, instead of the
@@ -457,69 +477,66 @@ final class HypergraphService: Sendable {
                 try await Task.sleep(for: delay)
             }
 
-            let batches = pendingArticles.chunked(into: maxConcurrent)
             var failedThisPass: [FeedItem] = []
 
-            for batch in batches {
-                if isCancelled {
-                    logger.info("Processing cancelled after \(completedSoFar) articles")
-                    progressCallback?(completedSoFar, totalCount, "Cancelled")
-                    throw HypergraphServiceError.cancelled
-                }
+            if isCancelled {
+                logger.info("Processing cancelled after \(completedSoFar) articles")
+                progressCallback?(completedSoFar, totalCount, "Cancelled")
+                throw HypergraphServiceError.cancelled
+            }
 
-                // Use ThrowingTaskGroup so CancellationError exits immediately
-                // without waiting for in-flight HTTP requests to time out.
-                let results: [(FeedItem, Bool)]
-                do {
-                    results = try await withThrowingTaskGroup(
-                        of: (FeedItem, Bool).self,
-                        returning: [(FeedItem, Bool)].self
-                    ) { group in
-                        for article in batch {
-                            guard article.id != nil else { continue }
-                            group.addTask {
-                                do {
-                                    try await self.processArticle(
-                                        feedItemId: article.id!,
-                                        detailCallback: detailCallback
-                                    )
-                                    return (article, true)
-                                } catch is CancellationError {
-                                    throw CancellationError()
-                                } catch {
-                                    self.logger.warning("Article failed: \(article.title, privacy: .public) — \(error.localizedDescription, privacy: .public)")
-                                    return (article, false)
-                                }
-                            }
+            // Pre-resolve to (item, id) pairs so the spawn loop never has to
+            // skip nil ids mid-stream (and we avoid force-unwrapping).
+            let jobs: [(item: FeedItem, id: Int64)] = pendingArticles.compactMap { item in
+                item.id.map { (item, $0) }
+            }
+
+            // Sliding-window concurrency: keep up to maxConcurrent articles in
+            // flight and start the next pending one the moment a slot frees up.
+            // The old fixed-batch approach waited for an entire batch to finish
+            // before starting the next, so a batch of fast-failing/empty chunks
+            // stalled on its single slowest LLM call. With the window, a freed
+            // slot is refilled immediately. ThrowingTaskGroup also unwinds
+            // promptly on cancellation (rethrown CancellationError cancels the
+            // remaining children).
+            do {
+                try await withThrowingTaskGroup(of: (FeedItem, Bool).self) { group in
+                    var iterator = jobs.makeIterator()
+
+                    // Prime the window up to maxConcurrent tasks.
+                    var active = 0
+                    while active < maxConcurrent, let job = iterator.next() {
+                        group.addTask { try await self.runArticle(job.item, id: job.id, detailCallback: detailCallback) }
+                        active += 1
+                    }
+
+                    // Drain and refill: each completion frees exactly one slot,
+                    // which we hand to the next pending article right away.
+                    while let (article, success) = try await group.next() {
+                        completedSoFar += 1
+                        if success {
+                            processedCount += 1
+                            logger.info("Completed \(completedSoFar)/\(totalCount): \(article.title, privacy: .public) - SUCCESS")
+                        } else {
+                            failedCount += 1
+                            failedThisPass.append(article)
+                            logger.warning("Completed \(completedSoFar)/\(totalCount): \(article.title, privacy: .public) - FAILED")
+                        }
+                        progressCallback?(completedSoFar, totalCount, article.title)
+
+                        if self.isCancelled {
+                            throw CancellationError()
                         }
 
-                        var batchResults: [(FeedItem, Bool)] = []
-                        for try await result in group {
-                            batchResults.append(result)
-                            if self.isCancelled {
-                                throw CancellationError()
-                            }
+                        if let job = iterator.next() {
+                            group.addTask { try await self.runArticle(job.item, id: job.id, detailCallback: detailCallback) }
                         }
-                        return batchResults
                     }
-                } catch is CancellationError {
-                    logger.info("Processing cancelled after \(completedSoFar) articles")
-                    progressCallback?(completedSoFar, totalCount, "Cancelled")
-                    throw HypergraphServiceError.cancelled
                 }
-
-                for (article, success) in results {
-                    completedSoFar += 1
-                    if success {
-                        processedCount += 1
-                        logger.info("Completed \(completedSoFar)/\(totalCount): \(article.title, privacy: .public) - SUCCESS")
-                    } else {
-                        failedCount += 1
-                        failedThisPass.append(article)
-                        logger.warning("Completed \(completedSoFar)/\(totalCount): \(article.title, privacy: .public) - FAILED")
-                    }
-                    progressCallback?(completedSoFar, totalCount, article.title)
-                }
+            } catch is CancellationError {
+                logger.info("Processing cancelled after \(completedSoFar) articles")
+                progressCallback?(completedSoFar, totalCount, "Cancelled")
+                throw HypergraphServiceError.cancelled
             }
 
             // Set up next retry pass with only the failures
