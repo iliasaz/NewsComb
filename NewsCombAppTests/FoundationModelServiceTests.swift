@@ -163,4 +163,44 @@ final class FoundationModelServiceTests: XCTestCase {
         XCTAssertNotNil(error.errorDescription)
         XCTAssertTrue(error.errorDescription!.localizedStandardContains("Apple Intelligence"))
     }
+
+    // MARK: - inputSnippet Tests (empty-extraction logging)
+
+    func testInputSnippet_stripsContextWrapper() {
+        // Mirrors SystemPrompts.extractionUserPrompt's format.
+        let prompt = "Context: ```Delta operates Atlanta-Washington flights.``` \n Extract the hypergraph knowledge graph in structured JSON format: "
+        let snippet = FoundationModelService.inputSnippet(prompt)
+        XCTAssertEqual(snippet, "Delta operates Atlanta-Washington flights.")
+        XCTAssertFalse(snippet.contains("Context:"))
+        XCTAssertFalse(snippet.contains("```"))
+        XCTAssertFalse(snippet.contains("Extract the hypergraph"))
+    }
+
+    func testInputSnippet_collapsesNewlines() {
+        let prompt = "Context: ```Line one.\nLine two.\n\nLine three.``` \n Extract: "
+        let snippet = FoundationModelService.inputSnippet(prompt)
+        XCTAssertEqual(snippet, "Line one. Line two. Line three.")
+    }
+
+    func testInputSnippet_truncatesLongInputWithEllipsis() {
+        let body = String(repeating: "a", count: 500)
+        let prompt = "Context: ```\(body)``` \n Extract: "
+        let snippet = FoundationModelService.inputSnippet(prompt, limit: 240)
+        XCTAssertEqual(snippet.count, 241) // 240 chars + ellipsis
+        XCTAssertTrue(snippet.hasSuffix("…"))
+    }
+
+    func testInputSnippet_handlesMissingBackticks() {
+        // Defensive: if the wrapper format ever changes, fall back to the raw text.
+        let prompt = "no fences here, just text"
+        let snippet = FoundationModelService.inputSnippet(prompt)
+        XCTAssertEqual(snippet, "no fences here, just text")
+    }
+
+    func testInputSnippet_shortInputNotTruncated() {
+        let prompt = "Context: ```short``` \n Extract: "
+        let snippet = FoundationModelService.inputSnippet(prompt)
+        XCTAssertEqual(snippet, "short")
+        XCTAssertFalse(snippet.hasSuffix("…"))
+    }
 }

@@ -208,8 +208,22 @@ actor FoundationModelService: LLMProvider {
                 to: Prompt(userPrompt),
                 generating: GenerableExtractionResult.self
             )
-            return convertToHypergraphJSON(response.content)
+            let result = response.content
+            // The model can legitimately complete (no error) while extracting
+            // zero events — common for narrative/first-person prose. This is a
+            // silent path otherwise (article still marked completed), so surface
+            // it with a snippet of the input to make under-extraction visible.
+            if result.events.isEmpty {
+                logger.notice("On-device extraction returned 0 events (input \(userPrompt.count) chars): \(Self.inputSnippet(userPrompt), privacy: .public)")
+            }
+            return convertToHypergraphJSON(result)
         } catch let error as LanguageModelSession.GenerationError {
+            // Empty/garbled output surfaces as .decodingFailure ("Text: " with
+            // no body). Log it with the input snippet before the library's
+            // per-chunk catch swallows the rethrown error.
+            if case .decodingFailure = error {
+                logger.warning("On-device extraction produced empty/unparseable output (input \(userPrompt.count) chars): \(Self.inputSnippet(userPrompt), privacy: .public)")
+            }
             throw mapGenerationError(error)
         }
     }
@@ -251,6 +265,19 @@ actor FoundationModelService: LLMProvider {
     }
 
     #endif
+
+    /// Returns a single-line, truncated view of the extraction input for logs.
+    /// Strips the ``` wrapper that `extractionUserPrompt` adds so the log shows
+    /// the actual article text that produced no extraction. `internal` (not
+    /// `private`) so it can be unit-tested.
+    static func inputSnippet(_ userPrompt: String, limit: Int = 240) -> String {
+        var text = userPrompt
+        if let open = text.range(of: "```"), let close = text.range(of: "```", range: open.upperBound..<text.endIndex) {
+            text = String(text[open.upperBound..<close.lowerBound])
+        }
+        let collapsed = text.split(whereSeparator: \.isNewline).joined(separator: " ").trimmingCharacters(in: .whitespaces)
+        return collapsed.count > limit ? String(collapsed.prefix(limit)) + "…" : collapsed
+    }
 
     /// Extracts JSON from a response that might contain markdown code blocks.
     private func extractJSON(from response: String) -> String {
