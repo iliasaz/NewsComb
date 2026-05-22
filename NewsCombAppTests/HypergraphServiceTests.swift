@@ -1,5 +1,6 @@
 import XCTest
 import GRDB
+import HyperGraphReasoning
 @testable import NewsCombApp
 
 final class HypergraphServiceTests: XCTestCase {
@@ -317,6 +318,102 @@ final class HypergraphServiceTests: XCTestCase {
         let slowJobPosition = order.firstIndex(of: 0)!
         XCTAssertGreaterThan(slowJobPosition, 10,
             "Fast jobs behind the slow one should complete first; the slow job blocking the window would put it near the front.")
+    }
+
+    // MARK: - Chunk Pool Accumulation Tests
+
+    /// The chunk pool folds chunk results into an article graph as they complete
+    /// — in nondeterministic order. The accumulated graph MUST be identical
+    /// regardless of completion order, otherwise the same article could yield
+    /// different graphs run-to-run. `Hypergraph.formUnion` set-merges edges, so
+    /// this pins the commutativity the pool depends on.
+    func testGraphAccumulationIsOrderIndependent() {
+        var g1 = Hypergraph<String, String>()
+        g1.addEdge("e1", nodes: ["a", "b"])
+        g1.addEdge("e2", nodes: ["x"])           // shared edge id with g2
+        var g2 = Hypergraph<String, String>()
+        g2.addEdge("e2", nodes: ["y"])           // different node for same edge
+        g2.addEdge("e3", nodes: ["c", "d"])
+        var g3 = Hypergraph<String, String>()
+        g3.addEdge("e4", nodes: ["e"])
+
+        func union(_ order: [Hypergraph<String, String>]) -> [String: Set<String>] {
+            var combined = Hypergraph<String, String>()
+            for g in order { combined.formUnion(g) }
+            return combined.incidenceDict
+        }
+
+        let ref = union([g1, g2, g3])
+        XCTAssertEqual(union([g3, g2, g1]), ref, "Reverse order must match")
+        XCTAssertEqual(union([g2, g1, g3]), ref, "Shuffled order must match")
+        XCTAssertEqual(union([g2, g3, g1]), ref, "Shuffled order must match")
+
+        // The shared edge must be the union of both chunks' contributions.
+        XCTAssertEqual(ref["e2"], ["x", "y"])
+        XCTAssertEqual(ref["e1"], ["a", "b"])
+        XCTAssertEqual(ref["e3"], ["c", "d"])
+        XCTAssertEqual(ref["e4"], ["e"])
+    }
+
+    // MARK: - Unprocessed-Articles Query Tests
+
+    /// Pins the WHERE clause of getUnprocessedArticles: an article counts as
+    /// unprocessed unless it is 'completed'. Regression guard for the bug where
+    /// the chunk pool's 'pending' (post-cancel) and 'processing' (stale after a
+    /// hard kill) articles were silently excluded and never reprocessed.
+    func testUnprocessedArticlesQueryExcludesOnlyCompleted() throws {
+        let dbQueue = try DatabaseQueue()
+        try dbQueue.write { db in
+            try db.execute(sql: """
+                CREATE TABLE feed_item (
+                    id INTEGER PRIMARY KEY,
+                    full_content TEXT,
+                    pub_date REAL
+                )
+            """)
+            try db.execute(sql: """
+                CREATE TABLE article_hypergraph (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    feed_item_id INTEGER NOT NULL,
+                    processing_status TEXT NOT NULL
+                )
+            """)
+            // id : (content, status)  — status nil means no article_hypergraph row
+            let items: [(Int, String?, String?)] = [
+                (1, "body", nil),            // never processed       → unprocessed
+                (2, "body", "pending"),      // reset after cancel     → unprocessed
+                (3, "body", "processing"),   // stale after hard kill  → unprocessed
+                (4, "body", "failed"),       // errored                → unprocessed
+                (5, "body", "completed"),    // done                   → EXCLUDED
+                (6, "", "pending"),          // empty content          → EXCLUDED
+                (7, nil, nil)                // null content           → EXCLUDED
+            ]
+            for (id, content, status) in items {
+                try db.execute(sql: "INSERT INTO feed_item (id, full_content, pub_date) VALUES (?, ?, ?)",
+                               arguments: [id, content, Double(id)])
+                if let status {
+                    try db.execute(sql: "INSERT INTO article_hypergraph (feed_item_id, processing_status) VALUES (?, ?)",
+                                   arguments: [id, status])
+                }
+            }
+        }
+
+        let ids = try dbQueue.read { db -> [Int] in
+            try Int.fetchAll(db, sql: """
+                SELECT fi.id
+                FROM feed_item fi
+                LEFT JOIN article_hypergraph ah ON fi.id = ah.feed_item_id
+                WHERE fi.full_content IS NOT NULL
+                  AND fi.full_content != ''
+                  AND (ah.id IS NULL OR ah.processing_status != 'completed')
+                ORDER BY fi.pub_date DESC
+            """)
+        }
+
+        XCTAssertEqual(Set(ids), [1, 2, 3, 4], "pending/processing/failed/null-row are unprocessed; completed and empty-content are not")
+        XCTAssertFalse(ids.contains(5), "completed must be excluded")
+        XCTAssertFalse(ids.contains(6), "empty content must be excluded")
+        XCTAssertFalse(ids.contains(7), "null content must be excluded")
     }
 
     // MARK: - Cancellation Propagation Tests

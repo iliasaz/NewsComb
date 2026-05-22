@@ -25,6 +25,34 @@ final class HypergraphService: Sendable {
         isCancelled = false
     }
 
+    // MARK: - Chunk Pool Types
+
+    /// One unit of work for the cross-article chunk pool.
+    private struct ChunkJob: Sendable {
+        let articleID: Int64
+        let chunk: TextChunk
+    }
+
+    /// Outcome of extracting one chunk. `graph == nil` means the chunk produced
+    /// nothing (empty extraction or skipped after exhausting attempts).
+    private struct ChunkResult: Sendable {
+        let articleID: Int64
+        let graph: Hypergraph<String, String>?
+        let metadata: [ChunkMetadata]
+    }
+
+    /// Main-actor-only accumulator for one article's chunks. Folded in serially
+    /// by the pool's drain loop; persisted once `outstanding` reaches zero.
+    private struct ArticleProgress {
+        let item: FeedItem
+        let content: String
+        let chunkIndex: ChunkIndex
+        let totalChunks: Int
+        var outstanding: Int
+        var graph: Hypergraph<String, String>
+        var metadata: [ChunkMetadata]
+    }
+
     /// Progress callback during batch processing.
     typealias ProgressCallback = @MainActor @Sendable (Int, Int, String) -> Void
 
@@ -104,13 +132,18 @@ final class HypergraphService: Sendable {
     /// Fetches articles that have full content but haven't been processed for hypergraph extraction.
     func getUnprocessedArticles() throws -> [FeedItem] {
         try database.read { db in
+            // Unprocessed = anything not 'completed'. This must include
+            // 'pending' (articles the chunk pool reset after a cancel) and
+            // 'processing' (rows left stale by a hard kill / SIGKILL mid-run,
+            // since only one run executes at a time) — otherwise those articles
+            // are silently skipped forever. Only 'completed' is truly done.
             let sql = """
                 SELECT fi.*
                 FROM feed_item fi
                 LEFT JOIN article_hypergraph ah ON fi.id = ah.feed_item_id
                 WHERE fi.full_content IS NOT NULL
                   AND fi.full_content != ''
-                  AND (ah.id IS NULL OR ah.processing_status = 'failed')
+                  AND (ah.id IS NULL OR ah.processing_status != 'completed')
                 ORDER BY fi.pub_date DESC
             """
             return try FeedItem.fetchAll(db, sql: sql)
@@ -224,25 +257,59 @@ final class HypergraphService: Sendable {
         }
     }
 
-    /// Runs one article through `processArticle`, mapping the outcome to a
-    /// `(FeedItem, success)` pair for the sliding-window scheduler.
+    /// Extracts one chunk for the cross-article pool, mapping the outcome to a
+    /// `ChunkResult` tagged with its article. Re-throws `CancellationError` so
+    /// the enclosing `ThrowingTaskGroup` unwinds promptly.
     ///
-    /// Re-throws `CancellationError` so the enclosing `ThrowingTaskGroup`
-    /// unwinds promptly; every other error is logged and reported as a
-    /// non-fatal failure so sibling articles keep processing and the failed
-    /// one is retried on the next pass.
-    @MainActor
-    private func runArticle(_ item: FeedItem, id: Int64, detailCallback: DetailCallback?) async throws -> (FeedItem, Bool) {
-        do {
-            try await processArticle(feedItemId: id, detailCallback: detailCallback)
-            return (item, true)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            logger.warning("Article failed: \(item.title, privacy: .public) — \(error.localizedDescription, privacy: .public)")
-            return (item, false)
+    /// Retry policy is provider-aware via `maxAttempts`: on-device passes 1
+    /// (skip-and-log on failure, since failures there are deterministic), while
+    /// network providers pass >1 with backoff to ride out transient errors. A
+    /// chunk that exhausts its attempts returns a nil graph (no events) so its
+    /// article still completes with whatever other chunks produced.
+    nonisolated private func runChunk(
+        _ job: ChunkJob,
+        extractor: HypergraphExtractor,
+        maxAttempts: Int
+    ) async throws -> ChunkResult {
+        var attempt = 0
+        while true {
+            attempt += 1
+            do {
+                let (graph, metadata) = try await extractor.extractFromChunk(job.chunk)
+                return ChunkResult(articleID: job.articleID, graph: graph, metadata: metadata)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                if attempt >= maxAttempts {
+                    logger.warning("Chunk failed (attempt \(attempt)/\(maxAttempts)), skipping — article \(job.articleID): \(error.localizedDescription, privacy: .public)")
+                    return ChunkResult(articleID: job.articleID, graph: nil, metadata: [])
+                }
+                logger.notice("Chunk failed (attempt \(attempt)/\(maxAttempts)), retrying — article \(job.articleID): \(error.localizedDescription, privacy: .public)")
+                // Backoff; cancellation during the sleep propagates out.
+                try await Task.sleep(for: .seconds(Double(attempt) * 2))
+            }
         }
     }
+
+    /// Persists a completed article's accumulated graph and marks it `.completed`.
+    /// Mirrors the persist tail of `processArticle`, including the cancellation
+    /// gate that ensures we never write a partial article after Stop.
+    @MainActor
+    private func persistArticleResult(
+        item: FeedItem,
+        content: String,
+        result: ProcessingResult,
+        chunkCount: Int,
+        settings: LLMSettings
+    ) async throws {
+        guard let id = item.id else { return }
+        try Task.checkCancellation()
+        if isCancelled { throw CancellationError() }
+        try await persistHypergraph(result: result, feedItemId: id, content: content, settings: settings)
+        try updateProcessingStatus(feedItemId: id, status: .completed, chunkCount: chunkCount)
+    }
+
+    /// Drops a single article's downstream hypergraph state and re-runs
 
     /// Drops a single article's downstream hypergraph state and re-runs
     /// per-article extraction. Use this when the article body changed and the
@@ -453,105 +520,128 @@ final class HypergraphService: Sendable {
             try await NomicEmbeddingService.shared.ensureModelLoaded()
         }
 
-        let totalCount = articles.count
-        var processedCount = 0
-        var failedCount = 0
+        // Build the extraction provider once and reuse it across every chunk.
+        let cfg = try makeExtractionConfig(settings: settings)
+        let extractor = HypergraphExtractor(
+            llmProvider: cfg.provider,
+            model: cfg.model,
+            chunkSize: cfg.chunkSize,
+            distillByDefault: cfg.distill,
+            extractionSystemPrompt: cfg.extractionPrompt,
+            distillationSystemPrompt: cfg.distillationPrompt
+        )
+        let splitter = RecursiveTextSplitter(chunkSize: cfg.chunkSize, chunkOverlap: 0)
 
-        logger.info("Starting parallel processing with max \(maxConcurrent) concurrent tasks")
+        // Split every pending article up front into a flat, cross-article chunk
+        // job list plus a per-article accumulator. The accumulator lives here on
+        // the main actor; the drain loop below mutates it serially between
+        // awaits, so no extra actor (and no choke point) is introduced — only
+        // the chunk extraction calls fan out concurrently.
+        var jobs: [ChunkJob] = []
+        var progress: [Int64: ArticleProgress] = [:]
+        for article in articles {
+            guard let id = article.id, let content = article.fullContent, !content.isEmpty else { continue }
+            try updateProcessingStatus(feedItemId: id, status: .processing)
+            detailCallback?(.init(kind: .articleStarted(title: article.title)))
 
-        // Process articles in batches. Failed articles are collected and retried
-        // in subsequent passes with increasing delay, so they don't block the
-        // main processing queue during backoff waits.
-        var pendingArticles = articles
-        var completedSoFar = 0
-        let maxRetryPasses = 3
-        let retryDelays: [Duration] = [.seconds(10), .seconds(30), .seconds(60)]
-
-        for pass in 0...maxRetryPasses {
-            guard !pendingArticles.isEmpty else { break }
-
-            if pass > 0 {
-                let delay = retryDelays[min(pass - 1, retryDelays.count - 1)]
-                logger.info("Retry pass \(pass)/\(maxRetryPasses): \(pendingArticles.count) articles after \(delay) delay")
-                progressCallback?(completedSoFar, totalCount, "Retrying \(pendingArticles.count) failed articles\u{2026}")
-                try await Task.sleep(for: delay)
+            let chunks = splitter.split(content)
+            guard !chunks.isEmpty else {
+                // Nothing to extract — mark completed (0 chunks) so it isn't reprocessed.
+                try updateProcessingStatus(feedItemId: id, status: .completed, chunkCount: 0)
+                continue
             }
-
-            var failedThisPass: [FeedItem] = []
-
-            if isCancelled {
-                logger.info("Processing cancelled after \(completedSoFar) articles")
-                progressCallback?(completedSoFar, totalCount, "Cancelled")
-                throw HypergraphServiceError.cancelled
-            }
-
-            // Pre-resolve to (item, id) pairs so the spawn loop never has to
-            // skip nil ids mid-stream (and we avoid force-unwrapping).
-            let jobs: [(item: FeedItem, id: Int64)] = pendingArticles.compactMap { item in
-                item.id.map { (item, $0) }
-            }
-
-            // Sliding-window concurrency: keep up to maxConcurrent articles in
-            // flight and start the next pending one the moment a slot frees up.
-            // The old fixed-batch approach waited for an entire batch to finish
-            // before starting the next, so a batch of fast-failing/empty chunks
-            // stalled on its single slowest LLM call. With the window, a freed
-            // slot is refilled immediately. ThrowingTaskGroup also unwinds
-            // promptly on cancellation (rethrown CancellationError cancels the
-            // remaining children).
-            do {
-                try await withThrowingTaskGroup(of: (FeedItem, Bool).self) { group in
-                    var iterator = jobs.makeIterator()
-
-                    // Prime the window up to maxConcurrent tasks.
-                    var active = 0
-                    while active < maxConcurrent, let job = iterator.next() {
-                        group.addTask { try await self.runArticle(job.item, id: job.id, detailCallback: detailCallback) }
-                        active += 1
-                    }
-
-                    // Drain and refill: each completion frees exactly one slot,
-                    // which we hand to the next pending article right away.
-                    while let (article, success) = try await group.next() {
-                        completedSoFar += 1
-                        if success {
-                            processedCount += 1
-                            logger.info("Completed \(completedSoFar)/\(totalCount): \(article.title, privacy: .public) - SUCCESS")
-                        } else {
-                            failedCount += 1
-                            failedThisPass.append(article)
-                            logger.warning("Completed \(completedSoFar)/\(totalCount): \(article.title, privacy: .public) - FAILED")
-                        }
-                        progressCallback?(completedSoFar, totalCount, article.title)
-
-                        if self.isCancelled {
-                            throw CancellationError()
-                        }
-
-                        if let job = iterator.next() {
-                            group.addTask { try await self.runArticle(job.item, id: job.id, detailCallback: detailCallback) }
-                        }
-                    }
-                }
-            } catch is CancellationError {
-                logger.info("Processing cancelled after \(completedSoFar) articles")
-                progressCallback?(completedSoFar, totalCount, "Cancelled")
-                throw HypergraphServiceError.cancelled
-            }
-
-            // Set up next retry pass with only the failures
-            pendingArticles = failedThisPass
-
-            if !failedThisPass.isEmpty && pass < maxRetryPasses {
-                // Subtract failures from completedSoFar so they count again on retry
-                completedSoFar -= failedThisPass.count
-                failedCount -= failedThisPass.count
-                logger.info("Pass \(pass) complete: \(failedThisPass.count) articles will be retried")
-            }
+            progress[id] = ArticleProgress(
+                item: article,
+                content: content,
+                chunkIndex: ChunkIndex(chunks: chunks),
+                totalChunks: chunks.count,
+                outstanding: chunks.count,
+                graph: Hypergraph(),
+                metadata: []
+            )
+            for chunk in chunks { jobs.append(ChunkJob(articleID: id, chunk: chunk)) }
         }
 
-        logger.info("Processing complete: \(processedCount) succeeded, \(failedCount) failed out of \(totalCount) total")
-        return processedCount
+        let totalArticles = progress.count
+        var completedArticles = 0
+        logger.info("Chunk pool: \(jobs.count) chunks across \(totalArticles) articles, window=\(maxConcurrent), attempts/chunk=\(cfg.maxChunkAttempts)")
+
+        // Sliding-window chunk pool: keep up to maxConcurrent chunk extractions
+        // in flight regardless of which article they belong to. A slow or empty
+        // chunk frees its slot immediately, so one long article no longer
+        // serializes the whole pipeline. ThrowingTaskGroup unwinds promptly on
+        // cancellation (rethrown CancellationError cancels the remaining
+        // children); their in-flight LLM call still runs to completion.
+        do {
+            try await withThrowingTaskGroup(of: ChunkResult.self) { group in
+                var iterator = jobs.makeIterator()
+
+                var active = 0
+                while active < maxConcurrent, let job = iterator.next() {
+                    group.addTask { try await self.runChunk(job, extractor: extractor, maxAttempts: cfg.maxChunkAttempts) }
+                    active += 1
+                }
+
+                while let result = try await group.next() {
+                    if var ap = progress[result.articleID] {
+                        if let graph = result.graph {
+                            ap.graph.formUnion(graph)
+                            ap.metadata.append(contentsOf: result.metadata)
+                        }
+                        ap.outstanding -= 1
+
+                        if ap.outstanding == 0 {
+                            // Last chunk for this article — persist it. Keep it in
+                            // `progress` until persist succeeds so a cancel mid-persist
+                            // still resets it to .pending below.
+                            let pr = ProcessingResult(
+                                hypergraph: ap.graph,
+                                metadata: ap.metadata,
+                                embeddings: NodeEmbeddings(),
+                                chunkIndex: ap.chunkIndex,
+                                documentID: "\(result.articleID)"
+                            )
+                            do {
+                                try await persistArticleResult(item: ap.item, content: ap.content, result: pr, chunkCount: ap.totalChunks, settings: settings)
+                                progress[result.articleID] = nil
+                                completedArticles += 1
+                                logger.info("Completed \(completedArticles)/\(totalArticles): \(ap.item.title, privacy: .public) — \(pr.nodeCount) nodes, \(pr.edgeCount) edges")
+                                progressCallback?(completedArticles, totalArticles, ap.item.title)
+                            } catch is CancellationError {
+                                throw CancellationError()
+                            } catch {
+                                logger.error("Persist failed for article \(result.articleID): \(error.localizedDescription, privacy: .public)")
+                                try? updateProcessingStatus(feedItemId: result.articleID, status: .failed, errorMessage: error.localizedDescription)
+                                progress[result.articleID] = nil
+                            }
+                        } else {
+                            progress[result.articleID] = ap
+                        }
+                    }
+
+                    if isCancelled {
+                        throw CancellationError()
+                    }
+
+                    if let job = iterator.next() {
+                        group.addTask { try await self.runChunk(job, extractor: extractor, maxAttempts: cfg.maxChunkAttempts) }
+                    }
+                }
+            }
+        } catch is CancellationError {
+            // Discard partial work: any article still in `progress` never fully
+            // persisted, so reset it to .pending to be re-extracted next run.
+            let resetCount = progress.count
+            for id in progress.keys {
+                try? updateProcessingStatus(feedItemId: id, status: .pending)
+            }
+            logger.info("Processing cancelled after \(completedArticles) articles; reset \(resetCount) partially-processed articles to pending")
+            progressCallback?(completedArticles, totalArticles, "Cancelled")
+            throw HypergraphServiceError.cancelled
+        }
+
+        logger.info("Processing complete: \(completedArticles)/\(totalArticles) articles processed")
+        return completedArticles
     }
 
     // MARK: - Document Processor Creation
@@ -559,40 +649,61 @@ final class HypergraphService: Sendable {
     @MainActor
     private func createDocumentProcessor() async throws -> DocumentProcessor {
         let settings = try loadSettings()
-        logger.info("LLM Provider: \(settings.provider, privacy: .public)")
-        logger.info("Embedding Provider: \(settings.embeddingProvider, privacy: .public)")
-        logger.info("Distillation enabled: \(settings.distillationEnabled, privacy: .public), prompt source: app_settings (\(settings.distillationSystemPrompt?.count ?? 0) chars)")
+        let cfg = try makeExtractionConfig(settings: settings)
 
-        // DocumentProcessor requires an OllamaService for its internal embedding pipeline.
-        // The embeddings it produces are discarded in persistHypergraph and re-generated
-        // via the configured embedding provider (Nomic on-device or OpenRouter).
+        // DocumentProcessor requires an OllamaService for its internal embedding
+        // pipeline. Those embeddings are discarded in persistHypergraph and
+        // re-generated via the configured embedding provider (Nomic / OpenRouter).
         let placeholderEndpoint = settings.ollamaEndpoint ?? AppSettings.defaultOllamaEndpoint
         let placeholderHost = URL(string: placeholderEndpoint) ?? URL(string: AppSettings.defaultOllamaEndpoint)!
         let embeddingOllama = OllamaService(host: placeholderHost)
+
+        return DocumentProcessor(
+            llmProvider: cfg.provider,
+            ollamaService: embeddingOllama,
+            chatModel: cfg.model,
+            chunkSize: cfg.chunkSize,
+            distillByDefault: cfg.distill,
+            extractionSystemPrompt: cfg.extractionPrompt,
+            distillationSystemPrompt: cfg.distillationPrompt
+        )
+    }
+
+    /// Resolved extraction configuration for the active provider — the single
+    /// source of truth shared by `createDocumentProcessor` (single-article
+    /// reprocess path) and the chunk pool (`processUnprocessedArticles`).
+    private struct ExtractionConfig {
+        let provider: any LLMProvider
+        let model: String
+        let chunkSize: Int
+        let distill: Bool
+        let extractionPrompt: String?
+        let distillationPrompt: String?
+        /// Per-chunk extraction attempts: 1 for on-device (skip-and-log on
+        /// failure — deterministic, no point retrying), >1 for network
+        /// providers (ride out transient errors with backoff).
+        let maxChunkAttempts: Int
+    }
+
+    @MainActor
+    private func makeExtractionConfig(settings: LLMSettings) throws -> ExtractionConfig {
+        logger.info("LLM Provider: \(settings.provider, privacy: .public), Embedding: \(settings.embeddingProvider, privacy: .public), distill=\(settings.distillationEnabled, privacy: .public)")
 
         switch settings.provider {
         case "ollama":
             let endpoint = settings.ollamaEndpoint ?? AppSettings.defaultOllamaEndpoint
             let model = settings.ollamaModel ?? AppSettings.defaultOllamaModel
-            logger.info("Configuring Ollama: endpoint=\(endpoint, privacy: .public), model=\(model, privacy: .public)")
-
-            if let extractionPrompt = settings.extractionSystemPrompt {
-                logger.info("Using custom extraction prompt (\(extractionPrompt.count) chars)")
-            }
-
             let host = URL(string: endpoint) ?? URL(string: AppSettings.defaultOllamaEndpoint)!
-            let ollama = OllamaService(
-                host: host,
-                chatModel: model,
-                temperature: settings.extractionTemperature
-            )
-            return DocumentProcessor(
-                llmProvider: LoggingLLMProvider(wrapping: ollama),
-                ollamaService: ollama,
-                chatModel: model,
-                distillByDefault: settings.distillationEnabled,
-                extractionSystemPrompt: settings.extractionSystemPrompt,
-                distillationSystemPrompt: settings.distillationSystemPrompt
+            let ollama = OllamaService(host: host, chatModel: model, temperature: settings.extractionTemperature)
+            logger.info("Configuring Ollama: endpoint=\(endpoint, privacy: .public), model=\(model, privacy: .public)")
+            return ExtractionConfig(
+                provider: LoggingLLMProvider(wrapping: ollama),
+                model: model,
+                chunkSize: 1000,
+                distill: settings.distillationEnabled,
+                extractionPrompt: settings.extractionSystemPrompt,
+                distillationPrompt: settings.distillationSystemPrompt,
+                maxChunkAttempts: 3
             )
 
         case "openrouter":
@@ -601,25 +712,16 @@ final class HypergraphService: Sendable {
                 throw HypergraphServiceError.missingAPIKey
             }
             let chatModel = settings.openRouterModel ?? AppSettings.defaultOpenRouterModel
+            let openRouter = try OpenRouterService(apiKey: apiKey, model: chatModel, temperature: settings.extractionTemperature)
             logger.info("Configuring OpenRouter: model=\(chatModel, privacy: .public)")
-
-            if let extractionPrompt = settings.extractionSystemPrompt {
-                logger.info("Using custom extraction prompt (\(extractionPrompt.count) chars)")
-            }
-
-            let openRouter = try OpenRouterService(
-                apiKey: apiKey,
+            return ExtractionConfig(
+                provider: LoggingLLMProvider(wrapping: openRouter),
                 model: chatModel,
-                temperature: settings.extractionTemperature
-            )
-
-            return DocumentProcessor(
-                llmProvider: LoggingLLMProvider(wrapping: openRouter),
-                ollamaService: embeddingOllama,
-                chatModel: chatModel,
-                distillByDefault: settings.distillationEnabled,
-                extractionSystemPrompt: settings.extractionSystemPrompt,
-                distillationSystemPrompt: settings.distillationSystemPrompt
+                chunkSize: 1000,
+                distill: settings.distillationEnabled,
+                extractionPrompt: settings.extractionSystemPrompt,
+                distillationPrompt: settings.distillationSystemPrompt,
+                maxChunkAttempts: 3
             )
 
         case "on_device":
@@ -627,20 +729,16 @@ final class HypergraphService: Sendable {
                 logger.error("On-device Foundation Model is not available")
                 throw HypergraphServiceError.noProviderConfigured
             }
-            let service = FoundationModelService()
-            let extractionPrompt = settings.extractionSystemPrompt
-                ?? AppSettings.defaultOnDeviceExtractionPrompt
-            let chunkSize = settings.onDeviceChunkSize
-            logger.info("Configuring on-device Foundation Model: chunkSize=\(chunkSize)")
-
-            return DocumentProcessor(
-                llmProvider: LoggingLLMProvider(wrapping: service),
-                ollamaService: embeddingOllama,
-                chatModel: "apple-on-device",
-                chunkSize: chunkSize,
-                distillByDefault: settings.distillationEnabled,
-                extractionSystemPrompt: extractionPrompt,
-                distillationSystemPrompt: settings.distillationSystemPrompt
+            let extractionPrompt = settings.extractionSystemPrompt ?? AppSettings.defaultOnDeviceExtractionPrompt
+            logger.info("Configuring on-device Foundation Model: chunkSize=\(settings.onDeviceChunkSize)")
+            return ExtractionConfig(
+                provider: LoggingLLMProvider(wrapping: FoundationModelService()),
+                model: "apple-on-device",
+                chunkSize: settings.onDeviceChunkSize,
+                distill: settings.distillationEnabled,
+                extractionPrompt: extractionPrompt,
+                distillationPrompt: settings.distillationSystemPrompt,
+                maxChunkAttempts: 1
             )
 
         default:
