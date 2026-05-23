@@ -115,6 +115,21 @@ actor FoundationModelService: LLMProvider {
 
     let defaultModel: String = "apple-on-device"
 
+    #if canImport(FoundationModels)
+    /// Builds a session on the base model with **permissive content-transformation
+    /// guardrails**. Our task transforms existing article text into structured
+    /// triples — a content transformation — so the default guardrails (tuned for
+    /// generating net-new content) over-trigger on ordinary news about crime,
+    /// politics, conflict, etc., surfacing as `.guardrailViolation`.
+    /// `.permissiveContentTransformations` is Apple's documented setting for
+    /// exactly this case (see SystemLanguageModel.Guardrails).
+    @available(macOS 26.0, iOS 26.0, *)
+    private func makeExtractionSession(systemPrompt: String) -> LanguageModelSession {
+        let model = SystemLanguageModel(useCase: .general, guardrails: .permissiveContentTransformations)
+        return LanguageModelSession(model: model, instructions: Instructions(systemPrompt))
+    }
+    #endif
+
     func chat(
         systemPrompt: String,
         userPrompt: String,
@@ -127,7 +142,7 @@ actor FoundationModelService: LLMProvider {
                 "Foundation Models requires macOS 26.0 or iOS 26.0."
             )
         }
-        let session = LanguageModelSession(instructions: Instructions(systemPrompt))
+        let session = makeExtractionSession(systemPrompt: systemPrompt)
         do {
             let response = try await session.respond(to: Prompt(userPrompt))
             let text = response.content
@@ -202,7 +217,7 @@ actor FoundationModelService: LLMProvider {
         systemPrompt: String,
         userPrompt: String
     ) async throws -> HypergraphJSON {
-        let session = LanguageModelSession(instructions: Instructions(systemPrompt))
+        let session = makeExtractionSession(systemPrompt: systemPrompt)
         do {
             let response = try await session.respond(
                 to: Prompt(userPrompt),
@@ -222,7 +237,7 @@ actor FoundationModelService: LLMProvider {
             // no body). Log it with the input snippet before the library's
             // per-chunk catch swallows the rethrown error.
             if case .decodingFailure = error {
-                logger.warning("On-device extraction produced empty/unparseable output (input \(userPrompt.count) chars): \(Self.inputSnippet(userPrompt), privacy: .public)")
+                logger.error("On-device extraction produced empty/unparseable output (input \(userPrompt.count) chars): \(Self.inputSnippet(userPrompt), privacy: .public)")
             }
             throw mapGenerationError(error)
         }
@@ -248,13 +263,13 @@ actor FoundationModelService: LLMProvider {
     private func mapGenerationError(_ error: LanguageModelSession.GenerationError) -> LLMProviderError {
         switch error {
         case .guardrailViolation:
-            logger.warning("On-device model guardrail violation")
+            logger.error("On-device model guardrail violation")
             return .invalidResponse("The on-device model declined due to content safety guardrails.")
         case .exceededContextWindowSize:
-            logger.warning("On-device model context window exceeded")
+            logger.error("On-device model context window exceeded")
             return .invalidResponse("The input exceeded the on-device model's context window (4096 tokens). Try reducing chunk size.")
         case .rateLimited:
-            logger.warning("On-device model rate limited")
+            logger.error("On-device model rate limited")
             return .connectionFailed(error)
         case .assetsUnavailable:
             return .modelNotAvailable("On-device model assets are unavailable. The model may still be downloading.")

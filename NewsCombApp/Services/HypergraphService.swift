@@ -169,7 +169,7 @@ final class HypergraphService: Sendable {
         detailCallback?(.init(kind: .articleStarted(title: feedItem.title)))
 
         guard let content = feedItem.fullContent, !content.isEmpty else {
-            logger.warning("Article \(feedItemId) has no content")
+            logger.error("Article \(feedItemId) has no content")
             throw HypergraphServiceError.noContent
         }
 
@@ -281,7 +281,7 @@ final class HypergraphService: Sendable {
                 throw CancellationError()
             } catch {
                 if attempt >= maxAttempts {
-                    logger.warning("Chunk failed (attempt \(attempt)/\(maxAttempts)), skipping — article \(job.articleID): \(error.localizedDescription, privacy: .public)")
+                    logger.error("Chunk failed (attempt \(attempt)/\(maxAttempts)), skipping — article \(job.articleID): \(error.localizedDescription, privacy: .public)")
                     return ChunkResult(articleID: job.articleID, graph: nil, metadata: [])
                 }
                 logger.notice("Chunk failed (attempt \(attempt)/\(maxAttempts)), retrying — article \(job.articleID): \(error.localizedDescription, privacy: .public)")
@@ -1318,7 +1318,7 @@ final class HypergraphService: Sendable {
             // Only recreate if there's no existing graph data
             let nodeCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM hypergraph_node") ?? 0
             guard nodeCount == 0 else {
-                logger.warning("Dimension mismatch (\(activeDim) vs \(desiredDim)) but graph has \(nodeCount) nodes — reset the graph first")
+                logger.error("Dimension mismatch (\(activeDim) vs \(desiredDim)) but graph has \(nodeCount) nodes — reset the graph first")
                 return
             }
 
